@@ -17,7 +17,7 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 	using namespace signlp;
 	using namespace sigdm;
 
-	const uint doc_num = DocumentNum;
+	const uint doc_num = DocumentNum; 
 
 
 	sigdm::FilterSetting filter(true);
