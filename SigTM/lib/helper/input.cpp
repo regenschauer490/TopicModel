@@ -1,47 +1,93 @@
 #include <future>
 #include <sstream>
+#include "SigUtil/lib/file.hpp"
 #include "input.h"
 
 namespace sigtm
 {
-	
-inline int InputData::parseLine(std::string const& line, uint& tct)
+// 
+inline bool InputData::parseLine(std::wstring const& line)
 {
-	std::istringstream is(line);
+	std::wistringstream is(line);
 	int doc_id = 0;
 	int word_id = 0;
 	int count = 0;
 
 	is >> doc_id >> word_id >> count;
 	if (!doc_id || !word_id || !count) {
-		std::cout << "parse error";
-		return -1;
+		std::cout << "parse error" << std::endl;
+		return false;
 	}
   
-	for(int i = 0; i < count; ++i){
-		tokens_.push_back( std::make_shared<Token>(tct, doc_id-1, word_id-1) );
-		++tct;
+	for(uint i = 0; i < count; ++i){
+		uint tsize = tokens_.size();
+		tokens_.push_back( std::make_shared<Token>(tsize, doc_id-1, word_id-1) );
 	}
 
-	return 0;
+	return true;
 }
 
-void InputData::reconstruct(std::wstring const& folder_pass)
+void InputData::reconstruct(FilepassString folder_pass)
 {
-	auto filenames = sig::GetFileNames(folder_pass, false);
-	if(!filenames){
+	/*
+	auto filenames = sig::get_file_names(folder_pass, false);
+	if(sig::is_container_valid(filenames)){
 		std::wcout << L"folder not found : " << folder_pass << std::endl;
-		return;
+		assert(false);
+	}*/
+
+	auto fileopen = [&](FilepassString pass) ->std::vector<std::wstring>
+	{	
+		auto m_text = sig::read_line<std::wstring>(pass);
+		if (sig::is_container_valid(m_text)){
+			sig::FileOpenErrorPrint(pass);
+			assert(false);
+		}
+		return sig::fromJust(std::move(m_text));
+	};
+
+	auto base_pass = sig::impl::modify_dirpass_tail(folder_pass, true);
+
+	auto token_text = fileopen(base_pass + TOKEN_FILENAME);
+
+	// get feature size
+	int doc_num = std::stoi(token_text[0]);
+	int wnum = std::stoi(token_text[1]);
+	int tnum = std::stoi(token_text[2]);
+
+	std::cout << "document_num: " << doc_num_ << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl;
+
+	if (doc_num_ <= 0 || tnum <= 0 || wnum <= 0) {
+		std::cout << "token file is corrupted" << std::endl;
+		assert(false);
 	}
 
-	auto base_pass = sig::DirpassTailModify(folder_pass, true);
-	auto token_pass = base_pass + TOKEN_FILENAME;
+	doc_num_ = static_cast<uint>(doc_num);
+	words_.reserve(wnum);
+	tokens_.reserve(tnum);
+
+	for(uint i=3; i<token_text.size(); ++i){
+		if (!parseLine(token_text[i]) && token_text[i] != L"") {
+			std::cout << "error in token file at line : " << i << std::endl;
+			assert(false);
+		}
+	}
+
+	auto vocab_text = fileopen(base_pass + VOCAB_FILENAME);
+
+	for (auto const& e : vocab_text){
+		auto word = std::make_shared<std::wstring>(e);
+		words_.push_back(word);
+		word2id_.emplace(word, i);
+	}
+
+/*
 	std::ifstream ifs(token_pass);
 	std::string line;
 	uint line_num = 0, token_ct = 0;
 
 	if(!ifs){
-		std::cout << "token file not found : " << sig::WSTRtoSTR(token_pass) << std::endl;
+		std::wcout << L"token file not found : " << token_pass << std::endl;
 		return;
 	}
 
@@ -76,8 +122,9 @@ void InputData::reconstruct(std::wstring const& folder_pass)
 		std::getline(ifs2, line);
 		auto wsp = std::make_shared<std::wstring>( sig::STRtoWSTR(line) );
 		words_.push_back(wsp);
-		_word2id_map.emplace(*wsp, i);
+		word2id_.emplace(*wsp, i);
 	}
+*/
 }
 
 }	//namespace sigtm

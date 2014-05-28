@@ -9,8 +9,12 @@ http://opensource.org/licenses/mit-license.php
 #define SIG_LDA_HPP
 
 #include "../sigtm.hpp"
-#include "../helper/input_container.h"
+#include "../helper/input.h"
 #include "../helper/compare_method.hpp"
+
+#if USE_SIGNLP
+#include "lib/helper/input_text.h"
+#endif
 
 #include "SigUtil/lib/tool.hpp"
 

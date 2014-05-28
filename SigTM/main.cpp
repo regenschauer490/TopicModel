@@ -1,5 +1,5 @@
-
 #include "lib/LDA/lda.h"
+#include "SigUtil/lib/file.hpp"
 
 const int DocumentNum = 77;
 const int TopicNum = 20;
@@ -13,10 +13,10 @@ static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 
 std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstring out_folder, bool make_new)
 {
+	using sig::uint;
+	const uint doc_num = DocumentNum; 
 
-	const sig::uint doc_num = DocumentNum; 
-
-
+	/*
 	sigtm::FilterSetting filter(true);
 
 	//使用品詞の設定
@@ -38,13 +38,14 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 		str = regex_replace(str, noise_reg, wstring(L""));
 		str = regex_replace(str, a_hira_kata_reg, wstring(L""));
 	});
+	*/
 
 	// 入力データ作成 
-	sigdm::InputDataPtr inputdata;
-	vector< vector<double> > similarity(doc_num, vector<double>(doc_num, 0));
+	sigtm::InputDataPtr inputdata;
+	std::vector< std::vector<double> > similarity(doc_num, std::vector<double>(doc_num, 0));
 
 	if(make_new){
-		auto doc_pass = sig::GetFileNames(src_folder, false);
+		auto doc_pass = sig::get_file_names(src_folder, false);
 		assert(doc_pass, "fail to find src documents");
 #if USE_SIGNLP
 		vector<vector<wstring>> docs;
@@ -52,28 +53,28 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 			docs.push_back(sig::STRtoWSTR(*sig::ReadLine<std::string>(sig::DirpassTailModify(src_folder, true) + dp)));
 			std::wcout << docs[0][0];
 		}
-		inputdata = sigdm::InputData::MakeInstance(docs, filter, out_folder);
+		inputdata = sigtm::InputData::MakeInstance(docs, filter, out_folder);
 #endif
 	}
 	else{
-		inputdata = sigdm::InputData::MakeInstance(out_folder);
+		inputdata = sigtm::InputData::makeInstance(out_folder);
 	}
 
 	//学習開始
 	std::cout << "model calculate" << std::endl;
 
-	auto lda = sigdm::LDA::MakeInstance(TopicNum, inputdata);
+	auto lda = sigtm::LDA::makeInstance(TopicNum, inputdata);
 
-	lda->Update(IterationNum);
+	lda->update(IterationNum);
 
-	lda->Save(sigdm::LDA::Distribution::DOCUMENT, out_folder);
-	lda->Save(sigdm::LDA::Distribution::TOPIC, out_folder);
-	lda->Save(sigdm::LDA::Distribution::TERM_SCORE, out_folder);
+	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
+	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
+	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
 
 	// LDA後の人物間類似度測定
 	for (uint i = 0; i < doc_num; ++i){
 		for (uint j = 0; j < i; ++j)	similarity[i][j] = similarity[j][i];
-		for (uint j = i; j < doc_num; ++j)	similarity[i][j] = lda->CompareDistribution(sigdm::CompareMethodD::JS_DIV, sigdm::LDA::Distribution::DOCUMENT, i, j);
+		for (uint j = i; j < doc_num; ++j)	similarity[i][j] = lda->compareDistribution(sigtm::CompareMethodD::JS_DIV, sigtm::LDA::Distribution::DOCUMENT, i, j);
 	}
 
 	//sig::SaveCSV(similarity, names, names, out_folder + L"similarity_lda.csv");

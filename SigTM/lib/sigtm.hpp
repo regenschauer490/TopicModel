@@ -28,6 +28,7 @@ using sig::WStrPtr;
 using sig::C_WStrPtr;
 using sig::maybe;
 using sig::nothing;
+using sig::FilepassString;
 
 using Document = std::vector<std::wstring>;
 using Documents = std::vector< std::vector<std::wstring> >;

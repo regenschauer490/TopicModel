@@ -5,7 +5,7 @@ namespace sigtm
 
 #if SIG_USE_NLP
 
-void InputData::MakeData_(Documents const& raw_texts, std::wstring const& folder_pass)
+void InputData::makeData(Documents const& raw_texts, std::wstring const& folder_pass)
 {
 
 	const auto ParallelFunc = [this](Document document){
@@ -55,13 +55,13 @@ void InputData::MakeData_(Documents const& raw_texts, std::wstring const& folder
 		++doc_id;
 		for (auto& word : words){
 			//wordÇ™ä˘èoÇ©îªíË
-			if (_word2id_map.count(word)){
-				tokens_.push_back(std::make_shared<Token>(token_ct, doc_id, _word2id_map[word]));
+			if (word2id_.count(word)){
+				tokens_.push_back(std::make_shared<Token>(token_ct, doc_id, word2id_[word]));
 				++token_ct;
 			}
 			else{
-				_word2id_map.emplace(word, words_.size());
-				tokens_.push_back(std::make_shared<Token const>(token_ct, doc_id, _word2id_map[word]));
+				word2id_.emplace(word, words_.size());
+				tokens_.push_back(std::make_shared<Token const>(token_ct, doc_id, word2id_[word]));
 				words_.push_back(std::make_shared<std::wstring const>(word));
 				++token_ct;
 			}

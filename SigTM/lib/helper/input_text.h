@@ -69,32 +69,17 @@ class InputDataFromText : public InputData
 
 private:
 	InputDataFromText() = delete;
-	//	InputData(Document const& document, std::wstring const& save_folder, FilterPtr const& filter) : doc_num_(documents.size()), _filter(filter){ std::vector< std::vector<std::string> > input(1, documents); _MakeData(input, save_folder); }
-	InputData(std::wstring const& folder_pass) : _filter(nullptr){ reconstruct(folder_pass); }
-	InputData(InputData const& src) :doc_num_(src.doc_num_), tokens_(src.tokens_), words_(src.words_), _filter(src._filter){};
-
-
-#if USE_SIGNLP
-	InputData(Documents const& raw_texts, FilterSetting const& filter, std::wstring const& folder_pass) : doc_num_(raw_texts.size()), _filter(filter){ MakeData_(raw_texts, folder_pass); }
-
-	void MakeData_(Documents const& raw_texts, std::wstring const& folder_pass);
-#endif
-
+	InputDataFromText(Documents const& raw_texts, FilterSetting const& filter, std::wstring folder_pass) 
+		: InputData(raw_texts.size()), _filter(filter){ makeData(raw_texts, folder_pass); }
+	InputDataFromText(InputDataFromText const& src) = delete;
+	
+	void makeData(Documents const& raw_texts, std::wstring folder_pass);
+	
 public:
-	/* 形態素解析前の生のドキュメント群を入力する場合 */
-
-#if USE_SIGNLP
-	//複数のドキュメントを入力 ( wstring raw_texts[document_id][sentence_line] ) 
-	static InputDataPtr makeInstance(Documents const& raw_texts, FilterSetting const& filter, std::wstring const& save_folder_pass){ return InputDataPtr(new InputData(raw_texts, filter, save_folder_pass)); }
-	//複数のドキュメントを入力 ( string raw_texts[document_id][sentence_line] ) 
-	static InputDataPtr makeInstance(std::vector<std::vector<std::string>> const& raw_texts, FilterSetting const& filter, std::wstring const& save_folder_pass){
-		Documents tmp(raw_texts.size());
-		for (uint i = 0; i<raw_texts.size(); ++i) std::transform(raw_texts[i].begin(), raw_texts[i].end(), std::back_inserter(tmp[i]), [](std::string const& s){ return sig::STRtoWSTR(s); });
-		return InputDataPtr(new InputData(tmp, filter, save_folder_pass));
+	// 形態素解析前の生のテキストから入力データを生成する ( raw_texts[document_id][sentence_line] ) 
+	static InputDataPtr makeInstance(Documents const& raw_texts, FilterSetting const& filter, std::wstring const& save_folder_pass){
+		return InputDataPtr(new InputDataFromText(raw_texts, filter, save_folder_pass)); 
 	}
-#endif
-	/* 以前の中間出力を入力とする場合 (ファイルが保存されているディレクトリを指定) */
-	static InputDataPtr makeInstance(std::wstring const& folder_pass){ return InputDataPtr(new InputData(folder_pass)); }
 };
 
 }

@@ -37,29 +37,32 @@ struct Token
 /* 各モデルへの入力データを作成 */
 class InputData
 {
+protected:
 	friend class LDA;
 	friend class TfIdf;
 
 	uint doc_num_;
 	std::vector<TokenPtr> tokens_;
 	std::vector<C_WStrPtr> words_;
-	std::unordered_map<std::wstring, uint> _word2id_map;
+	std::unordered_map<std::wstring, uint> word2id_;
 
 private:
 	InputData() = delete;
-//	InputData(Document const& document, std::wstring const& save_folder, FilterPtr const& filter) : doc_num_(documents.size()), _filter(filter){ std::vector< std::vector<std::string> > input(1, documents); _MakeData(input, save_folder); }
-	InputData(std::wstring const& folder_pass) : _filter(nullptr){ reconstruct(folder_pass); }
-	InputData(InputData const& src) :doc_num_(src.doc_num_),tokens_(src.tokens_),words_(src.words_),_filter(src._filter){};
+	InputData(std::wstring const& folder_pass){ reconstruct(folder_pass); }
+	InputData(InputData const& src) = delete;
 
-	int parseLine(std::string const& line, uint& tct);
-	void reconstruct(std::wstring const& folder_pass);
-	
+	bool parseLine(std::wstring const& line);
+	void reconstruct(FilepassString folder_pass);
+
+protected:
+	InputData(uint doc_num) : doc_num_(doc_num){};
+
 public:
 	virtual ~InputData(){}
 
-	// 指定の形式のデータから読み込み　以前の中間出力を入力とする場合
+	// 指定の形式のデータから読み込む or 以前の中間出力から読み込む
 	// folder_pass: ファイルが保存されているディレクトリ
-	static InputDataPtr makeInstance(std::wstring const& folder_pass){ return InputDataPtr(new InputData(folder_pass)); }
+	static InputDataPtr makeInstance(FilepassString folder_pass){ return InputDataPtr(new InputData(folder_pass)); }
 };
 
 }
