@@ -44,7 +44,7 @@ protected:
 	uint doc_num_;
 	std::vector<TokenPtr> tokens_;
 	std::vector<C_WStrPtr> words_;
-	std::unordered_map<std::wstring, uint> word2id_;
+	std::unordered_map<C_WStrPtr, uint> word2id_;
 
 private:
 	InputData() = delete;

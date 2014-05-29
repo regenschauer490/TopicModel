@@ -22,7 +22,8 @@ using signlp::WordClass;
 
 
 /* 入力データへのフィルタ処理の設定を行う */
-class FilterSetting{
+class FilterSetting
+{
 	friend class InputData;
 
 	bool _base_form;
@@ -32,7 +33,7 @@ class FilterSetting{
 	std::function< void(std::wstring&) > _aft_filter;
 
 private:
-	FilterSetting();// = delete;
+	FilterSetting() = delete;
 
 	//_word_class に設定された品詞であるか
 	bool IsSelected_(WordClass self) const{ return _selected_word_class.count(self); }

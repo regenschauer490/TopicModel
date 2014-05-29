@@ -46,7 +46,6 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 
 	if(make_new){
 		auto doc_pass = sig::get_file_names(src_folder, false);
-		assert(doc_pass, "fail to find src documents");
 #if USE_SIGNLP
 		vector<vector<wstring>> docs;
 		for (auto dp : *doc_pass){

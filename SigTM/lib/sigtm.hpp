@@ -34,4 +34,14 @@ using Document = std::vector<std::wstring>;
 using Documents = std::vector< std::vector<std::wstring> >;
 
 }
+
+namespace std {
+template <> struct hash<sig::C_WStrPtr>
+{
+	size_t operator()(sig::C_WStrPtr const& x) const
+	{
+		return hash<std::wstring>()(*x);
+	}
+};
+}
 #endif

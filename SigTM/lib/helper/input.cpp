@@ -1,6 +1,7 @@
 #include <future>
 #include <sstream>
 #include "SigUtil/lib/file.hpp"
+#include "SigUtil/lib/iteration.hpp"
 #include "input.h"
 
 namespace sigtm
@@ -75,11 +76,12 @@ void InputData::reconstruct(FilepassString folder_pass)
 
 	auto vocab_text = fileopen(base_pass + VOCAB_FILENAME);
 
-	for (auto const& e : vocab_text){
+	sig::for_each([&](uint i, std::wstring const& e){
 		auto word = std::make_shared<std::wstring>(e);
 		words_.push_back(word);
 		word2id_.emplace(word, i);
 	}
+	, 0, vocab_text);
 
 /*
 	std::ifstream ifs(token_pass);
