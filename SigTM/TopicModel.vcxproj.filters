@@ -34,6 +34,9 @@
     <Filter Include="ソース ファイル\lda">
       <UniqueIdentifier>{25353d96-62ef-4f35-b338-38ad4f2fe0cb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\helper\signlp">
+      <UniqueIdentifier>{ddd2c031-400d-4a1d-9f9f-486b73e6eaf4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lib\LDA\lda.cpp">
@@ -47,6 +50,12 @@
     </ClCompile>
     <ClCompile Include="lib\helper\input_text.cpp">
       <Filter>ソース ファイル\helper</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\helper\SigNLP\mecab_wrapper.cpp">
+      <Filter>ソース ファイル\helper\signlp</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\helper\SigNLP\process_word.cpp">
+      <Filter>ソース ファイル\helper\signlp</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

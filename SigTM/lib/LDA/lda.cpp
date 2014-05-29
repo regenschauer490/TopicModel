@@ -1,15 +1,12 @@
-#include <future>
 #include "lda.h"
+#include "SigUtil/lib/modify.hpp"
+#include <future>
 
 namespace sigtm
 {
 void LDA::initSetting()
 {
 	int i = -1;
-	word_ct_.clear();
-	doc_ct_.clear();
-	topic_ct_.clear();
-	z_.clear();
 
 	for(auto const& t :tokens_){
 		int assign = rand_ui_();
@@ -56,26 +53,26 @@ void LDA::resample(TokenPtr const& t)
 void LDA::printTopicWord(Distribution dist, std::wstring const& save_pass) const
 {
 	std::vector< std::vector<double> > df;
-	std::string fname;
+	std::wstring fname;
 	if(dist == Distribution::TOPIC){
 		df = getPhi();
-		fname = "lda topic";
+		fname = L"lda topic";
 	}
 	else{
 		df = getTermScoreOfTopic();
-		fname = "lda term_score";
+		fname = L"lda term_score";
 	}
 
-	std::ostream *ofs;
+	std::wostream *ofs;
 	if(!save_pass.empty()){
-		ofs = new std::ofstream(sig::DirpassTailModify(save_pass, true) + sig::STRtoWSTR(fname) + L".txt");
+		ofs = new std::wofstream(sig::impl::modify_dirpass_tail(save_pass, true) + fname + L".txt");
 	}
 	else{
-		ofs = &std::cout;
+		ofs = &std::wcout;
 	}
 
 	for(uint k = 0; k < T_NUM; ++k){
-		*ofs << fname << ": " << (k+1) << std::endl;
+		*ofs << fname << L": " << (k+1) << std::endl;
 		std::vector< std::tuple<uint, double> > 	tmp;
 
 		for(int w = 0; w < W_NUM; ++w){
@@ -86,7 +83,7 @@ void LDA::printTopicWord(Distribution dist, std::wstring const& save_pass) const
 
 		//各トピックの上位10語彙を出力
 		for (uint i = 0; i < 20; ++i){
-			*ofs << sig::WSTRtoSTR(*words_[std::get<0>(tmp[i])]) << ' ' << std::get<1>(tmp[i]) << std::endl;
+			*ofs << *words_[std::get<0>(tmp[i])] << ' ' << std::get<1>(tmp[i]) << std::endl;
 		}
 		*ofs << std::endl;
 	}
@@ -99,7 +96,7 @@ void LDA::printDocumentTopic(std::wstring const& save_pass) const
 	const std::vector< std::vector<double> > theta = getTheta();
 	std::ostream *ofs;
 	if(!save_pass.empty()){
-		ofs = new std::ofstream(sig::DirpassTailModify(save_pass, true) + L"lda document' topic.txt");
+		ofs = new std::ofstream(sig::impl::modify_dirpass_tail(save_pass, true) + L"lda document' topic.txt");
 	}
 	else{
 		ofs = &std::cout;
@@ -120,21 +117,21 @@ void LDA::printDocumentTopic(std::wstring const& save_pass) const
 
 void LDA::printDocumentWord(std::wstring const& save_pass) const
 {
-	std::ostream *ofs;
+	std::wostream *ofs;
 	if(!save_pass.empty()){
-		ofs = new std::ofstream(sig::DirpassTailModify(save_pass, true) + L"lda document' word.txt");
+		ofs = new std::wofstream(sig::impl::modify_dirpass_tail(save_pass, true) + L"lda document' word.txt");
 	}
 	else{
-		ofs = &std::cout;
+		ofs = &std::wcout;
 	}
 
 	const auto df = getWordOfDocument(25);
 	for(uint d = 0; d < D_NUM; ++d){
-		*ofs << "document: " << (d+1) << std::endl;
+		*ofs << L"document: " << (d+1) << std::endl;
 
 		for(uint w = 0; w < df[d].size(); ++w){
-			if(!save_pass.empty()) *ofs << sig::WSTRtoSTR(std::get<0>(df[d][w])) << " : " << std::get<1>(df[d][w]) << std::endl;
-			else *ofs << "word " << (w+1) << " : " << sig::WSTRtoSTR(std::get<0>(df[d][w])) << " : " << std::get<1>(df[d][w]) << std::endl;
+			if(!save_pass.empty()) *ofs << std::get<0>(df[d][w]) << L" : " << std::get<1>(df[d][w]) << std::endl;
+			else *ofs << L"word " << (w+1) << L" : " << std::get<0>(df[d][w]) << L" : " << std::get<1>(df[d][w]) << std::endl;
 		}
 		*ofs << std::endl;
 	}
@@ -274,7 +271,7 @@ void LDA::update(uint iteration_num)
 
 	const auto AnimeSimple = [this,iteration_num]{
 		for(uint i = 0; i < iteration_num; ++i, ++iter_ct_){
-			std::string numstr = "# of iteration: " + std::to_string(iter_ct_+1);
+			std::string numstr = "iteration: " + std::to_string(iter_ct_+1);
 			std::cout << numstr << std::endl;
 			std::for_each(tokens_.begin(), tokens_.end(), std::bind(&LDA::resample, this, std::placeholders::_1) );
 		}
@@ -284,6 +281,7 @@ void LDA::update(uint iteration_num)
 	calcTermScore();
 }
 
+/*
 double LDA::compareDistribution(CompareMethodD method, Distribution target, uint id1, uint id2) const
 {
 	maybe<double> val;
@@ -305,14 +303,11 @@ double LDA::compareDistribution(CompareMethodD method, Distribution target, uint
 	}
 
 	switch(method){
-/*	case CompareMethod::Cos :
-		val =CosineSimilarity(dist[id1], dist[id2]);
-		break;*/
 	case CompareMethodD::KL_DIV :
-		val = KL_Divergence(dist[id1], dist[id2]);
+		val = kl_divergence(dist[id1], dist[id2]);
 		break;
 	case CompareMethodD::JS_DIV :
-		val = JS_Divergence(dist[id1], dist[id2]);
+		val = js_divergence(dist[id1], dist[id2]);
 		break;
 	default :
 		printf("\nforget: LDA::compareDistribution\n");
@@ -321,6 +316,7 @@ double LDA::compareDistribution(CompareMethodD method, Distribution target, uint
 
 	return *val;
 }
+*/
 
 /*
 std::vector< std::vector<int> > LDA::CompressTopicDimension(CompareMethodD method, double threshold) const
@@ -529,7 +525,6 @@ std::vector<double> LDA::getPhi(uint topic_id) const
 
 std::vector< std::tuple<uint, double> > LDA::getTermScoreOfDocument(uint doc_id) const
 {
-	std::vector< std::tuple<uint, double> > docterm(W_NUM);
 	auto theta = getTheta(doc_id);
 	const auto tscore = getTermScoreOfTopic();
 
@@ -543,22 +538,8 @@ std::vector< std::tuple<uint, double> > LDA::getTermScoreOfDocument(uint doc_id)
 		}
 	}
 
-/*	auto th = sig::SortWithIndex(theta, false);
-
-	for(auto d1 = th.begin(),  d1end = th.begin() + 3; d1 != d1end; ++d1, ++t){
-		uint w = 0;
-		for(auto d2 = tscore[std::get<0>(*d1)].begin(), d2end = tscore[std::get<0>(*d1)].end(); d2 != d2end; ++d2, ++w){
-			tmp[w] += (std::get<1>(*d1) * (*d2));
-		}
-	}
-*/
-	auto stmp = sig::SortWithIndex(tmp, false);
-
-	for (uint i = 0; i < tmp.size(); ++i){
-		docterm[i] = std::make_tuple( std::get<0>(stmp[i]), std::get<1>(stmp[i]) );
-	}
-		
-	return std::move(docterm);
+	auto sorted = sig::sort_with_index(tmp); //std::tuple<std::vector<double>, std::vector<uint>>
+	return sig::zip(std::get<1>(sorted), std::get<0>(sorted));
 }
 
 std::vector< std::vector< std::tuple<std::wstring, double> > > LDA::getWordOfTopic(Distribution target, uint return_word_num) const

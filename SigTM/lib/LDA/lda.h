@@ -13,7 +13,7 @@ http://opensource.org/licenses/mit-license.php
 #include "../helper/compare_method.hpp"
 
 #if USE_SIGNLP
-#include "lib/helper/input_text.h"
+#include "../helper/input_text.h"
 #endif
 
 #include "SigUtil/lib/tool.hpp"
@@ -107,17 +107,23 @@ public:
 		return LDAPtr(new LDA(topic_num, input_data, alpha, beta)); 
 	}
 
-/*	// 自前でトークンと語彙リストを作成する場合
-	static LDAPtr makeInstance(uint const doc_num, uint const topic_num, uint const word_num, std::vector<Token>&& token_list, std::vector<StrPtr>&& word_list){
-		return LDAPtr( new LDA(doc_num, topic_num, word_num, std::move(token_list), std::move(word_list)) ); 
-	}*/
-
 	// サンプリングを行い、内部状態を更新する
 	void update(uint iteration_num);
 
 	// 確率分布同士の類似度を測る
 	// target：トピックorドキュメントの選択, id1,id2：類似度を測る対象のindex, 戻り値：類似度
-	double compareDistribution(CompareMethodD method, Distribution target, uint id1, uint id2) const;
+//	double compareDistribution(CompareMethodD method, Distribution target, uint id1, uint id2) const;
+
+	template <Distribution Select>
+	auto compare(uint id1, uint id2) const->typename Map2Cmp<Select>::type{
+		return Select == Distribution::DOCUMENT
+			? typename Map2Cmp<Select>::type(id1, id2, [this](uint id){ return this->getTheta(id); }, id1 < D_NUM && id2 < D_NUM ? true : false)
+			: Select == Distribution::TOPIC
+				? typename Map2Cmp<Select>::type(id1, id2, [this](uint id){ return this->getPhi(id); }, id1 < T_NUM && id2 < T_NUM ? true : false)
+				: Select == Distribution::TERM_SCORE
+					? typename Map2Cmp<Select>::type(id1, id2, [this](uint id){ return this->getTermScoreOfTopic(id); }, id1 < T_NUM && id2 < T_NUM ? true : false)
+					: typename Map2Cmp<Select>::type(id1, id2, [](uint id){ return std::vector<double>(); }, false);
+	}
 
 	// トピック間の単語分布の類似度を測って似たトピック同士を見つけ、特徴的なトピックのみに圧縮する
 	// threshold：閾値, 戻り値：類似トピックの組み合わせ一覧
@@ -128,31 +134,35 @@ public:
 	void save(Distribution target, std::wstring const& save_pass) const;
 
 	//ドキュメント毎のトピック選択確率 [doc][topic]
-	auto getTheta()->std::vector< std::vector<double> > const;
-	auto getTheta(uint document_id)->std::vector<double> const;
+	auto getTheta() const->std::vector< std::vector<double> >;
+	auto getTheta(uint document_id) const->std::vector<double>;
 
 	//トピック毎の単語分布 [topic][word]
-	auto getPhi()->std::vector< std::vector<double> > const;
-	auto getPhi(uint topic_id)->std::vector<double> const;
+	auto getPhi() const->std::vector< std::vector<double> >;
+	auto getPhi(uint topic_id) const->std::vector<double>;
 
 	//トピックを強調する語スコア [topic][word]
-	auto getTermScoreOfTopic()->std::vector< std::vector<double> > const{ return tscore_; }
-	auto getTermScoreOfTopic(int t_id)->std::vector<double> const{ return tscore_[t_id]; }
+	auto getTermScoreOfTopic() const->std::vector< std::vector<double> >{ return tscore_; }
+	auto getTermScoreOfTopic(int t_id) const->std::vector<double>{ return tscore_[t_id]; }
 
 	//ドキュメントのThetaとTermScoreの積 [ranking]<word_id,score>
-	auto getTermScoreOfDocument(uint d_id)->std::vector< std::tuple<uint, double> > const;
+	auto getTermScoreOfDocument(uint d_id) const->std::vector< std::tuple<uint, double> >;
 
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
 	// [topic][word]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num)->std::vector< std::vector< std::tuple<std::wstring, double> > > const;
+	auto getWordOfTopic(Distribution target, uint return_word_num) const->std::vector< std::vector< std::tuple<std::wstring, double> > >;
 	// [word]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num, uint topic_id)->std::vector< std::tuple<std::wstring, double> > const;
+	auto getWordOfTopic(Distribution target, uint return_word_num, uint topic_id) const->std::vector< std::tuple<std::wstring, double> >;
 
 	// 指定ドキュメントの上位return_word_num個の、語彙とスコアを返す
 	// [doc][word]<vocab, score>
-	auto getWordOfDocument(uint return_word_num)->std::vector< std::vector< std::tuple<std::wstring, double> > > const;
+	auto getWordOfDocument(uint return_word_num) const->std::vector< std::vector< std::tuple<std::wstring, double> > >;
 	//[doc]<vocab, score>
-	auto getWordOfDocument(uint return_word_num, uint doc_id)->std::vector< std::tuple<std::wstring, double> > const;
+	auto getWordOfDocument(uint return_word_num, uint doc_id) const->std::vector< std::tuple<std::wstring, double> >;
+
+	uint getDocumentNum() const{ return D_NUM; }
+	uint getTopicNum() const{ return T_NUM; }
+	uint getWordNum() const{ return W_NUM; }
 };
 
 }

@@ -40,38 +40,38 @@ typedef std::shared_ptr <DisSimilarityMatrix const> DisSimilarityMatrixPtr;
 #define SIG_MakeCompareInnerClass(OUTER_CLASS) \
 template <class FUNC>	\
 class CmpD{	\
-	uint _d1;	\
-	uint _d2;	\
-	FUNC _vp;	\
-	bool _error;	\
+	uint d1_;	\
+	uint d2_;	\
+	FUNC vp_;	\
+	bool valid_;	\
 \
 public:	\
-	CmpD(uint d1, uint d2, FUNC vector_producer, bool error = false) : _d1(d1), _d2(d2), _vp(vector_producer), _error(error){}	\
+	CmpD(uint d1, uint d2, FUNC vector_producer, bool valid = true) : d1_(d1), d2_(d2), vp_(vector_producer), valid_(valid){}	\
 \
-	maybe<double> Method(CompareMethodD method){\
-		return _error	\
+	maybe<double> method(CompareMethodD method){\
+		return !valid_	\
 			? nothing	\
 			: method == CompareMethodD::KL_DIV	\
-				? KL_Divergence(_vp(_d1), _vp(_d2))	\
-				: JS_Divergence(_vp(_d1), _vp(_d2))	\
+				? kl_divergence(vp_(d1_), vp_(d2_))	\
+				: js_divergence(vp_(d1_), vp_(d2_))	\
 		; }	\
 };	\
 \
 template <class FUNC>	\
 class CmpV{	\
-	uint _d1;	\
-	uint _d2;	\
-	FUNC _vp;	\
-	bool _error;	\
+	uint d1_;	\
+	uint d2_;	\
+	FUNC vp_;	\
+	bool valid_;	\
 \
 public:	\
-	CmpV(uint d1, uint d2, FUNC vector_producer, bool error = false) : _d1(d1), _d2(d2), _vp(vector_producer), _error(error){}	\
+	CmpV(uint d1, uint d2, FUNC vector_producer, bool error = false) : d1_(d1), d2_(d2), vp_(vector_producer), valid_(valid){}	\
 \
-	maybe<double> Method(CompareMethodV method){\
-		return _error	\
+	maybe<double> method(CompareMethodV method){\
+		return !valid_	\
 			? nothing	\
 			: method == CompareMethodV::COS	\
-				? CosineSimilarity(_vp(_d1), _vp(_d2))	\
+				? cosine_similarity(vp_(d1_), vp_(d2_))	\
 				: nothing	\
 		; }	\
 }

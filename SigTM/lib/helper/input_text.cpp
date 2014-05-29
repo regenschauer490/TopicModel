@@ -1,31 +1,33 @@
 #include "input_text.h"
+#include "SigUtil/lib/modify.hpp"
+#include <future>
 
 namespace sigtm
 {
 
-#if SIG_USE_NLP
+#if USE_SIGNLP
 
-void InputData::makeData(Documents const& raw_texts, std::wstring const& folder_pass)
+	void InputDataFromText::makeData(Documents const& raw_texts)
 {
 
-	const auto ParallelFunc = [this](Document document){
+	const auto ParallelFunc = [](Document document, FilterSetting const& filter){
 		std::vector<std::wstring> result;
-		auto& mecab = signlp::MecabWrapper::GetInstance();
+		auto& mecab = signlp::MecabWrapper::getInstance();
 
 		for (auto& sentence : document){
-			_filter._pre_filter(sentence);		//形態素解析前フィルタ処理
+			filter.pre_filter_(sentence);		//形態素解析前フィルタ処理
 
 			//形態素解析処理
 			auto parsed = [&]{
-				if (_filter._base_form) return mecab.ParseGenkeiAndFilter(sentence, [&](WordClass wc){ return _filter._selected_word_class.count(wc); });
-				else return mecab.ParseSimpleAndFilter(sentence, [&](WordClass wc){ return _filter._selected_word_class.count(wc); });
+				if (filter.base_form_) return mecab.parseGenkeiThroughFilter(sentence, [&](WordClass wc){ return filter.selected_word_class_.count(wc); });
+				else return mecab.parseSimpleThroughFilter(sentence, [&](WordClass wc){ return filter.selected_word_class_.count(wc); });
 			}();
 
 			for (auto& word : parsed){
-				_filter._aft_filter(word);	//形態素解析後フィルタ処理
+				filter.aft_filter_(word);	//形態素解析後フィルタ処理
 			}
 
-			sig::RemoveAll(parsed, L"");
+			sig::remove_all(parsed, L"");
 
 			std::move(parsed.begin(), parsed.end(), std::back_inserter(result));
 		}
@@ -39,7 +41,7 @@ void InputData::makeData(Documents const& raw_texts, std::wstring const& folder_
 	std::vector< std::future< std::vector<std::wstring> > > results;
 
 	for (auto const& document : raw_texts){
-		results.push_back(std::async(std::launch::async, ParallelFunc, document));
+		results.push_back(std::async(std::launch::async, ParallelFunc, document, filter_));
 	}
 
 	Documents doc_words;
@@ -54,26 +56,29 @@ void InputData::makeData(Documents const& raw_texts, std::wstring const& folder_
 	for (auto const& words : doc_words){
 		++doc_id;
 		for (auto& word : words){
+			auto wp = std::make_shared<std::wstring const>(word);
+
 			//wordが既出か判定
-			if (word2id_.count(word)){
-				tokens_.push_back(std::make_shared<Token>(token_ct, doc_id, word2id_[word]));
+			if (word2id_.count(wp)){
+				tokens_.push_back(std::make_shared<Token>(token_ct, doc_id, word2id_[wp]));
 				++token_ct;
 			}
 			else{
-				word2id_.emplace(word, words_.size());
-				tokens_.push_back(std::make_shared<Token const>(token_ct, doc_id, word2id_[word]));
-				words_.push_back(std::make_shared<std::wstring const>(word));
+				uint wsize = words_.size();
+				word2id_.emplace(wp, wsize);
+				words_.push_back(wp);
+				tokens_.push_back(std::make_shared<Token const>(token_ct, doc_id, wsize));
 				++token_ct;
 			}
 		}
 	}
 
 	/*			//指定語彙の除去
-	if(!_filter->_excepted_words.empty()){
-	_filter->_excepted_words[doc_id].count(
+	if(!filter_->excepted_words_.empty()){
+	filter_->excepted_words_[doc_id].count(
 
 	std::wstring wqstr, tmp;
-	const auto& et = _filter->_except_terms[doc_id];
+	const auto& et = filter_->_except_terms[doc_id];
 
 	auto snit = et.begin();
 	if(snit != et.end()){
@@ -92,33 +97,6 @@ void InputData::makeData(Documents const& raw_texts, std::wstring const& folder_
 	}
 	}
 	*/
-
-	auto pass = sig::DirpassTailModify(folder_pass, true);
-	std::ofstream ofs2(pass + VOCAB_FILENAME);
-	for (auto const& word : words_){
-		ofs2 << sig::WSTRtoSTR(*word) << std::endl;
-	}
-
-	//save token
-	[&](){
-		std::ofstream ofs(pass + TOKEN_FILENAME);
-		ofs << doc_num_ << std::endl;
-		ofs << words_.size() << std::endl;
-		ofs << tokens_.size() << std::endl;
-
-		std::vector< std::unordered_map<uint, uint> > d_w_ct(doc_num_);
-
-		for (auto const& token : tokens_){
-			if (d_w_ct[token->doc_id].count(token->word_id)) ++d_w_ct[token->doc_id][token->word_id];
-			else d_w_ct[token->doc_id].emplace(token->word_id, 1);
-		}
-
-		for (int d = 0; d < doc_num_; ++d){
-			for (auto const& w2ct : d_w_ct[d]){
-				ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;
-			}
-		}
-	}();
 }
 #endif
 

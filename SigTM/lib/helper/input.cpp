@@ -40,7 +40,7 @@ void InputData::reconstruct(FilepassString folder_pass)
 	auto fileopen = [&](FilepassString pass) ->std::vector<std::wstring>
 	{	
 		auto m_text = sig::read_line<std::wstring>(pass);
-		if (sig::is_container_valid(m_text)){
+		if (!sig::is_container_valid(m_text)){
 			sig::FileOpenErrorPrint(pass);
 			assert(false);
 		}
@@ -56,9 +56,9 @@ void InputData::reconstruct(FilepassString folder_pass)
 	int wnum = std::stoi(token_text[1]);
 	int tnum = std::stoi(token_text[2]);
 
-	std::cout << "document_num: " << doc_num_ << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl;
+	std::cout << "document_num: " << doc_num << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl;
 
-	if (doc_num_ <= 0 || tnum <= 0 || wnum <= 0) {
+	if (doc_num <= 0 || tnum <= 0 || wnum <= 0) {
 		std::cout << "token file is corrupted" << std::endl;
 		assert(false);
 	}
@@ -127,6 +127,43 @@ void InputData::reconstruct(FilepassString folder_pass)
 		word2id_.emplace(*wsp, i);
 	}
 */
+}
+
+void InputData::save(FilepassString folder_pass)
+{
+	auto base_pass = sig::impl::modify_dirpass_tail(folder_pass, true);
+
+	auto vocab_pass = base_pass + VOCAB_FILENAME;
+	auto token_pass = base_pass + TOKEN_FILENAME;
+
+	sig::clear_file(vocab_pass);
+	sig::clear_file(token_pass);
+	
+	// save words
+	std::wofstream ofs2(vocab_pass);
+	for (auto const& word : words_){
+		ofs2 << *word << std::endl;
+	}
+	ofs2.close();
+
+	// save tokens
+	std::ofstream ofs(token_pass);
+	ofs << doc_num_ << std::endl;
+	ofs << words_.size() << std::endl;
+	ofs << tokens_.size() << std::endl;
+
+	std::vector< std::unordered_map<uint, uint> > d_w_ct(doc_num_);
+
+	for (auto const& token : tokens_){
+		if (d_w_ct[token->doc_id].count(token->word_id)) ++d_w_ct[token->doc_id][token->word_id];
+		else d_w_ct[token->doc_id].emplace(token->word_id, 1);
+	}
+
+	for (int d = 0; d < doc_num_; ++d){
+		for (auto const& w2ct : d_w_ct[d]){
+			ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;
+		}
+	}
 }
 
 }	//namespace sigtm

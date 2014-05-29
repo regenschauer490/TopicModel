@@ -48,14 +48,16 @@ protected:
 
 private:
 	InputData() = delete;
-	InputData(std::wstring const& folder_pass){ reconstruct(folder_pass); }
 	InputData(InputData const& src) = delete;
+	InputData(std::wstring const& folder_pass){ reconstruct(folder_pass); }
 
 	bool parseLine(std::wstring const& line);
 	void reconstruct(FilepassString folder_pass);
 
+
 protected:
 	InputData(uint doc_num) : doc_num_(doc_num){};
+	void save(FilepassString folder_pass);
 
 public:
 	virtual ~InputData(){}

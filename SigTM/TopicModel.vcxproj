@@ -97,7 +97,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SIG_NLP);$(BOOST_DIR);./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIG_UTIL);$(SIG_NLP);$(BOOST_DIR);./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -125,6 +125,8 @@
   <ItemGroup>
     <ClCompile Include="lib\helper\input.cpp" />
     <ClCompile Include="lib\helper\input_text.cpp" />
+    <ClCompile Include="lib\helper\SigNLP\mecab_wrapper.cpp" />
+    <ClCompile Include="lib\helper\SigNLP\process_word.cpp" />
     <ClCompile Include="lib\LDA\lda.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

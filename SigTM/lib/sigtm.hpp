@@ -12,7 +12,7 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-#define USE_SIGNLP 0				// 文字列解析を行うためにSigNLPを使用するか
+#define USE_SIGNLP 1				// 文字列解析を行うためにSigNLPを使用するか
 
 const bool FIXED_RANDOM = true;		// 乱数を固定するか(テスト用)
 const std::size_t THREAD_NUM = 15;
