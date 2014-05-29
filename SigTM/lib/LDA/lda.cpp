@@ -1,3 +1,10 @@
+/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
 #include "lda.h"
 #include "SigUtil/lib/modify.hpp"
 #include <future>

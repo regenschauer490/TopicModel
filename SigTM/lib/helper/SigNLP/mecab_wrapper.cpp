@@ -1,3 +1,10 @@
+/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
 #include "mecab_wrapper.h"
 
 namespace signlp{

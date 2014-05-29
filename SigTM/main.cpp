@@ -83,10 +83,7 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 	for (uint i = 0; i < doc_num; ++i){
 		std::cout << "i:" << i << std::endl;
 		for (uint j = 0; j < i; ++j)	similarity[i][j] = similarity[j][i];
-		for (uint j = i; j < doc_num; ++j){
-			std::cout << " j:" << j << std::endl;
-			similarity[i][j] = sig::fromJust(lda->compare<sigtm::LDA::Distribution::DOCUMENT>(i, j).method(sigtm::CompareMethodD::JS_DIV));
-		}
+		for (uint j = i; j < doc_num; ++j)similarity[i][j] = sig::fromJust(lda->compare<sigtm::LDA::Distribution::DOCUMENT>(i, j).method(sigtm::CompareMethodD::JS_DIV));
 		//lda->compareDistribution(sigtm::CompareMethodD::JS_DIV, sigtm::LDA::Distribution::DOCUMENT, i, j);
 	}
 	
@@ -107,9 +104,10 @@ int main()
 	E‘’PŒê”F2048595
 	*/
 	
-	std::wstring fpass = L"../SigTM/test data";
+	std::wstring data_folder_pass = L"../SigTM/test data";
+	std::wstring input_text_pass = data_folder_pass + L"/src_documents";
 	
-	auto simirality = Experiment(fpass + L"/src_documents", fpass, true);
+	auto simirality = Experiment(input_text_pass, data_folder_pass, false);
 
 	return 0;
 }
