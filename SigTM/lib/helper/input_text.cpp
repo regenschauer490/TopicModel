@@ -14,7 +14,7 @@ namespace sigtm
 
 #if USE_SIGNLP
 
-	void InputDataFromText::makeData(Documents const& raw_texts)
+void InputDataFromText::makeData(Documents const& raw_texts)
 {
 
 	const auto ParallelFunc = [](Document document, FilterSetting const& filter){
@@ -56,6 +56,8 @@ namespace sigtm
 	for (auto& result : results){
 		doc_words.push_back(result.get());
 	}
+	for (uint i = 0; i<doc_words.size(); ++i) std::wcout << doc_names_[i] << L" parsed. word-num: " << doc_words[i].size() << std::endl;
+	std::cout << std::endl;
 
 	int token_ct = 0;
 	int doc_id = -1;
@@ -66,15 +68,14 @@ namespace sigtm
 			auto wp = std::make_shared<std::wstring const>(word);
 
 			//wordÇ™ä˘èoÇ©îªíË
-			if (word2id_.count(wp)){
-				tokens_.push_back(std::make_shared<Token>(token_ct, doc_id, word2id_[wp]));
+			if (words_.hasElement(wp)){
+				tokens_.push_back(Token(token_ct, doc_id, words_.getWordID(wp)));
 				++token_ct;
 			}
 			else{
-				uint wsize = words_.size();
-				word2id_.emplace(wp, wsize);
-				words_.push_back(wp);
-				tokens_.push_back(std::make_shared<Token const>(token_ct, doc_id, wsize));
+				uint index = words_.size();
+				words_.emplace(index, wp);
+				tokens_.push_back(Token(token_ct, doc_id, index));
 				++token_ct;
 			}
 		}

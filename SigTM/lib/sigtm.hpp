@@ -1,25 +1,25 @@
-/*
+ï»¿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#ifndef SIG_TM_HPP
-#define SIG_TM_HPP
+#ifndef SIGTM_HPP
+#define SIGTM_HPP
 
 #include "SigUtil/lib/sigutil.hpp"
 
 namespace sigtm
 {
-#define USE_SIGNLP 1				// •¶š—ñ‰ğÍ‚ğs‚¤‚½‚ß‚ÉSigNLP‚ğg—p‚·‚é‚©
+#define USE_SIGNLP 1				// æ–‡å­—åˆ—è§£æã‚’è¡Œã†ãŸã‚ã«SigNLPã‚’ä½¿ç”¨ã™ã‚‹ã‹
 
-const bool FIXED_RANDOM = true;		// —”‚ğŒÅ’è‚·‚é‚©(ƒeƒXƒg—p)
-const std::size_t THREAD_NUM = 15;
+const bool FixedRandom = true;		// ä¹±æ•°ã‚’å›ºå®šã™ã‚‹ã‹(ãƒ†ã‚¹ãƒˆç”¨)
+const std::size_t ThreadNum = 15;		// ä¸¦åˆ—å‡¦ç†éƒ¨åˆ†ã§èµ·å‹•ã™ã‚‹ã‚¹ãƒ¬ãƒƒãƒ‰æ•°
 
 std::wstring const TOKEN_FILENAME = L"token";
 std::wstring const VOCAB_FILENAME = L"vocab";
-
+std::wstring const DOC_FILENAME = L"document_names.txt";
 
 using sig::uint;
 using sig::StrPtr;
@@ -27,11 +27,18 @@ using sig::C_StrPtr;
 using sig::WStrPtr;
 using sig::C_WStrPtr;
 using sig::maybe;
-using sig::nothing;
+auto const nothing = boost::none; 
 using sig::FilepassString;
 
 using Document = std::vector<std::wstring>;
 using Documents = std::vector< std::vector<std::wstring> >;
+
+using DocumentId = uint;
+using TopicId = uint;
+using WordId = uint;
+using Id = std::common_type<DocumentId, TopicId>::type;
+
+const uint zero = 0;
 
 }
 

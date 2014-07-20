@@ -1,52 +1,56 @@
-#include "lib/LDA/lda.h"
+ï»¿#include "lib/LDA/lda_gibbs.h"
 #include "SigUtil/lib/file.hpp"
 
-const int TopicNum = 20;
-const int IterationNum = 5;
+const int TopicNum = 10;
+const int IterationNum = 500;
 
 static const std::wregex url_reg(L"http(s)?://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?");
 static const std::wregex htag_reg(L"#(\\w)+");
 static const std::wregex res_reg(L"@(\\w)+");
-static const std::wregex noise_reg(L"^[‚sW‚vw‚—ƒÖE¥AB*–:F;G[|cL`ßo¡.,_|„ ~~\\-\\^\"h'fúW@!I?H#Ë() () ¢v{}\\[\\]\/ @]+$");
-static const std::wregex a_hira_kata_reg(L"^[‚Ÿ-‚ñƒ@-ƒ“0-9‚O-‚X]$");
+static const std::wregex noise_reg(L"^[ï¼´Wï¼·wï½—Ï‰ãƒ»ï½¥ã€ã€‚*ï¼Š:ï¼š;ï¼›ãƒ¼ï¼â€¦Â´`ï¾Ÿoï½¡.,_|â”‚~~\\-\\^\"â€'â€™ï¼‚@!ï¼?ï¼Ÿ#â‡’() () ï½¢ã€{}\\[\\]\/ ã€€]+$");
+static const std::wregex a_hira_kata_reg(L"^[ã-ã‚“ã‚¡-ãƒ³0-9ï¼-ï¼™]$");
 
-std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstring out_folder, bool make_new)
+
+sigtm::InputDataPtr MakeInputData(std::wstring src_folder, std::wstring out_folder, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
 
 #if USE_SIGNLP
-	// ƒeƒLƒXƒg‚©‚çƒf[ƒ^ƒZƒbƒg‚ğì¬‚·‚éÛ‚Ég—p‚·‚éƒtƒBƒ‹ƒ^
+	// ãƒ†ã‚­ã‚¹ãƒˆã‹ã‚‰ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’ä½œæˆã™ã‚‹éš›ã«ä½¿ç”¨ã™ã‚‹ãƒ•ã‚£ãƒ«ã‚¿
 	sigtm::FilterSetting filter(true);
 
-	// g—p•iŒ‚Ìİ’è
-	filter.addWordClass(signlp::WordClass::–¼Œ);
-	filter.addWordClass(signlp::WordClass::Œ`—eŒ);
-	filter.addWordClass(signlp::WordClass::“®Œ);
+	// ä½¿ç”¨å“è©ã®è¨­å®š
+	filter.addWordClass(signlp::WordClass::åè©);
+	filter.addWordClass(signlp::WordClass::å½¢å®¹è©);
+	//filter.addWordClass(signlp::WordClass::å‹•è©);
 	
-	// Œ`‘Ô‘f‰ğÍ‘O‚ÌƒtƒBƒ‹ƒ^ˆ—
+	// å½¢æ…‹ç´ è§£æå‰ã®ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†
 	filter.setPreFilter([](wstring& str){
 		static auto& replace = sig::ZenHanReplace::GetInstance();
+		static sig::TagDealer<std::wstring> tag_dealer(L"<", L">");
 
+		auto tmp = tag_dealer.decode(str, L"TEXT");
+		str = tmp ? sig::fromJust(tmp) : str;
 		str = regex_replace(str, url_reg, wstring(L""));
 		str = regex_replace(str, htag_reg, wstring(L""));
 		str = regex_replace(str, res_reg, wstring(L""));
 	});
 
-	// Œ`‘Ô‘f‰ğÍŒã‚ÉƒtƒBƒ‹ƒ^ˆ—
+	// å½¢æ…‹ç´ è§£æå¾Œã«ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†
 	filter.setAftFilter([](wstring& str){
 		str = regex_replace(str, noise_reg, wstring(L""));
 		str = regex_replace(str, a_hira_kata_reg, wstring(L""));
 	});
 #endif
 
-	// “ü—Íƒf[ƒ^ì¬ 
+	// å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ä½œæˆ 
 	sigtm::InputDataPtr inputdata;
 
 	if(make_new){
-		// V‚µ‚­ƒf[ƒ^ƒZƒbƒg‚ğì¬(Œ»İƒTƒ|[ƒg‚µ‚Ä‚¢‚é‚Ì‚ÍƒeƒLƒXƒg‚©‚ç‚Ì¶¬)
+		// æ–°ã—ããƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’ä½œæˆ(ç¾åœ¨ã‚µãƒãƒ¼ãƒˆã—ã¦ã„ã‚‹ã®ã¯ãƒ†ã‚­ã‚¹ãƒˆã‹ã‚‰ã®ç”Ÿæˆ)
 #if USE_SIGNLP
-		auto doc_pass = sig::get_file_names(src_folder, false);
+/*		auto doc_pass = sig::get_file_names(, false);
 
 		vector<vector<wstring>> docs;
 		for (auto dp : sig::fromJust(doc_pass)){
@@ -55,35 +59,46 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 				sig::fromJust(tdoc)
 			);
 		}
-		inputdata = sigtm::InputDataFromText::makeInstance(docs, filter, out_folder);
+*/
+		inputdata = sigtm::InputDataFromText::makeInstance(src_folder, filter, out_folder);
 #else
 		assert(false);
 #endif
 	}
 	else{
-		// ‰ß‹‚Éì¬‚µ‚½ƒf[ƒ^ƒZƒbƒg‚ğg—p or ©•ª‚Åw’èŒ`®‚Ìƒf[ƒ^ƒZƒbƒg‚ğ—pˆÓ‚·‚éê‡
+		// éå»ã«ä½œæˆã—ãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’ä½¿ç”¨ or è‡ªåˆ†ã§æŒ‡å®šå½¢å¼ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’ç”¨æ„ã™ã‚‹å ´åˆ
 		inputdata = sigtm::InputData::makeInstance(out_folder);
 	}
 
+	return inputdata;
+}
+
+std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstring out_folder, bool make_new)
+{
+	using namespace std;
+	using sig::uint;
+
+	auto inputdata = MakeInputData(src_folder, out_folder, make_new);
+
 	cout << "model calculate" << endl;
 
-	auto lda = sigtm::LDA::makeInstance(TopicNum, inputdata);
+	auto lda = sigtm::LDA_Gibbs::makeInstance(TopicNum, inputdata);
 	uint doc_num = lda->getDocumentNum();
 
-	// ŠwKŠJn
-	lda->update(IterationNum);
+	// å­¦ç¿’é–‹å§‹
+	lda->learn(IterationNum);
 
 	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
 	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
 	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
 
-	// LDAŒã‚Ìl•¨ŠÔ—Ş—“x‘ª’è
+	// LDAå¾Œã®äººç‰©é–“é¡ä¼¼åº¦æ¸¬å®š
 	vector< vector<double> > similarity(doc_num, vector<double>(doc_num, 0));
 
 	for (uint i = 0; i < doc_num; ++i){
 		std::cout << "i:" << i << std::endl;
 		for (uint j = 0; j < i; ++j)	similarity[i][j] = similarity[j][i];
-		for (uint j = i; j < doc_num; ++j)similarity[i][j] = sig::fromJust(lda->compare<sigtm::LDA::Distribution::DOCUMENT>(i, j).method(sigtm::CompareMethodD::JS_DIV));
+		for (uint j = i; j < doc_num; ++j)similarity[i][j] = sig::fromJust(sigtm::compare<sigtm::LDA::Distribution::DOCUMENT>(lda, i, j).method(sigtm::CompareMethodD::JS_DIV));
 		//lda->compareDistribution(sigtm::CompareMethodD::JS_DIV, sigtm::LDA::Distribution::DOCUMENT, i, j);
 	}
 	
@@ -92,22 +107,31 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 	return move(similarity);
 }
 
+#include "lib/LDA/mrlda.h"
+
+auto Experiment2(std::wstring src_folder, std::wstring out_folder, bool make_new) ->void
+{
+	auto inputdata = MakeInputData(src_folder, out_folder, make_new);
+
+	auto mrlda = sigtm::MrLDA::makeInstance(TopicNum, inputdata);
+	mrlda->learn(100);
+}
 
 int main()
 {
 	/*
-	[ƒTƒ“ƒvƒ‹ƒf[ƒ^]
-	 2013”N8ŒŒã”¼‚Ìl•¨–¼‚ğƒNƒGƒŠ‚Æ‚µ‚ÄûW‚µ‚½tweet (‘ÎÛl•¨‚Ílist.txt‚É‹LÚ)
+	[ã‚µãƒ³ãƒ—ãƒ«ãƒ‡ãƒ¼ã‚¿]
 	
-	E•¶‘”(l•¨”)F77
-	Eƒ†ƒj[ƒN’PŒê”F80296
-	E‘’PŒê”F2048595
+	
+	ãƒ»æ–‡æ›¸æ•°(äººç‰©æ•°)ï¼š
+	ãƒ»ãƒ¦ãƒ‹ãƒ¼ã‚¯å˜èªæ•°ï¼š
+	ãƒ»ç·å˜èªæ•°ï¼š
 	*/
 	
 	std::wstring data_folder_pass = L"../SigTM/test data";
-	std::wstring input_text_pass = data_folder_pass + L"/src_documents";
+	std::wstring input_text_pass = data_folder_pass + L"/processed";
 	
-	auto simirality = Experiment(input_text_pass, data_folder_pass, false);
+	Experiment2(input_text_pass, data_folder_pass, false);
 
 	return 0;
 }

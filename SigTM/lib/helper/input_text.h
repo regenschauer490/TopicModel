@@ -1,12 +1,12 @@
-/*
+ï»¿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#ifndef SIG_INPUT_FILTER_H
-#define SIG_INPUT_FILTER_H
+#ifndef SIGTM_INPUT_FILTER_H
+#define SIGTM_INPUT_FILTER_H
 
 #include "input.h"
 
@@ -21,7 +21,7 @@ namespace sigtm
 using signlp::WordClass;
 
 
-/* “ü—Íƒf[ƒ^‚Ö‚ÌƒtƒBƒ‹ƒ^ˆ—‚Ìİ’è‚ğs‚¤ */
+/* å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã¸ã®ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†ã®è¨­å®šã‚’è¡Œã† */
 class FilterSetting
 {
 	friend class InputDataFromText;
@@ -35,37 +35,37 @@ class FilterSetting
 private:
 	FilterSetting() = delete;
 
-	//_word_class ‚Éİ’è‚³‚ê‚½•iŒ‚Å‚ ‚é‚©
+	//_word_class ã«è¨­å®šã•ã‚ŒãŸå“è©ã§ã‚ã‚‹ã‹
 	bool isSelected(WordClass self) const{ return selected_word_class_.count(self); }
 
 public:
 	FilterSetting(FilterSetting const&) = default;
 
-	//ƒIƒuƒWƒFƒNƒg‚Ì¶¬
-	//use_base_formFŒ`‘Ô‘f‰ğÍŒã‚É’PŒê‚ğŒ´Œ^‚ÉC³‚·‚é‚© (false:Œ³•\Œ», true:Œ´Œ`) 
+	//ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ç”Ÿæˆ
+	//use_base_formï¼šå½¢æ…‹ç´ è§£æå¾Œã«å˜èªã‚’åŸå‹ã«ä¿®æ­£ã™ã‚‹ã‹ (false:å…ƒè¡¨ç¾, true:åŸå½¢) 
 	FilterSetting(bool use_base_form) : base_form_(use_base_form), selected_word_class_(), pre_filter_(df), aft_filter_(df){};
 
 
-	/* ƒg[ƒNƒ“ƒŠƒXƒg‚É’Ç‰Á‚·‚é’PŒê‚ÉŠÖ‚·‚éİ’è */
+	/* ãƒˆãƒ¼ã‚¯ãƒ³ãƒªã‚¹ãƒˆã«è¿½åŠ ã™ã‚‹å˜èªã«é–¢ã™ã‚‹è¨­å®š */
 
-	//Œ`‘Ô‘f‰ğÍŒãAƒŠƒXƒg‚É’Ç‰Á‚·‚é•iŒ‚ğw’è
+	//å½¢æ…‹ç´ è§£æå¾Œã€ãƒªã‚¹ãƒˆã«è¿½åŠ ã™ã‚‹å“è©ã‚’æŒ‡å®š
 	void addWordClass(WordClass select){ selected_word_class_.insert(select); }
 
-	//w’èƒhƒLƒ…ƒƒ“ƒg“à‚ÅœŠO‚·‚é’PŒê‚ğw’è (document_id‚Í0‚©‚ç)
+	//æŒ‡å®šãƒ‰ã‚­ãƒ¥ãƒ¡ãƒ³ãƒˆå†…ã§é™¤å¤–ã™ã‚‹å˜èªã‚’æŒ‡å®š (document_idã¯0ã‹ã‚‰)
 	void addExceptWord(uint document_id, std::wstring const& word){ excepted_words_[document_id].insert(word); }
 
 
-	/* “ü—Íƒf[ƒ^‚Ì•¶š—ñ‚É‘Î‚µ‚Äs‚¤ƒtƒBƒ‹ƒ^ˆ—‚Ì“o˜^ (—áF³‹K•\Œ»‚ÅURL‚ğœ‹)  */
+	/* å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã®æ–‡å­—åˆ—ã«å¯¾ã—ã¦è¡Œã†ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†ã®ç™»éŒ² (ä¾‹ï¼šæ­£è¦è¡¨ç¾ã§URLã‚’é™¤å»)  */
 
-	//Œ`‘Ô‘f‰ğÍ‘O‚És‚¤ƒtƒBƒ‹ƒ^ˆ—‚ğİ’è
+	//å½¢æ…‹ç´ è§£æå‰ã«è¡Œã†ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†ã‚’è¨­å®š
 	void setPreFilter(std::function< void(std::wstring&) > const& filter){ pre_filter_ = filter; }
 
-	//Œ`‘Ô‘f‰ğÍŒã‚És‚¤ƒtƒBƒ‹ƒ^ˆ—‚ğİ’è
+	//å½¢æ…‹ç´ è§£æå¾Œã«è¡Œã†ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†ã‚’è¨­å®š
 	void setAftFilter(std::function< void(std::wstring&) > const& filter){ aft_filter_ = filter; }
 };
 
 
-/* ©‘RŒ¾Œê‚ÌƒeƒLƒXƒg‚©‚ç“ü—Íƒf[ƒ^‚ğì¬ */
+/* è‡ªç„¶è¨€èªã®ãƒ†ã‚­ã‚¹ãƒˆã‹ã‚‰å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã‚’ä½œæˆ */
 class InputDataFromText : public InputData
 {
 	const FilterSetting filter_;
@@ -73,8 +73,15 @@ class InputDataFromText : public InputData
 private:
 	InputDataFromText() = delete;
 	InputDataFromText(InputDataFromText const& src) = delete;
-	InputDataFromText(Documents const& raw_texts, FilterSetting const& filter, std::wstring save_folder_pass) : InputData(raw_texts.size()), filter_(filter)
+	InputDataFromText(Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
+		: InputData(raw_texts.size()), filter_(filter)
 	{
+		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) doc_names_.push_back(sig::to_fpstring(i));
+		else{
+			assert(raw_texts.size() == doc_names.size());
+			for (auto e : doc_names) doc_names_.push_back(sig::split(e, L".")[0]);
+		}
+
 		makeData(raw_texts);
 		save(save_folder_pass);
 	}
@@ -82,9 +89,35 @@ private:
 	void makeData(Documents const& raw_texts);
 	
 public:
-	// Œ`‘Ô‘f‰ğÍ‘O‚Ì¶‚ÌƒeƒLƒXƒg‚©‚ç“ü—Íƒf[ƒ^‚ğ¶¬‚·‚é ( raw_texts[document_id][sentence_line] ) 
-	static InputDataPtr makeInstance(Documents const& raw_texts, FilterSetting const& filter, std::wstring const& save_folder_pass){
-		return InputDataPtr(new InputDataFromText(raw_texts, filter, save_folder_pass)); 
+	// å½¢æ…‹ç´ è§£æå‰ã®ç”Ÿã®ãƒ†ã‚­ã‚¹ãƒˆã‹ã‚‰ãƒ¢ãƒ‡ãƒ«ã¸ã®å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã‚’ç”Ÿæˆã™ã‚‹ ( raw_texts[document_id][sentence_line] ) 
+	static InputDataPtr makeInstance(
+		Documents const& raw_texts,			// ç”Ÿã®ãƒ†ã‚­ã‚¹ãƒˆãƒ‡ãƒ¼ã‚¿
+		FilterSetting const& filter,		// ãƒ†ã‚­ã‚¹ãƒˆã¸ã®ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†
+		FilepassString const& save_folder_pass,		// ä½œæˆã—ãŸå…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã®ä¿å­˜å…ˆ
+		std::vector<FilepassString> doc_names		// å„documentã®è­˜åˆ¥å
+	){
+		return InputDataPtr(new InputDataFromText(raw_texts, filter, save_folder_pass, doc_names)); 
+	}
+
+	// å½¢æ…‹ç´ è§£æå‰ã®ç”Ÿã®ãƒ†ã‚­ã‚¹ãƒˆã‹ã‚‰ãƒ¢ãƒ‡ãƒ«ã¸ã®å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã‚’ç”Ÿæˆã™ã‚‹ (å„.txtãƒ•ã‚¡ã‚¤ãƒ«ãŒdocumentã«ç›¸å½“)
+	static InputDataPtr makeInstance(
+		FilepassString const& src_folder_pass,		// ç”Ÿã®ãƒ†ã‚­ã‚¹ãƒˆãƒ‡ãƒ¼ã‚¿ãŒä¿å­˜ã•ã‚Œã¦ã„ã‚‹ãƒ•ã‚©ãƒ«ãƒ€
+		FilterSetting const& filter,				// ãƒ†ã‚­ã‚¹ãƒˆã¸ã®ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†
+		FilepassString const& save_folder_pass,		// ä½œæˆã—ãŸå…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã®ä¿å­˜å…ˆ
+		maybe<std::vector<FilepassString>> doc_names = nothing	// å„documentã®è­˜åˆ¥å(ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã¯ãƒ•ã‚¡ã‚¤ãƒ«å)
+	){
+		auto doc_passes = sig::get_file_names(src_folder_pass, false);
+		if (!sig::is_container_valid(doc_passes)){
+			sig::FileOpenErrorPrint(src_folder_pass);
+			assert(false);
+		}
+		
+		return InputDataPtr(new InputDataFromText(
+			sig::map([&](FilepassString file){
+				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::impl::modify_dirpass_tail(src_folder_pass, true) + file))); 
+				}, sig::fromJust(doc_passes)
+			), filter, save_folder_pass, doc_names ? sig::fromJust(doc_names) : sig::fromJust(doc_passes))
+		);
 	}
 };
 

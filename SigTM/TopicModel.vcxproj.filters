@@ -19,9 +19,6 @@
     <Filter Include="ソース ファイル\helper">
       <UniqueIdentifier>{e095c793-2757-4af8-b4c8-c4843ea99612}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\helper\distance">
-      <UniqueIdentifier>{a84547e4-4f7e-48a3-975b-18947e1bca45}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\external">
       <UniqueIdentifier>{6b479a11-97e6-49b0-b6b3-1e7cc059f799}</UniqueIdentifier>
     </Filter>
@@ -37,11 +34,11 @@
     <Filter Include="ソース ファイル\helper\signlp">
       <UniqueIdentifier>{ddd2c031-400d-4a1d-9f9f-486b73e6eaf4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\helper\external\mapreduce">
+      <UniqueIdentifier>{139eecd2-fa46-4c8b-a47a-8748b1c94ea9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="lib\LDA\lda.cpp">
-      <Filter>ソース ファイル\lda</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
@@ -57,40 +54,79 @@
     <ClCompile Include="lib\helper\SigNLP\process_word.cpp">
       <Filter>ソース ファイル\helper\signlp</Filter>
     </ClCompile>
+    <ClCompile Include="lib\LDA\lda_gibbs.cpp">
+      <Filter>ソース ファイル\lda</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\LDA\mrlda.cpp">
+      <Filter>ソース ファイル\lda</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\helper\mapreduce_module.cpp">
+      <Filter>ソース ファイル\helper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="lib\LDA\mrlda.hpp">
-      <Filter>ヘッダー ファイル\lda</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\LDA\lda.h">
-      <Filter>ヘッダー ファイル\lda</Filter>
-    </ClInclude>
     <ClInclude Include="lib\sigtm.hpp">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="lib\helper\compare_method.hpp">
       <Filter>ヘッダー ファイル\helper</Filter>
     </ClInclude>
-    <ClInclude Include="lib\helper\distance\cosine_similarity.hpp">
-      <Filter>ヘッダー ファイル\helper\distance</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\helper\distance\distance.hpp">
-      <Filter>ヘッダー ファイル\helper\distance</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\helper\distance\JS_divergence.hpp">
-      <Filter>ヘッダー ファイル\helper\distance</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\helper\distance\KL_divergence.hpp">
-      <Filter>ヘッダー ファイル\helper\distance</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\helper\distance\norm.hpp">
-      <Filter>ヘッダー ファイル\helper\distance</Filter>
-    </ClInclude>
     <ClInclude Include="lib\helper\input.h">
       <Filter>ヘッダー ファイル\helper</Filter>
     </ClInclude>
     <ClInclude Include="lib\helper\input_text.h">
       <Filter>ヘッダー ファイル\helper</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\LDA\lda_gibbs.h">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\LDA\lda_interface.hpp">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\LDA\mrlda.h">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\data_format.hpp">
+      <Filter>ヘッダー ファイル\helper</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\mapreduce_module.h">
+      <Filter>ヘッダー ファイル\helper</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\datasource.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\hash_partitioner.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\intermediates.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\job.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\mergesort.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\null_combiner.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\platform.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\schedule_policy.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\schedule_policy\cpu_parallel.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\schedule_policy\sequential.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\intermediates\in_memory.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="external\mapreduce\include\detail\intermediates\local_disk.hpp">
+      <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

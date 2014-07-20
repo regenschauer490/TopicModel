@@ -83,11 +83,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(BOOST_DIR);./src;src/external;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIG_UTIL);$(SIG_NLP);$(BOOST_DIR);./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/lib;$(BOOST_DIR)/stage/x86/lib;./src/external;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/lib;$(BOOST_DIR)/stage/x64/lib;./src/external;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -113,34 +113,46 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(BOOST_DIR);./src;src/external;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIG_UTIL);$(SIG_NLP);$(BOOST_DIR);./src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/lib;$(BOOST_DIR)/stage/x86/lib;./src/external;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/lib;$(BOOST_DIR)/stage/x64/lib;./src/external;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="lib\helper\input.cpp" />
     <ClCompile Include="lib\helper\input_text.cpp" />
+    <ClCompile Include="lib\helper\mapreduce_module.cpp" />
     <ClCompile Include="lib\helper\SigNLP\mecab_wrapper.cpp" />
     <ClCompile Include="lib\helper\SigNLP\process_word.cpp" />
-    <ClCompile Include="lib\LDA\lda.cpp" />
+    <ClCompile Include="lib\LDA\lda_gibbs.cpp" />
+    <ClCompile Include="lib\LDA\mrlda.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="external\mapreduce\include\detail\datasource.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\hash_partitioner.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\intermediates.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\intermediates\in_memory.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\intermediates\local_disk.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\job.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\mergesort.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\null_combiner.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\platform.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\schedule_policy.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\schedule_policy\cpu_parallel.hpp" />
+    <ClInclude Include="external\mapreduce\include\detail\schedule_policy\sequential.hpp" />
     <ClInclude Include="lib\helper\compare_method.hpp" />
-    <ClInclude Include="lib\helper\distance\cosine_similarity.hpp" />
-    <ClInclude Include="lib\helper\distance\distance.hpp" />
-    <ClInclude Include="lib\helper\distance\JS_divergence.hpp" />
-    <ClInclude Include="lib\helper\distance\KL_divergence.hpp" />
-    <ClInclude Include="lib\helper\distance\norm.hpp" />
+    <ClInclude Include="lib\helper\data_format.hpp" />
     <ClInclude Include="lib\helper\input.h" />
     <ClInclude Include="lib\helper\input_text.h" />
-    <ClInclude Include="lib\LDA\lda.h" />
-    <ClInclude Include="lib\LDA\mrlda.hpp" />
+    <ClInclude Include="lib\helper\mapreduce_module.h" />
+    <ClInclude Include="lib\LDA\lda_gibbs.h" />
+    <ClInclude Include="lib\LDA\lda_interface.hpp" />
+    <ClInclude Include="lib\LDA\mrlda.h" />
     <ClInclude Include="lib\sigtm.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

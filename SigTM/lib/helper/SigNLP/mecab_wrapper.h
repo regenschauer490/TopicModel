@@ -12,7 +12,7 @@
 
 #if defined(_WIN64)
 #include "../external/mecab/x64/mecab.h"
-#pragma comment(lib, "../external/mecab/x64/libmecab.lib")
+#pragma comment(lib, "external/mecab/x64/libmecab.lib")
 #elif defined(_WIN32)
 #include "../external/mecab/x86/mecab.h"
 #pragma comment(lib, "external/mecab/x86/libmecab.lib")

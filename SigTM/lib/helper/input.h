@@ -1,50 +1,36 @@
-/*
+ï»¿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#ifndef SIG_INPUT_CONTAINER_H
-#define SIG_INPUT_CONTAINER_H
+#ifndef SIGTM_INPUT_H
+#define SIGTM_INPUT_H
 
-#include "../sigtm.hpp"
+#include "data_format.hpp"
 
 namespace sigtm
 {
-struct Token;
-class InputData;
-
-using TokenPtr = std::shared_ptr<Token const>; 
-using InputDataPtr = std::shared_ptr<InputData>;
-
 
 const std::function< void(std::wstring&) > df = [](std::wstring& s){};
 
+class InputData;
+using InputDataPtr = std::shared_ptr<InputData const>;
 
-/* ‚ ‚é’PŒê‚ğ•\‚·ƒg[ƒNƒ“ */
-struct Token
-{
-	uint const self_id;
-	uint const doc_id;
-	uint const word_id;
-
-	Token() = delete;
-	Token(uint self_id, uint document_id, uint unique_word_id) : self_id(self_id), doc_id(document_id), word_id(unique_word_id){}
-};
-	
-
-/* Šeƒ‚ƒfƒ‹‚Ö‚Ì“ü—Íƒf[ƒ^‚ğì¬ */
+/* å„ãƒ¢ãƒ‡ãƒ«ã¸ã®å…¥åŠ›ãƒ‡ãƒ¼ã‚¿ã‚’ä½œæˆ */
 class InputData
 {
 protected:
-	friend class LDA;
-	friend class TfIdf;
+	friend class LDA_Gibbs;
+	friend class MrLDA;
+	friend class MRInputIterator;
 
 	uint doc_num_;
-	std::vector<TokenPtr> tokens_;
-	std::vector<C_WStrPtr> words_;
-	std::unordered_map<C_WStrPtr, uint> word2id_;
+	TokenList tokens_;		// å˜èªãƒˆãƒ¼ã‚¯ãƒ³åˆ—
+	WordSet words_;			// å˜èªé›†åˆ
+
+	std::vector<FilepassString> doc_names_;	// å…¥åŠ›ãƒ•ã‚¡ã‚¤ãƒ«å
 
 private:
 	InputData() = delete;
@@ -62,9 +48,12 @@ protected:
 public:
 	virtual ~InputData(){}
 
-	// w’è‚ÌŒ`®‚Ìƒf[ƒ^‚©‚ç“Ç‚İ‚Ş or ˆÈ‘O‚Ì’†ŠÔo—Í‚©‚ç“Ç‚İ‚Ş
-	// folder_pass: ƒtƒ@ƒCƒ‹‚ª•Û‘¶‚³‚ê‚Ä‚¢‚éƒfƒBƒŒƒNƒgƒŠ
+	// æŒ‡å®šã®å½¢å¼ã®ãƒ‡ãƒ¼ã‚¿ã‹ã‚‰èª­ã¿è¾¼ã‚€ or ä»¥å‰ã®ä¸­é–“å‡ºåŠ›ã‹ã‚‰èª­ã¿è¾¼ã‚€
+	// folder_pass: ãƒ•ã‚¡ã‚¤ãƒ«ãŒä¿å­˜ã•ã‚Œã¦ã„ã‚‹ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª
 	static InputDataPtr makeInstance(FilepassString folder_pass){ return InputDataPtr(new InputData(folder_pass)); }
+
+	uint getDocNum() const{ return doc_num_; }
+	uint getWordNum() const{ return words_.size(); }
 };
 
 }

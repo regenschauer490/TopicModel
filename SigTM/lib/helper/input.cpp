@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
@@ -29,7 +29,7 @@ inline bool InputData::parseLine(std::wstring const& line)
   
 	for(uint i = 0; i < count; ++i){
 		uint tsize = tokens_.size();
-		tokens_.push_back( std::make_shared<Token>(tsize, doc_id-1, word_id-1) );
+		tokens_.push_back(Token(tsize, doc_id-1, word_id-1));
 	}
 
 	return true;
@@ -63,7 +63,7 @@ void InputData::reconstruct(FilepassString folder_pass)
 	int wnum = std::stoi(token_text[1]);
 	int tnum = std::stoi(token_text[2]);
 
-	std::cout << "document_num: " << doc_num << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl;
+	std::cout << "document_num: " << doc_num << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl << std::endl;
 
 	if (doc_num <= 0 || tnum <= 0 || wnum <= 0) {
 		std::cout << "token file is corrupted" << std::endl;
@@ -71,7 +71,7 @@ void InputData::reconstruct(FilepassString folder_pass)
 	}
 
 	doc_num_ = static_cast<uint>(doc_num);
-	words_.reserve(wnum);
+	//words_.reserve(wnum);
 	tokens_.reserve(tnum);
 
 	for(uint i=3; i<token_text.size(); ++i){
@@ -85,11 +85,12 @@ void InputData::reconstruct(FilepassString folder_pass)
 
 	sig::for_each([&](uint i, std::wstring const& e){
 		auto word = std::make_shared<std::wstring>(e);
-		words_.push_back(word);
-		word2id_.emplace(word, i);
+		words_.emplace(i, word);
 	}
 	, 0, vocab_text);
 
+
+	doc_names_ = fileopen(base_pass + DOC_FILENAME);
 /*
 	std::ifstream ifs(token_pass);
 	std::string line;
@@ -146,10 +147,13 @@ void InputData::save(FilepassString folder_pass)
 	sig::clear_file(vocab_pass);
 	sig::clear_file(token_pass);
 	
+	std::locale loc = std::locale("japanese").combine< std::numpunct<char> >(std::locale::classic());
+	std::locale::global(loc);
+
 	// save words
 	std::wofstream ofs2(vocab_pass);
 	for (auto const& word : words_){
-		ofs2 << *word << std::endl;
+		ofs2 << *words_.getWord(word) << std::endl;
 	}
 	ofs2.close();
 
@@ -158,12 +162,14 @@ void InputData::save(FilepassString folder_pass)
 	ofs << doc_num_ << std::endl;
 	ofs << words_.size() << std::endl;
 	ofs << tokens_.size() << std::endl;
+ 
+	std::cout << "word_num: " << words_.size() << std::endl << "token_num: " << tokens_.size() << std::endl << std::endl;
 
 	std::vector< std::unordered_map<uint, uint> > d_w_ct(doc_num_);
 
 	for (auto const& token : tokens_){
-		if (d_w_ct[token->doc_id].count(token->word_id)) ++d_w_ct[token->doc_id][token->word_id];
-		else d_w_ct[token->doc_id].emplace(token->word_id, 1);
+		if (d_w_ct[token.doc_id].count(token.word_id)) ++d_w_ct[token.doc_id][token.word_id];
+		else d_w_ct[token.doc_id].emplace(token.word_id, 1);
 	}
 
 	for (int d = 0; d < doc_num_; ++d){
@@ -171,6 +177,9 @@ void InputData::save(FilepassString folder_pass)
 			ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;
 		}
 	}
+
+	// save docnames
+	sig::save_line(doc_names_, base_pass + DOC_FILENAME);
 }
 
 }	//namespace sigtm

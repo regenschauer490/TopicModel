@@ -1,4 +1,4 @@
-/*
+ï»¿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
@@ -8,33 +8,33 @@ http://opensource.org/licenses/mit-license.php
 #ifndef SIG_COMPARE_METHOD_HPP
 #define SIG_COMPARE_METHOD_HPP
 
-#include "distance/cosine_similarity.hpp"
-#include "distance/KL_divergence.hpp"
-#include "distance/JS_divergence.hpp"
+#include "SigUtil/lib/distance/cosine_similarity.hpp"
+#include "SigUtil/lib/distance/KL_divergence.hpp"
+#include "SigUtil/lib/distance/JS_divergence.hpp"
 
 namespace sigtm{
 
-//ƒxƒNƒgƒ‹‚Ì”äŠrè–@
+//ãƒ™ã‚¯ãƒˆãƒ«ã®æ¯”è¼ƒæ‰‹æ³•
 enum class CompareMethodV{ COS };
 
-//Šm—¦•ª•z‚Ì”äŠrè–@
+//ç¢ºç‡åˆ†å¸ƒã®æ¯”è¼ƒæ‰‹æ³•
 enum class CompareMethodD{ KL_DIV, JS_DIV };
 
 
-//—Ş—“xs—ñ
+//é¡ä¼¼åº¦è¡Œåˆ—
 struct SimilarityMatrix{
 	std::vector<std::vector<double>> data;
 };
 typedef std::shared_ptr <SimilarityMatrix const> SimilarityMatrixPtr;
 
-//”ñ—Ş—“xs—ñ
+//éé¡ä¼¼åº¦è¡Œåˆ—
 struct DisSimilarityMatrix{
 	std::vector<std::vector<double>> data;
 };
 typedef std::shared_ptr <DisSimilarityMatrix const> DisSimilarityMatrixPtr;
 
 
-//Šeƒ‚ƒfƒ‹ƒNƒ‰ƒX‚Ì“à•”‚É’è‹`‚·‚éƒCƒ“ƒi[ƒNƒ‰ƒX
+//å„ãƒ¢ãƒ‡ãƒ«ã‚¯ãƒ©ã‚¹ã®å†…éƒ¨ã«å®šç¾©ã™ã‚‹ã‚¤ãƒ³ãƒŠãƒ¼ã‚¯ãƒ©ã‚¹
 
 //FUNC -> std::function< Container<double> (uint id) >
 #define SIG_MakeCompareInnerClass(OUTER_CLASS) \
@@ -52,8 +52,8 @@ public:	\
 		return !valid_	\
 			? nothing	\
 			: method == CompareMethodD::KL_DIV	\
-				? kl_divergence(vp_(d1_), vp_(d2_))	\
-				: js_divergence(vp_(d1_), vp_(d2_))	\
+				? sig::kl_divergence(vp_(d1_), vp_(d2_))	\
+				: sig::js_divergence(vp_(d1_), vp_(d2_))	\
 		; }	\
 };	\
 \
@@ -71,7 +71,7 @@ public:	\
 		return !valid_	\
 			? nothing	\
 			: method == CompareMethodV::COS	\
-				? cosine_similarity(vp_(d1_), vp_(d2_))	\
+				? sig::cosine_similarity(vp_(d1_), vp_(d2_))	\
 				: nothing	\
 		; }	\
 }

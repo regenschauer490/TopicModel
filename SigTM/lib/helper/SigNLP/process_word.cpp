@@ -1,4 +1,4 @@
-/*
+ï»¿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
@@ -23,14 +23,14 @@ EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance())
 	};
 
 	auto PNS = [](std::string const& s)->PNStandard{
-		if (s == "•]‰¿EŠ´î/åŠÏ") return PNStandard::EvaEmo_Sbj;
-		if (s == "•]‰¿") return PNStandard::EvaEmo_Sbj;
-		if (s == "ó‘Ô/‹qŠÏ") return PNStandard::State_Obj;
-		if (s == "‘¶İE«¿") return PNStandard::ExisProp;
-		if (s == "ŒoŒ±") return PNStandard::Exp;
-		if (s == "o—ˆ–") return PNStandard::Event;
-		if (s == "sˆ×") return PNStandard::Act;
-		if (s == "êŠ") return PNStandard::Place;
+		if (s == "è©•ä¾¡ãƒ»æ„Ÿæƒ…/ä¸»è¦³") return PNStandard::EvaEmo_Sbj;
+		if (s == "è©•ä¾¡") return PNStandard::EvaEmo_Sbj;
+		if (s == "çŠ¶æ…‹/å®¢è¦³") return PNStandard::State_Obj;
+		if (s == "å­˜åœ¨ãƒ»æ€§è³ª") return PNStandard::ExisProp;
+		if (s == "çµŒé¨“") return PNStandard::Exp;
+		if (s == "å‡ºæ¥äº‹") return PNStandard::Event;
+		if (s == "è¡Œç‚º") return PNStandard::Act;
+		if (s == "å ´æ‰€") return PNStandard::Place;
 		return PNStandard::NA;
 	};
 
@@ -118,14 +118,14 @@ PosiNega EvaluationLibrary::getSentencePN(std::wstring const& sentence, uint thr
 PosiNega EvaluationLibrary::getWordPN(std::string const& word, WordClass wc) const
 {
 	switch (wc){
-	case WordClass::–¼Œ:
+	case WordClass::åè©:
 	{
 		const auto ser = noun_ev_.find(word);
 		if (ser != noun_ev_.end()) return std::get<0>(ser->second);
 		else return PosiNega::NA;
 	}
-	case WordClass::“®Œ:
-	case WordClass::Œ`—eŒ:
+	case WordClass::å‹•è©:
+	case WordClass::å½¢å®¹è©:
 	{
 		const auto ser = declinable_ev_.find(word);
 		if (ser != declinable_ev_.end()) return std::get<0>(ser->second);
@@ -142,9 +142,9 @@ PosiNega EvaluationLibrary::getWordPN(std::wstring const& word, WordClass wc) co
 
 PosiNega EvaluationLibrary::getSentencePN(std::string const& sentence, ScoreMap score_map, double th) const
 {
-	if (!score_map.count(WordClass::–¼Œ)) score_map[WordClass::–¼Œ] = 0;
-	if (!score_map.count(WordClass::Œ`—eŒ)) score_map[WordClass::Œ`—eŒ] = 0;
-	if (!score_map.count(WordClass::“®Œ)) score_map[WordClass::“®Œ] = 0;
+	if (!score_map.count(WordClass::åè©)) score_map[WordClass::åè©] = 0;
+	if (!score_map.count(WordClass::å½¢å®¹è©)) score_map[WordClass::å½¢å®¹è©] = 0;
+	if (!score_map.count(WordClass::å‹•è©)) score_map[WordClass::å‹•è©] = 0;
 	if (!score_map.count(WordClass::NA)) score_map[WordClass::NA] = 0;
 
 	int score = 0;
@@ -156,8 +156,8 @@ PosiNega EvaluationLibrary::getSentencePN(std::string const& sentence, ScoreMap 
 			for (const auto& ev : noun_ev_){
 				if (std::get<0>(w) == ev.first){
 					const auto pn = std::get<0>(ev.second);
-					if (pn == PosiNega::P)  tscore += score_map[WordClass::–¼Œ];
-					else if (pn == PosiNega::N) tscore -= score_map[WordClass::–¼Œ];
+					if (pn == PosiNega::P)  tscore += score_map[WordClass::åè©];
+					else if (pn == PosiNega::N) tscore -= score_map[WordClass::åè©];
 				}
 			}
 		}
@@ -196,8 +196,8 @@ PosiNega EvaluationLibrary::getSentencePN(std::string const& sentence, ScoreMap 
 
 	const auto parse = mecab_.parseGenkeiWithWC(sentence);
 	std::vector<std::tuple<std::string, WordClass>> parse_n, parse_d;
-	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_n), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::–¼Œ; });
-	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_d), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::Œ`—eŒ || std::get<1>(e) == WordClass::“®Œ; });
+	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_n), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::åè©; });
+	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_d), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::å½¢å®¹è© || std::get<1>(e) == WordClass::å‹•è©; });
 
 	//auto nf = async(launch::async, );
 	//auto df = async(launch::async, );
