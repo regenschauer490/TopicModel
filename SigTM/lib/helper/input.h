@@ -31,26 +31,28 @@ protected:
 	WordSet words_;			// 単語集合
 
 	std::vector<FilepassString> doc_names_;	// 入力ファイル名
+	FilepassString working_directory_;
 
 private:
 	InputData() = delete;
 	InputData(InputData const& src) = delete;
-	InputData(std::wstring const& folder_pass){ reconstruct(folder_pass); }
+	InputData(FilepassString folder_pass) : working_directory_(folder_pass){ reconstruct(); }
 
 	bool parseLine(std::wstring const& line);
-	void reconstruct(FilepassString folder_pass);
-
-
+	void reconstruct();
+	
 protected:
-	InputData(uint doc_num) : doc_num_(doc_num){};
-	void save(FilepassString folder_pass);
+	InputData(uint doc_num, FilepassString working_directory) : doc_num_(doc_num), working_directory_(working_directory){};
+	void save();
 
 public:
 	virtual ~InputData(){}
 
-	// 指定の形式のデータから読み込む or 以前の中間出力から読み込む
-	// folder_pass: ファイルが保存されているディレクトリ
+	// 専用形式の自作データ or 以前の中間出力から読み込む
+	// folder_pass: 上記形式のファイルが保存されているディレクトリ
 	static InputDataPtr makeInstance(FilepassString folder_pass){ return InputDataPtr(new InputData(folder_pass)); }
+
+	auto getInputFileNames() const->std::vector<FilepassString>{ return doc_names_; }
 
 	uint getDocNum() const{ return doc_num_; }
 	uint getWordNum() const{ return words_.size(); }

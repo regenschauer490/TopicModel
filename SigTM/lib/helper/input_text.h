@@ -74,7 +74,7 @@ private:
 	InputDataFromText() = delete;
 	InputDataFromText(InputDataFromText const& src) = delete;
 	InputDataFromText(Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
-		: InputData(raw_texts.size()), filter_(filter)
+		: InputData(raw_texts.size(), save_folder_pass), filter_(filter)
 	{
 		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) doc_names_.push_back(sig::to_fpstring(i));
 		else{
@@ -83,7 +83,7 @@ private:
 		}
 
 		makeData(raw_texts);
-		save(save_folder_pass);
+		save();
 	}
 	
 	void makeData(Documents const& raw_texts);

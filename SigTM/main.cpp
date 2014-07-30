@@ -1,8 +1,8 @@
 ﻿#include "lib/LDA/lda_gibbs.h"
 #include "SigUtil/lib/file.hpp"
 
-const int TopicNum = 10;
-const int IterationNum = 500;
+const int TopicNum = 20;
+const int IterationNum = 1000;
 
 static const std::wregex url_reg(L"http(s)?://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?");
 static const std::wregex htag_reg(L"#(\\w)+");
@@ -114,7 +114,7 @@ auto Experiment2(std::wstring src_folder, std::wstring out_folder, bool make_new
 	auto inputdata = MakeInputData(src_folder, out_folder, make_new);
 
 	auto mrlda = sigtm::MrLDA::makeInstance(TopicNum, inputdata);
-	mrlda->learn(100);
+	mrlda->learn(10000);
 }
 
 int main()

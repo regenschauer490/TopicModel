@@ -20,6 +20,7 @@ namespace sigtm
 class LDA;
 using LDAPtr = std::shared_ptr<LDA>;
 
+template<class T> using VectorT = std::vector<T>;	// token
 template<class T> using VectorD = std::vector<T>;	// document
 template<class T> using VectorK = std::vector<T>;	// topic
 template<class T> using VectorV = std::vector<T>;	// word
@@ -68,10 +69,10 @@ protected:
 	auto getTopWords(VectorV<double> const& dist, uint num, WordSet const& words) const->std::vector<std::tuple<std::wstring, double>>;
 
 	template <class CC>
-	void printWord(CC const& data, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass, bool detail) const;
+	void printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass, bool detail) const;
 
 	template <class CC>
-	void printTopic(CC const& data, maybe<FilepassString> save_pass) const;
+	void printTopic(CC const& data, std::vector<FilepassString> const& names, maybe<FilepassString> save_pass) const;
 
 public:
 	virtual ~LDA(){}
@@ -119,9 +120,13 @@ public:
 	virtual uint getWordNum() const = 0;
 
 	// get hyper-parameter of topic distribution
-	virtual auto getAlpha() const->VectorK<double> = 0;
+	virtual auto getHyperParameterAlpha() const->VectorK<double> = 0;
 	// get hyper-parameter of word distribution
-	virtual auto getEta() const->VectorV<double> = 0;
+	virtual auto getHyperParameterBeta() const->VectorV<double> = 0;
+
+	virtual double getLogLikelihood() const = 0;
+
+	virtual double getPerplexity() const = 0;
 };
 
 
@@ -181,9 +186,9 @@ inline auto LDA::getTopWords(VectorV<double> const& dist, uint num, WordSet cons
 }
 
 template <class CC>
-void LDA::printWord(CC const& data, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass, bool detail) const
+void LDA::printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass, bool detail) const
 {
-	auto Output = [](std::wostream& ofs, std::vector<std::tuple<std::wstring, double>> const& data, maybe<std::wstring> header)
+	auto Output = [](std::wostream& ofs, std::vector<std::tuple<std::wstring, double>> const& data, maybe<FilepassString> header)
 	{
 		if(header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
@@ -197,12 +202,13 @@ void LDA::printWord(CC const& data, WordSet const& words, maybe<uint> top_num, m
 	sig::for_each([&](int i, VectorV<double> const& d)
 	{
 		auto rank_words = top_num ? getTopWords(d, sig::fromJust(top_num), words) : getTopWords(d, d.size(), words);
+		auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i-1];
 
 		if (save_pass){
-			Output(ofs, rank_words, L"id:" + std::to_wstring(i));
+			Output(ofs, rank_words, header);
 		}
 		else{
-			Output(std::wcout, rank_words, L"id:" + std::to_wstring(i));
+			Output(std::wcout, rank_words, header);
 		}
 	}
 	, 1, data);
@@ -210,7 +216,8 @@ void LDA::printWord(CC const& data, WordSet const& words, maybe<uint> top_num, m
 	if (save_pass && detail){
 		sig::for_each([&](int i, VectorV<double> const& d)
 		{
-			std::wofstream ofs2(sig::fromJust(save_pass) + sig::to_fpstring(i) + SIG_STR_TO_FPSTR(".txt"));
+			auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i-1];
+			std::wofstream ofs2(sig::fromJust(save_pass) + header + SIG_STR_TO_FPSTR(".txt"));
 			for (auto const& e : d) ofs2 << e << L' ' << *words.getWord(i-1) << std::endl;
 		}
 		, 1, data);
@@ -218,9 +225,9 @@ void LDA::printWord(CC const& data, WordSet const& words, maybe<uint> top_num, m
 }
 
 template <class CC>
-void LDA::printTopic(CC const& data, maybe<FilepassString> save_pass) const
+void LDA::printTopic(CC const& data, std::vector<FilepassString> const& names, maybe<FilepassString> save_pass) const
 {
-	auto Output = [](std::wostream& ofs, VectorK<double> data, maybe<std::wstring> header)
+	auto Output = [](std::wostream& ofs, VectorK<double> data, maybe<FilepassString> header)
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
@@ -233,11 +240,12 @@ void LDA::printTopic(CC const& data, maybe<FilepassString> save_pass) const
 
 	sig::for_each([&](int i, VectorK<double> const& d)
 	{
+		auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i-1];
 		if (save_pass){
-			Output(ofs, d, L"id:" + std::to_wstring(i));
+			Output(ofs, d, header);
 		}
 		else{
-			Output(std::wcout, d, L"id:" + std::to_wstring(i));
+			Output(std::wcout, d, header);
 		}
 	}
 	, 1, data);

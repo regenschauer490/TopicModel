@@ -21,6 +21,7 @@ std::wstring const TOKEN_FILENAME = L"token";
 std::wstring const VOCAB_FILENAME = L"vocab";
 std::wstring const DOC_FILENAME = L"document_names.txt";
 
+
 using sig::uint;
 using sig::StrPtr;
 using sig::C_StrPtr;
@@ -42,7 +43,8 @@ const uint zero = 0;
 
 }
 
-namespace std {
+namespace std
+{
 template <> struct hash<sig::C_WStrPtr>
 {
 	size_t operator()(sig::C_WStrPtr const& x) const
@@ -50,5 +52,5 @@ template <> struct hash<sig::C_WStrPtr>
 		return hash<std::wstring>()(*x);
 	}
 };
-}
+}	//std
 #endif

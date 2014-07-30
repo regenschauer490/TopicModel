@@ -39,10 +39,9 @@ class LDA_Gibbs : public LDA
 	MatrixVK<uint> word_ct_;	//[V_][K_]
 	MatrixDK<uint> doc_ct_;		//[D_][K_]
 	VectorK<uint> topic_ct_;	//[K_]
+	VectorT<uint> z_;			// 各トークンに(暫定的に)割り当てられたトピック
 
-	std::vector<double> p_;
-	std::vector<uint> z_;		// 各トークンに(暫定的に)割り当てられたトピック
-
+	VectorK<double> tmp_p_;
 	MatrixKV<double> term_score_;	//[K_][V_]
 	uint iter_ct_;
 
@@ -58,7 +57,7 @@ private:
 	LDA_Gibbs(uint topic_num, InputDataPtr input_data, maybe<double> alpha, maybe<double> beta) :
 		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), alpha_(alpha ? *alpha : 50.0/K_), beta_(beta ? *beta : 0.1), input_data_(input_data),
 		tokens_(input_data->tokens_), word_ct_(V_, VectorK<uint>(K_, 0)), doc_ct_(D_, VectorK<uint>(K_, 0)), topic_ct_(K_, 0),
-		p_(K_, 0.0), z_(tokens_.size(), 0), term_score_(K_, VectorV<double>(V_, 0)), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom), iter_ct_(0)
+		tmp_p_(K_, 0.0), z_(tokens_.size(), 0), term_score_(K_, VectorV<double>(V_, 0)), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom), iter_ct_(0)
 	{
 		initSetting();
 	}
@@ -138,9 +137,14 @@ public:
 	uint getWordNum() const override{ return V_; }
 
 	// get hyper-parameter of topic distribution
-	auto getAlpha() const->VectorK<double> override{ return sig::replicate(K_, alpha_); }
+	auto getHyperParameterAlpha() const->VectorK<double> override{ return sig::replicate(K_, alpha_); }
 	// get hyper-parameter of word distribution
-	auto getEta() const->VectorV<double> override{ return sig::replicate(V_, beta_); }
+	auto getHyperParameterBeta() const->VectorV<double> override{ return sig::replicate(V_, beta_); }
+
+	// 
+	double getLogLikelihood() const override;
+
+	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / tokens_.size()); }
 };
 
 }

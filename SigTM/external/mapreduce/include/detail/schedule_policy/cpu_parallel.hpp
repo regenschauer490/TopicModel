@@ -1,6 +1,13 @@
 // Copyright (c) 2009-2013 Craig Henderson
 // https://github.com/cdmh/mapreduce
 
+/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
 #pragma once
 
 #include <mutex>
@@ -19,7 +26,7 @@ inline void run_next_map_task(Job &job, std::mutex &m1, std::mutex &m2, results 
         bool run = true;
         while (run)
         {
-            typename Job::map_task_type::key_type *key = 0;
+			typename Job::make_key_t key;
 
             m1.lock();
             run = job.get_next_map_key(key);
@@ -95,6 +102,7 @@ class cpu_parallel : mapreduce::detail::noncopyable
         reduce(job, result);
         collate_results(result);
         result.counters.num_result_files = job.number_of_partitions();
+		all_results_.clear();
     }
 
   private:
@@ -104,7 +112,7 @@ class cpu_parallel : mapreduce::detail::noncopyable
 
         // run the Map Tasks
         auto     const start_time = std::chrono::system_clock::now();
-        unsigned const map_tasks  = std::max(num_cpus_,std::min(num_cpus_, job.number_of_map_tasks()));
+        unsigned const map_tasks  = std::min(num_cpus_, job.number_of_map_tasks());
 
         mapreduce::detail::joined_thread_group map_threads;
         for (unsigned loop=0; loop<map_tasks; ++loop)
@@ -160,8 +168,7 @@ class cpu_parallel : mapreduce::detail::noncopyable
 
         // run the Reduce Tasks
         mapreduce::detail::joined_thread_group reduce_threads;
-        unsigned const reduce_tasks =
-            std::min<unsigned const>(num_cpus_, job.number_of_partitions());
+        unsigned const reduce_tasks = std::min(num_cpus_, job.number_of_partitions());
 
         auto const start_time(std::chrono::system_clock::now());
 

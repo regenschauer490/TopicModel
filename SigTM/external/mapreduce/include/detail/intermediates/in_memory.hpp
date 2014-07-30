@@ -1,9 +1,17 @@
 // Copyright (c) 2009-2013 Craig Henderson
 // https://github.com/cdmh/mapreduce
 
+/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
 #pragma once
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/pool/pool_alloc.hpp>
 
 namespace mapreduce {
 
@@ -48,7 +56,7 @@ template<
     typename ReduceTask,
     typename KeyType     = typename ReduceTask::key_type,
     typename PartitionFn = mapreduce::hash_partitioner,
-    typename KeyCompare  = std::less<typename ReduceTask::key_type>,
+    typename KeyHash  = std::hash<typename ReduceTask::key_type>,
     typename StoreResult = reduce_null_output<MapTask, ReduceTask>
 >
 class in_memory : detail::noncopyable
@@ -63,8 +71,9 @@ class in_memory : detail::noncopyable
   private:
     typedef
     std::vector<
-        std::map<
-            KeyType, std::list<value_type>,KeyCompare>>
+        std::unordered_map<
+		//KeyType, std::list<value_type>, KeyHash, std::equal_to<KeyType>, boost::fast_pool_allocator<KeyType>> >
+		KeyType, std::list<value_type>, KeyHash, std::equal_to<KeyType>> >
     intermediates_t;
 
   public:
@@ -208,11 +217,11 @@ class in_memory : detail::noncopyable
     template<typename Callback>
     void reduce(unsigned const partition, Callback &callback)
     {
-        typename intermediates_t::value_type map;
-        std::swap(map, intermediates_[partition]);
+		auto map = std::move(intermediates_[partition]);
 
         for (auto const &result : map)
             callback(result.first, result.second.begin(), result.second.end());
+		//std::cout << map.begin()->second.size() << ", " << (++map.begin())->second.size() << std::endl;
     }
 
     void merge_from(unsigned partition, in_memory &other)
@@ -303,6 +312,15 @@ class in_memory : detail::noncopyable
     void combine(null_combiner &)
     {
     }
+
+	void reset_result()
+	{
+		for (auto& part : intermediates_){
+			for (auto& pair : part){
+				pair.second.clear();
+			}
+		}
+	}
 
   private:
     unsigned const  num_partitions_;

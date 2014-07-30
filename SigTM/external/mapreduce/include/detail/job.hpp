@@ -1,9 +1,17 @@
 // Copyright (c) 2009-2013 Craig Henderson
 // https://github.com/cdmh/mapreduce
 
+/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
 #pragma once
 
 namespace mapreduce {
+extern void* enabler;
 
 template<typename T> uintmax_t    const length(T const &str);
 template<typename T> char const * const data(T const &str);
@@ -59,6 +67,12 @@ class job : detail::noncopyable
     typename intermediate_store_type::keyvalue_t
     keyvalue_t;
 
+	using make_key_t = typename std::conditional<
+		std::is_default_constructible<typename map_task_type::key_type>::value,
+		typename map_task_type::key_type,
+		std::unique_ptr<typename map_task_type::key_type>
+	>::type;
+
   private:
     class map_task_runner : detail::noncopyable
     {
@@ -105,7 +119,7 @@ class job : detail::noncopyable
     {
       public:
         reduce_task_runner(
-            std::string const&			output_filespec,
+            std::string					output_filespec,
             unsigned					partition,
             unsigned					num_partitions,
             intermediate_store_type&	intermediate_store,
@@ -161,14 +175,17 @@ class job : detail::noncopyable
         return intermediate_store_.end_results();
     }
 
-    bool const get_next_map_key(typename map_task_type::key_type *&key)
+	template<class K, typename std::enable_if<std::is_same<K, std::unique_ptr<typename map_task_type::key_type>>::value>::type*& = enabler>
+	bool const get_next_map_key(K &key)
     {
-        std::unique_ptr<typename map_task_type::key_type> next_key(new typename map_task_type::key_type);
-        if (!datasource_.setup_key(*next_key))
-            return false;
-        key = next_key.release();
-        return true;
+		return datasource_.setup_key_new(key);
     }
+
+	template<class K, typename std::enable_if<std::is_same<K, typename map_task_type::key_type>::value>::type*& = enabler>
+	bool const get_next_map_key(K &key)
+	{
+		return datasource_.setup_key(key);
+	}
 
     unsigned const number_of_partitions(void) const
     {
@@ -190,13 +207,26 @@ class job : detail::noncopyable
     template<typename SchedulePolicy>
     void run(SchedulePolicy &schedule, results &result)
     {
+		reset_result();
         auto const start_time = std::chrono::system_clock::now();
         schedule(*this, result);
         result.job_runtime = std::chrono::system_clock::now() - start_time;
     }
 
+	template<typename Sync>
+	bool const run_map_task(std::unique_ptr<typename map_task_type::key_type> &key, results &result, Sync &sync)
+	{
+		return run_map_task_impl(*key, result, sync);
+	}
+
+	template<typename Sync>
+	bool const run_map_task(typename map_task_type::key_type &key, results &result, Sync &sync)
+	{
+		return run_map_task_impl(key, result, sync);
+	}
+
     template<typename Sync>
-    bool const run_map_task(typename map_task_type::key_type *key, results &result, Sync &sync)
+    bool const run_map_task_impl(typename map_task_type::key_type &key, results &result, Sync &sync)
     {
         auto const start_time = std::chrono::system_clock::now();
 
@@ -204,19 +234,16 @@ class job : detail::noncopyable
         {
             ++result.counters.map_keys_executed;
 
-            std::unique_ptr<typename map_task_type::key_type> map_key_ptr(key);
-            typename map_task_type::key_type &map_key = *map_key_ptr;
-
             // get some data
             typename map_task_type::value_type value;
-            if (!datasource_.get_data(map_key, value))
+            if (!datasource_.get_data(key, value))
             {
                 ++result.counters.map_key_errors;
                 return false;
             }
 
             map_task_runner runner(*this);
-            runner(map_key, value);
+            runner(key, value);
 
             // merge the map task intermediate results into the job
             std::lock_guard<Sync> lock(sync);
@@ -265,6 +292,11 @@ class job : detail::noncopyable
 
         return success;
     }
+
+	void reset_result()
+	{
+		intermediate_store_.reset_result();
+	}
 
   private:
     datasource_type			datasource_;

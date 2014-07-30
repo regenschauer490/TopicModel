@@ -25,14 +25,14 @@ void LDA_Gibbs::initSetting()
 inline TopicId LDA_Gibbs::selectNextTopic(Token const& t)
 {
 	for(TopicId k = 0; k < K_; ++k){
-		p_[k] = (word_ct_[t.word_id][k] + beta_) * (doc_ct_[t.doc_id][k] + alpha_) / (topic_ct_[k] + V_ * beta_);
-		if(k != 0) p_[k] += p_[k-1];
+		tmp_p_[k] = (word_ct_[t.word_id][k] + beta_) * (doc_ct_[t.doc_id][k] + alpha_) / (topic_ct_[k] + V_ * beta_);
+		if(k != 0) tmp_p_[k] += tmp_p_[k-1];
 	}
 
-	double u = rand_d_() * p_[K_-1];
+	double u = rand_d_() * tmp_p_[K_-1];
 
 	for(TopicId k = 0; k < K_; ++k){
-		if(u < p_[k]) return k;
+		if(u < tmp_p_[k]) return k;
 	}
 	return K_ -1;
 }
@@ -136,12 +136,18 @@ void LDA_Gibbs::learn(uint iteration_num)
 	GetConsoleScreenBufferInfo(chandle, &info2);
 	const COORD disp_pos{ 1, info2.dwCursorPosition.Y };
 
+	const std::wstring perp_pass = L"perplexity.txt";
+	sig::clear_file(perp_pass);
 	const auto AnimeSimple = [&]{
 		for (uint i = 0; i < iteration_num; ++i, ++iter_ct_){
 			SetConsoleCursorPosition(chandle, disp_pos);
 			std::string numstr = "iteration: " + std::to_string(iter_ct_ + 1);
 			std::cout << numstr << std::endl;
 			std::for_each(std::begin(tokens_), std::end(tokens_), std::bind(&LDA_Gibbs::resample, this, std::placeholders::_1));
+
+			double perp = getPerplexity();
+			auto split = sig::split(std::to_string(perp), ",");
+			sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
 		}
 	};
 
@@ -152,191 +158,19 @@ void LDA_Gibbs::learn(uint iteration_num)
 	//if (chandle != INVALID_HANDLE_VALUE) CloseHandle(chandle);
 }
 
-/*
-double LDA_Gibbs::compareDistribution(CompareMethodD method, Distribution target, uint id1, uint id2) const
-{
-	maybe<double> val;
-	std::vector< std::vector<double> > dist;
-
-	switch(target){
-	case Distribution::DOCUMENT :
-		dist = getTopicDistribution();
-		break;
-	case Distribution::TOPIC :
-		dist = getWordDistribution();
-		break;
-	case Distribution::TERM_SCORE :
-		dist = getTermScoreOfTopic();
-		break;
-	default :
-		printf("\nforget: LDA_Gibbs::compareDistribution\n");
-		getchar();
-	}
-
-	switch(method){
-	case CompareMethodD::KL_DIV :
-		val = kl_divergence(dist[id1], dist[id2]);
-		break;
-	case CompareMethodD::JS_DIV :
-		val = js_divergence(dist[id1], dist[id2]);
-		break;
-	default :
-		printf("\nforget: LDA_Gibbs::compareDistribution\n");
-		getchar();
-	}
-
-	return *val;
-}
-*/
-
-/*
-std::vector< std::vector<int> > LDA_Gibbs::CompressTopicDimension(CompareMethodD method, double threshold) const
-{
-	std::vector< std::unordered_map<uint, bool> > tmp_bi(K_, std::unordered_map<uint, bool>());
-	std::vector< std::unordered_map<uint, bool> > tmp_mo(K_, std::unordered_map<uint, bool>());
-
-	auto dist = getTermScoreOfTopic();
-
-	for(uint i=0; i<K_; ++i){
-		for(uint j=i+1; j<K_; ++j){
-			double cmp;
-			if(method == CompareMethod::Cos) cmp = _CompareVector_Cos(dist[i], dist[j]);
-			else if(method == CompareMethod::KL) cmp = _CompareDistribution_SKL(dist[i], dist[j]);
-
-			if(cmp > threshold){
-				tmp_mo[i][j] = true;
-				tmp_bi[i][j] = true;
-				tmp_bi[j][i] = true;
-			}
-			//std::cout.precision(2);
-			//std::cout << cmp << " "; 
-		}
-		//std::cout << std::endl;
-	}
-
-	//print 類似トピック
-//	for(uint i=0; i<tmp_bi.size(); ++i){
-//		for(auto bit = tmp_bi[i].begin(), bend = tmp_bi[i].end(); bit != bend; ++bit) std::cout << bit->first << ",";
-//		std::cout << std::endl;
-//	}
-//	std::cout << std::endl;
-
-	std::vector< std::unordered_map<uint,bool> > comb;
-
-	auto CheckSub = [&](const std::unordered_map<uint,bool>& list)->bool{
-	if(comb.empty()) return true;
-		for(auto cit = comb.begin(); cit != comb.end(); ++cit){
-			std::unordered_map<uint, bool> check;
-			//int cf = 0;
-			bool ff = true;
-			if(cit->size() >= list.size()){
-				for(auto ccit = cit->begin(), ccend = cit->end(); ccit != ccend; ++ccit){
-					check[ccit->first] = false; 
-				}
-				for(auto lit = list.begin(), lend = list.end(); lit != lend; ++lit){
-					if(check.count(lit->first)) ;
-					else ff = false;
-				}
-				if(ff) return false;
-			}
-			else if(cit->size() < list.size()){
-				for(auto lit = list.begin(), lend = list.end(); lit != lend; ++lit){
-					check[lit->first] = false; 
-				}
-				for(auto ccit = cit->begin(), ccend = cit->end(); ccit != ccend; ++ccit){
-					if(check.count(ccit->first)) ;
-					else ff = false;
-				}
-				if(ff){
-					cit = comb.erase(cit);
-					if(comb.empty()) break;
-					if(cit != comb.begin()) --cit;
-				}
-			}
-		}
-		return true;
-	};
-
-	std::function<void(uint, std::unordered_map<uint,bool>)> Crk = [&](uint next, std::unordered_map<uint,bool> plist){
-		for(auto pit = plist.begin(), pend = plist.end(); pit != pend; ++pit){
-			if(tmp_bi[pit->first].count(next)) ;
-			else{
-				if(CheckSub(plist))	comb.push_back(plist);
-				return;
-			}
-		}
-		plist[next] = true;
-		if(tmp_mo[next].empty()){
-			if(CheckSub(plist))	comb.push_back(plist);
-			return;
-		}
-		for(auto mit = tmp_mo[next].begin(), mend = tmp_mo[next].end(); mit != mend; ++mit){
-			Crk(mit->first, plist);
-		}
-	};
-	//完全部分グラフ列挙
-	for(uint i=0; i<K_; ++i){
-		std::unordered_map<uint,bool> list;
-		Crk(i, list);
-	}
-
-	//print 完全部分グラフ
-	for(uint c=0; c<comb.size(); ++c){
-		for(auto ccit = comb[c].begin(), ccend = comb[c].end(); ccit != ccend; ++ccit) std::cout << ccit->first << ",";
-		std::cout << std::endl;
-	}
-	std::cout << std::endl;
-
-	//重複トピックを列挙
-	std::vector<uint> tyofuku;
-	for(uint k=0; k<K_; ++k){
-		uint ct = 0;
-		for(auto cit = comb.begin(), cend = comb.end(); cit != cend; ++cit){
-			if(cit->count(k)) ++ct;
-			if(ct >= 2){
-				tyofuku.push_back(k);
-				break;
-			}
-		}
-	}
-
-	//完全グラフから重複トピックを除去
-	for(auto cit = comb.begin(); cit != comb.end(); ++cit){
-		for(auto tit = tyofuku.begin(), tend = tyofuku.end(); tit != tend; ){
-			auto find = cit->find(*tit);
-			if(find != cit->end()) cit->erase(find);
-			else ++tit;
-		}
-	}
-
-	std::vector< std::vector<int> > result;
-	uint i = 0;
-	for(auto cit = comb.begin(); cit != comb.end(); ++cit){
-		if(cit->empty()) continue;
-		result.push_back(std::vector<int>());
-		for(auto ccit = cit->begin(), ccend = cit->end(); ccit != ccend; ++ccit){
-			result[i].push_back(ccit->first);
-		}
-		++i;
-	}
-
-	return std::move(result);
-}*/
-
-
 void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detail) const
 {
 	save_folder = sig::impl::modify_dirpass_tail(save_folder, true);
 
 	switch(target){
 	case Distribution::DOCUMENT :
-		printTopic(getTopicDistribution(), save_folder + SIG_STR_TO_FPSTR("document_gibbs"));
+		printTopic(getTopicDistribution(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_gibbs"));
 		break;
 	case Distribution::TOPIC :
-		printWord(getWordDistribution(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"), detail);
+		printWord(getWordDistribution(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"), detail);
 		break;
 	case Distribution::TERM_SCORE :
-		printWord(getTermScoreOfTopic(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"), detail);
+		printWord(getTermScoreOfTopic(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"), detail);
 		break;
 	default :
 		printf("\nforget: LDA_Gibbs::print\n");
@@ -458,6 +292,25 @@ auto LDA_Gibbs::getWordOfDocument(uint return_word_num, DocumentId d_id) const->
 	for(uint i=0; i<return_word_num; ++i) result.push_back( std::make_tuple( *input_data_->words_.getWord(std::get<0>(top_wscore[i])), std::get<1>(top_wscore[i]) ) );
 
 	return std::move(result);
+}
+
+double LDA_Gibbs::getLogLikelihood() const
+{
+	double log_likelihood = 0;
+	const auto theta = getTopicDistribution();
+	const auto beta = getWordDistribution();
+
+	for (auto const& token : tokens_){
+		const auto& theta_d = theta[token.doc_id];
+		uint w = token.word_id;
+		double tmp = 0;
+		for (uint k = 0; k < K_; ++k){
+			tmp += theta_d[k] * beta[k][w];
+		}
+		log_likelihood += std::log(tmp);
+	}
+
+	return log_likelihood;
 }
 
 }

@@ -35,7 +35,7 @@ inline bool InputData::parseLine(std::wstring const& line)
 	return true;
 }
 
-void InputData::reconstruct(FilepassString folder_pass)
+void InputData::reconstruct()
 {
 	/*
 	auto filenames = sig::get_file_names(folder_pass, false);
@@ -54,7 +54,7 @@ void InputData::reconstruct(FilepassString folder_pass)
 		return sig::fromJust(std::move(m_text));
 	};
 
-	auto base_pass = sig::impl::modify_dirpass_tail(folder_pass, true);
+	auto base_pass = sig::impl::modify_dirpass_tail(working_directory_, true);
 
 	auto token_text = fileopen(base_pass + TOKEN_FILENAME);
 
@@ -137,9 +137,9 @@ void InputData::reconstruct(FilepassString folder_pass)
 */
 }
 
-void InputData::save(FilepassString folder_pass)
+void InputData::save()
 {
-	auto base_pass = sig::impl::modify_dirpass_tail(folder_pass, true);
+	auto base_pass = sig::impl::modify_dirpass_tail(working_directory_, true);
 
 	auto vocab_pass = base_pass + VOCAB_FILENAME;
 	auto token_pass = base_pass + TOKEN_FILENAME;

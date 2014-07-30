@@ -6,13 +6,14 @@ http://opensource.org/licenses/mit-license.php
 */
 
 #ifndef SIGTM_MRLDA_H
-#define  SIGTM_MRLDA_H
+#define SIGTM_MRLDA_H
 
 #include "lda_interface.hpp"
 #include "../helper/mapreduce_module.h"
 #include "../helper/input.h"
 #include "../../external/mapreduce/include/mapreduce.hpp"
 #include "boost/math/special_functions/digamma.hpp"
+#include "../../external/boost_math/boost/math/special_functions/polygamma.hpp"
 
 #if USE_SIGNLP
 #include "../helper/input_text.h"
@@ -26,6 +27,7 @@ template<class T> using MatrixDV = VectorD<VectorV<T>>;		// document - word
 
 
 using  boost::math::digamma;
+using  boost::math::trigamma;
 
 inline double calcModule1(VectorK<double> const& gamma, uint k)
 {
@@ -52,10 +54,12 @@ double calcModule0(C const& vec)
 }
 
 
+/* Latent Dirichlet Allocation on mapreduce (estimate by Variational Bayesian inference) */
 class MrLDA : public LDA, public std::enable_shared_from_this<MrLDA>
 {
-	static const double local_convergence;
-	static const double global_convergence;
+	static const double global_convergence_threshold;
+	static const double local_convergence_threshold;
+	static const uint max_local_iteration;
 
 	friend class sigtm::mrlda::datasource::MRInputIterator;
 
@@ -92,13 +96,16 @@ private:
 				const double sum_log_beta = calcModule2(*value.beta_, k);
 
 				for (uint v = 0; v < value.vnum_; ++v){
-					const double wp = (*value.word_ct_)[v] * phi[v][k];
-					runobj.emit_intermediate(std::make_tuple(ReduceKeyType::Lambda, k, v), wp);
-					lhm1 += (wp * ddg);
-					lhm2 += (wp * (sum_log_beta - std::log(phi[v][k])));;		// todo:word_ct == 0 の場合の処理を分けて最適化
-					//std::cout << phi[v][k] << ", " << sum_log_beta << ", " << std::log(phi[v][k]) << std::endl;
+					if ((*value.word_ct_)[v] != 0){
+						const double wp = (*value.word_ct_)[v] * phi[v][k];
+						runobj.emit_intermediate(std::make_tuple(ReduceKeyType::Lambda, k, v), wp);
+						lhm1 += (wp * ddg);
+						lhm2 += (wp * (sum_log_beta - std::log(phi[v][k])));
+						//std::cout << phi[v][k] << ", " << sum_log_beta << ", " << std::log(phi[v][k]) << std::endl;
+					}
 				}
 				runobj.emit_intermediate(std::make_tuple(ReduceKeyType::Alpha, zero, k), ddg);
+				//std::cout << k << "ddg:" << ddg << std::endl;
 			}
 			runobj.emit_intermediate(std::make_tuple(ReduceKeyType::Liklihood, zero, zero), lhm1 + lhm2 - calcModule0(gamma));
 			std::cout << lhm1 << ", " << lhm2 << ", " << calcModule0(gamma) << std::endl;
@@ -171,6 +178,8 @@ private:
 		//performance_result_ = mr_performance_result();
 	}
 
+	void saveResumeData() const;
+	
 	// 収束判定に使う尤度の計算
 	double calcLiklihood(double term2, double term4) const;
 
@@ -240,10 +249,10 @@ public:
 	uint getWordNum() const override{ return V_; }
 	
 	// get hyper-parameter of topic distribution
-	auto getAlpha() const->VectorK<double> override{ return alpha_; }
+	auto getHyperParameterAlpha() const->VectorK<double> override{ return alpha_; }
 
 	// get hyper-parameter of word distribution
-	auto getEta() const->VectorV<double> override{
+	auto getHyperParameterBeta() const->VectorV<double> override{
 		VectorV<double> result;
 		for(uint v=0; v<V_; ++v) result.push_back(sig::sum_col(eta_, v) / K_);	//average over documents
 		return result; 
@@ -252,7 +261,24 @@ public:
 	auto getGamma(DocumentId d_id) const->VectorK<double>{ return gamma_[d_id]; }
  
 	//auto getLambda(TopicId k_id) const->VectorV<double>{ return lambda_[k_id]; }
+
+	double getLogLikelihood() const override;
+
+	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / input_data_->tokens_.size()); }
 };
 
 }
+
+namespace std
+{
+template <> struct hash<typename sigtm::MrLDA::reduce_key_type>
+{
+	size_t operator()(sigtm::MrLDA::reduce_key_type const& x) const
+	{
+		return hash<int>()(static_cast<int>(std::get<0>(x)))
+			^ hash<typename std::common_type<sigtm::uint, sigtm::TopicId>::type>()(std::get<1>(x))
+			^ hash<typename std::common_type<sigtm::TopicId, sigtm::WordId>::type>()(std::get<2>(x));			
+	}
+};
+}	//std
 #endif
