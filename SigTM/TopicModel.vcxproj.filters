@@ -37,6 +37,9 @@
     <Filter Include="ヘッダー ファイル\helper\external\mapreduce">
       <UniqueIdentifier>{139eecd2-fa46-4c8b-a47a-8748b1c94ea9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ヘッダー ファイル\helper\SigNLP">
+      <UniqueIdentifier>{bfa402f9-c4e9-44e6-92c7-c8facdb1796c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -62,6 +65,9 @@
     </ClCompile>
     <ClCompile Include="lib\helper\mapreduce_module.cpp">
       <Filter>ソース ファイル\helper</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\LDA\lda_cvb.cpp">
+      <Filter>ソース ファイル\lda</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -127,6 +133,21 @@
     </ClInclude>
     <ClInclude Include="external\mapreduce\include\detail\intermediates\local_disk.hpp">
       <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\mecab_wrapper.h">
+      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\process_word.h">
+      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\signlp.hpp">
+      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\LDA\lda_cvb.h">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\LDA\tmp.h">
+      <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
