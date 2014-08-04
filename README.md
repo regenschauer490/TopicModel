@@ -2,9 +2,18 @@ TopicModel (Implemented in C++11)
 ==========
 (現在整理中 coming soon)
 
-【 実装済み (ちゃんと動くもの) 】
+【 実装済み(available) 】
 
-* LDA(Latent Dirichlet Allocation) using Gibbs Sampling
+* Vanilla LDA (Latent Dirichlet Allocation)
+  * Gibbs Sampling
+  * Collapsed Gibbs Sampling
+* MR.LDA (MapReduce Latent Dirichlet Allocation)
+  * Variational Inference
 
-【 現在実装中 】
-* MR.LDA(MapReduce Latent Dirichlet Allocation) using Variational Bayes
+【 現在実装中(now implementing) 】
+* Vanilla LDA (Latent Dirichlet Allocation)
+  * Collapsed Variational Inference
+* Twitter LDA
+
+【 調査・調整中(analyse and adjust) 】
+* optimize hyper-parameter alpha by Newton-Lapson method
