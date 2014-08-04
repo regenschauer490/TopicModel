@@ -8,11 +8,11 @@ TopicModel (Implemented in C++11)
   * Gibbs Sampling
   * Collapsed Gibbs Sampling
 * MR.LDA (MapReduce Latent Dirichlet Allocation)
-  * Variational Inference
+  * Variational Bayesian Inference
 
 【 現在実装中(now implementing) 】
 * Vanilla LDA (Latent Dirichlet Allocation)
-  * Collapsed Variational Inference
+  * Collapsed Variational Bayesian Inference
 * Twitter LDA
 
 【 調査・調整中(analyse and adjust) 】
