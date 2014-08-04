@@ -5,6 +5,8 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
+#if USE_SIGNLP
+
 #include "mecab_wrapper.h"
 
 namespace signlp{
@@ -163,3 +165,4 @@ namespace signlp{
 	}
 
 }
+#endif

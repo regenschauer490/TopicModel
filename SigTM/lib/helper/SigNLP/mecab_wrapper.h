@@ -1,6 +1,8 @@
 #ifndef SIG_MECAB_WRAPPER_H
 #define SIG_MECAB_WRAPPER_H
 
+#if USE_SIGNLP
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -76,5 +78,6 @@ public:
 };
 
 }
+#endif
 #endif
 

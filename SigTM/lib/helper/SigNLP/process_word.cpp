@@ -5,6 +5,8 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
+#if USE_SIGNLP
+
 #include "process_word.h"
 
 namespace signlp{
@@ -228,3 +230,4 @@ PNStandard EvaluationLibrary::getPNStandard(std::wstring const& word) const
 }
 
 }
+#endif

@@ -6,15 +6,58 @@ http://opensource.org/licenses/mit-license.php
 */
 
 #include "lda_gibbs.h"
+#include "SigUtil/lib/file.hpp"
 
 namespace sigtm
 {
-void LDA_Gibbs::initSetting()
-{
-	int i = -1;
+const auto resume_info_fname = SIG_STR_TO_FPSTR("gibbs_info");
+const auto resume_alpha_fname = SIG_STR_TO_FPSTR("gibbs_alpha");
+const auto resume_token_id_fname = SIG_STR_TO_FPSTR("gibbs_token_ids");
+const auto resume_token_z_fname = SIG_STR_TO_FPSTR("gibbs_token_assigned");
 
-	for(auto const& t :tokens_){
-		int assign = rand_ui_();
+void LDA_Gibbs::init(bool resume)
+{
+	std::unordered_map<uint, TopicId> id_z_map;
+	if (resume){
+		auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
+	
+		auto load_info = sig::read_line<std::string>(base_pass + resume_info_fname);
+		if (sig::is_container_valid(load_info)){
+			auto info = sig::fromJust(load_info);
+			total_iter_ct_ = std::stoul(info[0]);
+		}
+
+		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname, " ");
+		auto tmp_alpha = std::move(alpha_);
+	
+		if (sig::is_container_valid(load_alpha)){
+			alpha_ = std::move(sig::fromJust(load_alpha));
+			std::cout << "resume alpha" << std::endl;
+		}
+		else{
+			alpha_ = std::move(tmp_alpha);
+			std::cout << "resume alpha error : alpha is set as default" << std::endl;
+		}
+	
+		auto load_token_id = sig::read_line<std::string>(base_pass + resume_token_id_fname);
+		auto load_token_z = sig::read_line<std::string>(base_pass + resume_token_z_fname);
+	
+		if (sig::is_container_valid(load_token_id) && sig::is_container_valid(load_token_z)){
+			auto ids = sig::fromJust(load_token_id);
+			auto zs = sig::fromJust(load_token_z);
+			for(uint i = 0; i < ids.size(); ++i){
+				id_z_map.emplace(std::stod(ids[i]), std::stod(zs[i]));			
+			}
+			std::cout << "resume token_assigned_info" << std::endl;
+		}
+		else{
+			std::cout << "resume token_assigned_info error : topic assigned to each tokens is set by random" << std::endl;
+		}
+	}
+
+	int i = -1;	
+	for(auto const& t : tokens_){
+		int assign = id_z_map.empty() ? rand_ui_() : id_z_map[t.self_id];
 		++word_ct_[t.word_id][assign];
 		++doc_ct_[t.doc_id][assign];
 		++topic_ct_[assign];
@@ -22,10 +65,11 @@ void LDA_Gibbs::initSetting()
 	}
 }
 
-inline TopicId LDA_Gibbs::selectNextTopic(Token const& t)
+inline TopicId LDA_Gibbs::sampleTopic(Token const& t)
 {
 	for(TopicId k = 0; k < K_; ++k){
-		tmp_p_[k] = (word_ct_[t.word_id][k] + beta_) * (doc_ct_[t.doc_id][k] + alpha_) / (topic_ct_[k] + V_ * beta_);
+		//tmp_p_[k] = (doc_ct_[t.doc_id][k] + alpha_[k]) * (word_ct_[t.word_id][k] + beta) / (topic_ct_[k] + V_ * beta);
+		tmp_p_[k] = sampling_(this, t, k);
 		if(k != 0) tmp_p_[k] += tmp_p_[k-1];
 	}
 
@@ -37,7 +81,7 @@ inline TopicId LDA_Gibbs::selectNextTopic(Token const& t)
 	return K_ -1;
 }
 
-void LDA_Gibbs::resample(Token const& t)
+void LDA_Gibbs::update(Token const& t)
 {
 	auto assign_topic = z_[t.self_id];
 
@@ -46,7 +90,7 @@ void LDA_Gibbs::resample(Token const& t)
 	--topic_ct_[assign_topic];
     
 	//新しくサンプリング
-	assign_topic = selectNextTopic(t);
+	assign_topic = sampleTopic(t);
 	z_[t.self_id] = assign_topic;
 
 	++word_ct_[t.word_id][assign_topic];
@@ -55,78 +99,30 @@ void LDA_Gibbs::resample(Token const& t)
   
 }
 
-
-void LDA_Gibbs::learn(uint iteration_num)
+void LDA_Gibbs::saveResumeData() const
 {
-/*	const auto Anime = [this, iteration_num]{
-		static CConsole _cnsl;
-		static ConsoleOStream _cos;
+	std::cout << "save resume data... ";
 
-		const std::string nowcomputing("-- Now LDA Computing --");
-		const std::string kao_ar1 [2]  = {"三(　ε:)","_(┐「ε:)_"};
-		const std::string kao_ar2 [2] = {"(:3　)三", "_(:3 」∠)_"};
-		int st = 0, ed = 1, kpos = 1;
-		bool sf = false, kf = true;
+	auto base_pass = input_data_->working_directory_;
+	
+	sig::save_num(alpha_, base_pass + resume_alpha_fname, " ");
 
-		for(uint i = 0; i < iteration_num; ++i, ++iter_ct_){
-			_cnsl.SetCursorPosition(36 - ed, 1);
-			_cos.PrintRenewLine(1u, nowcomputing.substr(st, ed), 9, 49, aid_overwrite);
+	auto ids = sig::map([](Token const& t){ return t.self_id; }, tokens_);
+	sig::save_num(ids, base_pass + resume_token_id_fname, " ");
 
-			if(ed < nowcomputing.size()) ++ed;
-			else sf = true;
+	auto zs = sig::map([&](uint id){ return z_[id]; }, ids);
+	sig::save_num(zs, base_pass + resume_token_z_fname, " ");
+	
+	sig::clear_file(base_pass + resume_info_fname);
+	sig::save_line(total_iter_ct_, base_pass + resume_info_fname, sig::WriteMode::append);
 
-			if(sf){
-				++st;
-				if(st == ed){
-					sf = false;
-					ed = st = 0;
-				}
-			}
+	std::cout << "completed" << std::endl;
+}
 
-			std::string numstr = "# of iteration: " + std::to_string(iter_ct_+1);
-			_cnsl.SetCursorPosition(15, 4);
-			_cos.PrintRenewLine(1u, numstr, 1, 49, aid_overwrite);
 
-			std::string kao;
-			if(kf){
-				if(iter_ct_%10 == 9){
-					kao = kao_ar1[1];
-					kf = false;
-				}
-				else if(iter_ct_%10 == 8){
-					kao = kao_ar1[1];
-					kpos += 4;
-				}
-				else{
-					kao = kao_ar1[0];
-					kpos += 4;
-				}
-			}
-			else{
-				if(iter_ct_%10 == 9){
-					kao = kao_ar2[1];
-					kf = true;
-				}
-				else if(iter_ct_%10 == 8){
-					kao = kao_ar2[1];
-					kpos -= 4;
-				}
-				else{
-					kao = kao_ar2[0];
-					kpos -= 4;
-				}
-			}
-			_cnsl.SetCursorPosition(kpos, 12);
-			_cos.PrintRenewLine(1u, kao, 1, 49, aid_overwrite);
-
-			_cnsl.SetCursorPosition(0, 0);
-			std::for_each(tokens_.begin(), tokens_.end(), std::bind(&LDA_Gibbs::_Resample, this, _1) );
-		}
-		_cnsl.SetCursorPosition(18, 1);
-		_cos.PrintRenewLine(1u, "-- Finish --", 9, 49, aid_overwrite);
-	};*/
-
-	auto chandle = GetStdHandle(STD_OUTPUT_HANDLE);
+void LDA_Gibbs::train(uint iteration_num, std::function<void(LDA const*)> callback)
+{
+/*	auto chandle = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_CURSOR_INFO info1;
 	info1.dwSize = 25;
 	info1.bVisible = FALSE;
@@ -135,42 +131,38 @@ void LDA_Gibbs::learn(uint iteration_num)
 	CONSOLE_SCREEN_BUFFER_INFO info2;
 	GetConsoleScreenBufferInfo(chandle, &info2);
 	const COORD disp_pos{ 1, info2.dwCursorPosition.Y };
-
-	const std::wstring perp_pass = L"perplexity.txt";
-	sig::clear_file(perp_pass);
-	const auto AnimeSimple = [&]{
-		for (uint i = 0; i < iteration_num; ++i, ++iter_ct_){
-			SetConsoleCursorPosition(chandle, disp_pos);
-			std::string numstr = "iteration: " + std::to_string(iter_ct_ + 1);
+*/
+	const auto iteration_impl = [&]{
+		for (uint i = 0; i < iteration_num; ++i, ++total_iter_ct_){
+			//SetConsoleCursorPosition(chandle, disp_pos);
+			std::string numstr = "iteration: " + std::to_string(total_iter_ct_ + 1);
 			std::cout << numstr << std::endl;
-			std::for_each(std::begin(tokens_), std::end(tokens_), std::bind(&LDA_Gibbs::resample, this, std::placeholders::_1));
-
-			double perp = getPerplexity();
-			auto split = sig::split(std::to_string(perp), ",");
-			sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+			std::for_each(std::begin(tokens_), std::end(tokens_), std::bind(&LDA_Gibbs::update, this, std::placeholders::_1));
+			callback(this);
 		}
 	};
 
-	AnimeSimple();
-	calcTermScore(getWordDistribution(), term_score_);
+	iteration_impl();
+	saveResumeData();
+	calcTermScore(getPhi(), term_score_);
 
-	SetConsoleCursorPosition(chandle, { 0, disp_pos.Y + 2 });
+	//SetConsoleCursorPosition(chandle, { 0, disp_pos.Y + 2 });
 	//if (chandle != INVALID_HANDLE_VALUE) CloseHandle(chandle);
 }
 
 void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detail) const
 {
-	save_folder = sig::impl::modify_dirpass_tail(save_folder, true);
+	save_folder = sig::modify_dirpass_tail(save_folder, true);
 
 	switch(target){
 	case Distribution::DOCUMENT :
-		printTopic(getTopicDistribution(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_gibbs"));
+		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_gibbs"));
 		break;
 	case Distribution::TOPIC :
-		printWord(getWordDistribution(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"), detail);
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"), detail);
 		break;
 	case Distribution::TERM_SCORE :
-		printWord(getTermScoreOfTopic(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"), detail);
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"), detail);
 		break;
 	default :
 		printf("\nforget: LDA_Gibbs::print\n");
@@ -178,22 +170,22 @@ void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detai
 	}
 }
 
-auto LDA_Gibbs::getTopicDistribution() const->MatrixDK<double>
+auto LDA_Gibbs::getTheta() const->MatrixDK<double>
 {
 	MatrixDK<double> theta;
 
-	for(DocumentId d=0; d < D_; ++d) theta.push_back(getTopicDistribution(d));
+	for(DocumentId d=0; d < D_; ++d) theta.push_back(getTheta(d));
   
 	return theta;
 }
 
-auto LDA_Gibbs::getTopicDistribution(DocumentId d_id) const->VectorK<double>
+auto LDA_Gibbs::getTheta(DocumentId d_id) const->VectorK<double>
 {
 	VectorK<double> theta(K_, 0);
 	double sum = 0.0;
 
 	for(TopicId k=0; k < K_; ++k){
-		theta[k] = alpha_ + doc_ct_[d_id][k];
+		theta[k] = alpha_[k] + doc_ct_[d_id][k];
 		sum += theta[k];
 	}
 	//正規化
@@ -203,22 +195,22 @@ auto LDA_Gibbs::getTopicDistribution(DocumentId d_id) const->VectorK<double>
 	return theta;
 }
 
-auto LDA_Gibbs::getWordDistribution() const->MatrixKV<double>
+auto LDA_Gibbs::getPhi() const->MatrixKV<double>
 {
 	MatrixKV<double> phi;
   
-	for(TopicId k=0; k < K_; ++k) phi.push_back(getWordDistribution(k));
+	for(TopicId k=0; k < K_; ++k) phi.push_back(getPhi(k));
 			
 	return std::move(phi);
 }
 
-auto LDA_Gibbs::getWordDistribution(TopicId k_id) const->VectorV<double>
+auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 {
 	VectorV<double> phi(V_, 0);
 	double sum = 0.0;
 
 	for(WordId w=0; w < V_; ++w){
-		phi[w] = beta_ + word_ct_[w][k_id];
+		phi[w] = beta_[k_id][w] + word_ct_[w][k_id];
 		sum += phi[w];
 	}
 	//正規化
@@ -226,25 +218,6 @@ auto LDA_Gibbs::getWordDistribution(TopicId k_id) const->VectorV<double>
 	for (WordId w = 0; w < V_; ++w) phi[w] *= corr;
 
 	return std::move(phi);
-}
-
-auto LDA_Gibbs::getTermScoreOfDocument(DocumentId d_id) const->std::vector<std::tuple<WordId, double>>
-{
-	const auto theta = getTopicDistribution(d_id);
-	const auto tscore = getTermScoreOfTopic();
-
-	VectorV<double> tmp(V_, 0.0);
-	TopicId t = 0;
-
-	for(auto d1 = theta.begin(),  d1end = theta.end(); d1 != d1end; ++d1, ++t){
-		WordId w = 0;
-		for(auto d2 = tscore[t].begin(), d2end = tscore[t].end(); d2 != d2end; ++d2, ++w){
-			tmp[w] += ((*d1) * (*d2));
-		}
-	}
-
-	auto sorted = sig::sort_with_index(tmp); //std::tuple<std::vector<double>, std::vector<uint>>
-	return sig::zipWith([](WordId w, double d){ return std::make_tuple(w, d); }, std::get<1>(sorted), std::get<0>(sorted)); //sig::zip(std::get<1>(sorted), std::get<0>(sorted));
 }
 
 auto LDA_Gibbs::getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > >
@@ -263,8 +236,8 @@ auto LDA_Gibbs::getWordOfTopic(Distribution target, uint return_word_num, TopicI
 	std::vector< std::tuple<std::wstring, double> > result;
 
 	std::vector<double> df;
-	if(target == Distribution::TOPIC) df = getWordDistribution(k_id);
-	else if(target == Distribution::TERM_SCORE) df = getTermScoreOfTopic(k_id);
+	if(target == Distribution::TOPIC) df = getPhi(k_id);
+	else if(target == Distribution::TERM_SCORE) df = getTermScore(k_id);
 	else{
 		std::cout << "LDA_Gibbs::getWordOfTopic : Distributionが無効" << std::endl;
 		return result;
@@ -297,15 +270,15 @@ auto LDA_Gibbs::getWordOfDocument(uint return_word_num, DocumentId d_id) const->
 double LDA_Gibbs::getLogLikelihood() const
 {
 	double log_likelihood = 0;
-	const auto theta = getTopicDistribution();
-	const auto beta = getWordDistribution();
+	const auto theta = getTheta();
+	const auto phi = getPhi();
 
 	for (auto const& token : tokens_){
 		const auto& theta_d = theta[token.doc_id];
 		uint w = token.word_id;
 		double tmp = 0;
 		for (uint k = 0; k < K_; ++k){
-			tmp += theta_d[k] * beta[k][w];
+			tmp += theta_d[k] * phi[k][w];
 		}
 		log_likelihood += std::log(tmp);
 	}

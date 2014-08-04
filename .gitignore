@@ -11,3 +11,13 @@
 *.lai
 *.la
 *.a
+*.exe
+*.pdb
+*.obj
+*.log
+*.tlog
+*.idb
+*.suo
+*.sdf
+*.filters
+*.filters

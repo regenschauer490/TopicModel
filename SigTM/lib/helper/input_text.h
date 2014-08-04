@@ -114,7 +114,7 @@ public:
 		
 		return InputDataPtr(new InputDataFromText(
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::impl::modify_dirpass_tail(src_folder_pass, true) + file))); 
+				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
 				}, sig::fromJust(doc_passes)
 			), filter, save_folder_pass, doc_names ? sig::fromJust(doc_names) : sig::fromJust(doc_passes))
 		);

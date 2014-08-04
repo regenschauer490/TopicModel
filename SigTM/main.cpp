@@ -2,7 +2,7 @@
 #include "SigUtil/lib/file.hpp"
 
 const int TopicNum = 20;
-const int IterationNum = 1000;
+const int IterationNum = 500;
 
 static const std::wregex url_reg(L"http(s)?://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?");
 static const std::wregex htag_reg(L"#(\\w)+");
@@ -11,7 +11,7 @@ static const std::wregex noise_reg(L"^[ＴWＷwｗω・･、。*＊:：;；ー�
 static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 
 
-sigtm::InputDataPtr MakeInputData(std::wstring src_folder, std::wstring out_folder, bool make_new)
+sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_folder, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
@@ -54,7 +54,7 @@ sigtm::InputDataPtr MakeInputData(std::wstring src_folder, std::wstring out_fold
 
 		vector<vector<wstring>> docs;
 		for (auto dp : sig::fromJust(doc_pass)){
-			auto tdoc = sig::read_line<wstring>(sig::impl::modify_dirpass_tail(src_folder, true) + dp);
+			auto tdoc = sig::read_line<wstring>(sig::modify_dirpass_tail(src_folder, true) + dp);
 			docs.push_back(
 				sig::fromJust(tdoc)
 			);
@@ -73,20 +73,32 @@ sigtm::InputDataPtr MakeInputData(std::wstring src_folder, std::wstring out_fold
 	return inputdata;
 }
 
-std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstring out_folder, bool make_new)
+std::vector<std::vector<double>> experiment(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
 
-	auto inputdata = MakeInputData(src_folder, out_folder, make_new);
+	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+
+	resume = resume && (!make_new);
+	
+	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_gibbs.txt";
+	if(!resume) sig::clear_file(perp_pass);
+	
+	auto savePerplexity = [&](sigtm::LDA const* lda)
+	{
+		double perp = lda->getPerplexity();
+		auto split = sig::split(std::to_string(perp), ",");
+		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+	};
+
+	auto lda = sigtm::LDA_Gibbs::makeInstance(resume, TopicNum, inputdata);
+	uint doc_num = lda->getDocumentNum();
 
 	cout << "model calculate" << endl;
 
-	auto lda = sigtm::LDA_Gibbs::makeInstance(TopicNum, inputdata);
-	uint doc_num = lda->getDocumentNum();
-
 	// 学習開始
-	lda->learn(IterationNum);
+	lda->train(IterationNum, savePerplexity);
 
 	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
 	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
@@ -109,12 +121,31 @@ std::vector<std::vector<double>> Experiment(std::wstring src_folder, std::wstrin
 
 #include "lib/LDA/mrlda.h"
 
-auto Experiment2(std::wstring src_folder, std::wstring out_folder, bool make_new) ->void
+auto experiment2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new) ->void
 {
-	auto inputdata = MakeInputData(src_folder, out_folder, make_new);
+	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+	
+	resume = resume && (!make_new);
 
-	auto mrlda = sigtm::MrLDA::makeInstance(TopicNum, inputdata);
-	mrlda->learn(10000);
+	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_mrlda.txt";
+	if(resume) sig::clear_file(perp_pass);
+
+	sig::TimeWatch tw;
+	auto savePerplexity = [&](sigtm::LDA const* lda)
+	{		
+		tw.save();
+		std::cout << "1 iteration time: " << tw.get_total_time() << std::endl;
+		tw.reset();
+
+		double perp = lda->getPerplexity();
+		auto split = sig::split(std::to_string(perp), ",");
+		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+
+		tw.restart();
+	};
+
+	auto mrlda = sigtm::MrLDA::makeInstance(resume, TopicNum, inputdata);
+	mrlda->train(100, savePerplexity);
 }
 
 int main()
@@ -131,7 +162,7 @@ int main()
 	std::wstring data_folder_pass = L"../SigTM/test data";
 	std::wstring input_text_pass = data_folder_pass + L"/processed";
 	
-	Experiment2(input_text_pass, data_folder_pass, false);
+	experiment(input_text_pass, data_folder_pass, true, false);
 
 	return 0;
 }

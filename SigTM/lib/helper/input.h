@@ -9,6 +9,7 @@ http://opensource.org/licenses/mit-license.php
 #define SIGTM_INPUT_H
 
 #include "data_format.hpp"
+#include "SigUtil/lib/file.hpp"
 
 namespace sigtm
 {
@@ -24,6 +25,7 @@ class InputData
 protected:
 	friend class LDA_Gibbs;
 	friend class MrLDA;
+	friend class LDA_CVB;
 	friend class MRInputIterator;
 
 	uint doc_num_;
@@ -36,13 +38,13 @@ protected:
 private:
 	InputData() = delete;
 	InputData(InputData const& src) = delete;
-	InputData(FilepassString folder_pass) : working_directory_(folder_pass){ reconstruct(); }
+	InputData(FilepassString folder_pass) : working_directory_(sig::modify_dirpass_tail(folder_pass, true)){ reconstruct(); }
 
 	bool parseLine(std::wstring const& line);
 	void reconstruct();
 	
 protected:
-	InputData(uint doc_num, FilepassString working_directory) : doc_num_(doc_num), working_directory_(working_directory){};
+	InputData(uint doc_num, FilepassString working_directory) : doc_num_(doc_num), working_directory_(sig::modify_dirpass_tail(working_directory, true)){};
 	void save();
 
 public:

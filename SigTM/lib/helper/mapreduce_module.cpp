@@ -26,8 +26,7 @@ bool MRInputIterator::get_data(DocumentId key, MapValue& value) const
 	value.vnum_ = tmp->getWordNum();
 	value.word_ct_ = &tmp->doc_word_ct_[key];
 	value.alpha_ = &tmp->alpha_;
-	//value.lambda_ = &tmp->lambda_;
-	value.beta_ = &tmp->beta_;
+	value.phi_ = &tmp->phi_;
 	value.gamma_ = &tmp->gamma_[key];
 		
 	return true;

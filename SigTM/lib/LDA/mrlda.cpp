@@ -13,42 +13,43 @@ http://opensource.org/licenses/mit-license.php
 #include "SigUtil/lib/iteration.hpp"
 #include "SigUtil/lib/distance/norm.hpp"
 #include "SigUtil/lib/error_convergence.hpp"
-#include "SigUtil/lib/ublas.hpp"
+#include "SigUtil/lib/blas.hpp"
+#include "SigUtil/lib/file.hpp"
 #include <boost/numeric/ublas/io.hpp>
 
 namespace sigtm
 {
+const uint MrLDA:: max_local_iteration_ = 100;
 const double MrLDA::global_convergence_threshold = 0.0001;
-
-const double MrLDA::local_convergence_threshold = 0.001;
-const uint MrLDA::max_local_iteration = 1;
-
 const double alpha_convergence_threshold = 0.001;
 const uint max_alpha_update_iteration = 100;
 
-void MrLDA::MapTask::process(value_type const& value, VectorK<double>& gamma, MatrixVK<double>& phi) const
+const auto resume_alpha_fname = SIG_STR_TO_FPSTR("mrlda_alpha");
+const auto resume_gamma_fname = SIG_STR_TO_FPSTR("mrlda_gamma");
+const auto resume_phi_fname = SIG_STR_TO_FPSTR("mrlda_phi");
+
+void MrLDA::MapTask::process(value_type const& value, VectorK<double>& gamma, MatrixVK<double>& omega) const
 {
 	uint const vnum = value.vnum_;
 	uint const knum = value.knum_;
 	VectorK<double> const& alpha = *value.alpha_;
-	//MatrixKV<double> const& lambda = *value.lambda_;
-	MatrixKV<double> const& beta = *value.beta_;
+	MatrixKV<double> const& phi = *value.phi_;
 	VectorV<uint> const& word_ct = *value.word_ct_;
 	//VectorK<double> prev_gamma(value.knum_, 0);
 	VectorK<double> sigma(value.knum_, 0);
 	
 	//while (!is_convergence(gamma, prev_gamma)){
-	for (uint i = 0; i<max_local_iteration; ++i){
+	for (uint i = 0; i < max_local_iteration_; ++i){
 		const auto exp_digamma = sig::map([](double g){ return std::exp(digamma(g)); }, gamma);
 
 		for (uint v = 0; v<vnum; ++v){
 			for (uint k = 0; k<knum; ++k){
-				// update phi
-				phi[v][k] = beta[k][v] * exp_digamma[k];
+				// update omega
+				omega[v][k] = phi[k][v] * exp_digamma[k];
 			}
-			sig::normalize_dist(phi[v]);
+			sig::normalize_dist(omega[v]);
 			const uint wn = word_ct[v];
-			sig::compound_assignment([wn](double& s, double p){ s += wn * p; }, sigma, phi[v]);
+			sig::compound_assignment([wn](double& s, double p){ s += wn * p; }, sigma, omega[v]);
 		}
 		//prev_gamma = std::move(gamma);
 		gamma = sig::plus(alpha, sigma);
@@ -56,7 +57,7 @@ void MrLDA::MapTask::process(value_type const& value, VectorK<double>& gamma, Ma
 }
 
 
-void MrLDA::init()
+void MrLDA::init(bool resume)
 {
 	doc_word_ct_ = MatrixDV<uint>(D_, VectorV<uint>(V_));
 	for (auto const& t : input_data_->tokens_){
@@ -64,21 +65,26 @@ void MrLDA::init()
 	}
 
 	term_score_ = MatrixKV<double>(K_, VectorV<double>(V_, 0));
-	auto tmp_alpha = std::move(alpha_);
 
-	auto base_pass = sig::impl::modify_dirpass_tail(input_data_->working_directory_, true);
+	auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
 
-	auto load_alpha = sig::read_num<VectorK<double>>(base_pass + SIG_STR_TO_FPSTR("alpha"), " ");
-	if (sig::is_container_valid(load_alpha)){
-		alpha_ = std::move(sig::fromJust(load_alpha));
+	if (resume){
+		auto tmp_alpha = std::move(alpha_);
+		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname, " ");
+		if (sig::is_container_valid(load_alpha)){
+			alpha_ = std::move(sig::fromJust(load_alpha));
+			std::cout << "resume alpha" << std::endl;
+		}
+		else{
+			alpha_ = std::move(tmp_alpha);
+			std::cout << "resume alpha error : alpha is set as default" << std::endl;
+		}
 	}
-	else{
-		alpha_ = std::move(tmp_alpha);
-	}
 
-	auto load_gamma = sig::read_num<MatrixDK<double>>(base_pass + SIG_STR_TO_FPSTR("gamma"), " ");
+	auto load_gamma = resume ? sig::read_num<MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : nothing;
 	if (sig::is_container_valid(load_gamma)){
 		gamma_ = std::move(sig::fromJust(load_gamma));
+		std::cout << "resume gamma" << std::endl;
 	}
 	else{
 		gamma_ = MatrixDK<double>(D_, VectorK<double>(K_));
@@ -88,29 +94,36 @@ void MrLDA::init()
 			}
 			bool f = sig::normalize_dist(gamma_[d]);
 		}
+		if (resume) std::cout << "resume gamma error : gamma is set by random" << std::endl;
 	}
 
-	auto load_beta = sig::read_num<MatrixKV<double>>(base_pass + SIG_STR_TO_FPSTR("beta"), " ");
+	auto load_beta = resume ? sig::read_num<MatrixKV<double>>(base_pass + resume_phi_fname, " ") : nothing;
 	if (sig::is_container_valid(load_beta)){
-		beta_ = std::move(sig::fromJust(load_beta));
+		phi_ = std::move(sig::fromJust(load_beta));
+		std::cout << "resume phi" << std::endl;
 	}
 	else{
-		beta_ = MatrixKV<double>(K_, VectorV<double>(V_));
+		phi_ = MatrixKV<double>(K_, VectorV<double>(V_));
 		for (TopicId k = 0; k<K_; ++k){
 			for (WordId v = 0; v<V_; ++v){
-				beta_[k][v] = eta_[k][v] + rand_d_();
+				phi_[k][v] = beta_[k][v] + rand_d_();
 			}
-			bool f = sig::normalize_dist(beta_[k]);
+			bool f = sig::normalize_dist(phi_[k]);
 		}
+		if (resume) std::cout << "resume phi error : phi is set by random" << std::endl;
 	}
 }
 
 void MrLDA::saveResumeData() const
 {
-	auto base_pass = sig::impl::modify_dirpass_tail(input_data_->working_directory_, true);
-	sig::save_num(alpha_, base_pass + SIG_STR_TO_FPSTR("alpha"), " ");
-	sig::save_num(gamma_, base_pass + SIG_STR_TO_FPSTR("gamma"), " ");
-	sig::save_num(beta_, base_pass + SIG_STR_TO_FPSTR("beta"), " ");
+	std::cout << "save resume data... ";
+
+	auto base_pass = input_data_->working_directory_;
+	sig::save_num(alpha_, base_pass + resume_alpha_fname, " ");
+	sig::save_num(gamma_, base_pass + resume_gamma_fname, " ");
+	sig::save_num(phi_, base_pass + resume_phi_fname, " ");
+
+	std::cout << "completed" << std::endl;
 }
 
 double MrLDA::calcLiklihood(double term2, double term4) const
@@ -253,17 +266,18 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 
 double MrLDA::iteration()
 {
-	auto update_beta = [&](TopicId k, WordId v, double delta){
-		beta_[k][v] = eta_[k][v] + delta;
+	auto updatePhi = [&](TopicId k, WordId v, double delta){
+		phi_[k][v] = beta_[k][v] + delta;
 	};
 	
 	double term2;
 	VectorK<double> alpha_sufficient_statistics(K_, 0);
+	
+	mapreduce_->run<mapreduce::schedule_policy::cpu_parallel<mr_job>>(performance_result_);
 
 	for (auto it = mapreduce_->begin_results(), end = mapreduce_->end_results(); it != end; ++it){
 		if (std::get<0>(it->first) == ReduceKeyType::Lambda){
-			//update_lambda(std::get<1>(it->first), std::get<2>(it->first), it->second);
-			update_beta(std::get<1>(it->first), std::get<2>(it->first), it->second);
+			updatePhi(std::get<1>(it->first), std::get<2>(it->first), it->second);
 		}
 		else if (std::get<0>(it->first) == ReduceKeyType::Alpha){
 			alpha_sufficient_statistics[std::get<2>(it->first)] = it->second;
@@ -274,37 +288,28 @@ double MrLDA::iteration()
 	}
 	//updateAlpha(alpha_, alpha_sufficient_statistics, D_);
 
-	for(auto& b : beta_) sig::normalize_dist(b);
+	for(auto& b : phi_) sig::normalize_dist(b);
 
 	saveResumeData();
 
 	return 0;//calcLiklihood(term2, sig::sum(lambda_, [&](VectorV<double> const& row){ return calcModule0(row); }));
 }
 
-void MrLDA::learn(uint iteration_num)
+void MrLDA::train(uint iteration_num, std::function<void(LDA const*)> callback)
 {
 	sig::ManageConvergenceSimple convergence(global_convergence_threshold);
-	//mapreduce_->run<mapreduce::schedule_policy::sequential<mr_job>>(performance_result_);
-	
+
 	/*while (convergence.update(iteration())){
 		std::cout << convergence.get_value() << std::endl;
 	}*/
 
-	const std::wstring perp_pass = L"perplexity.txt";
-	//sig::clear_file(perp_pass);
-	for (uint i = 0; i < iteration_num; ++i){
-		sig::TimeWatch tw;
-		mapreduce_->run<mapreduce::schedule_policy::cpu_parallel<mr_job>>(performance_result_);
-		tw.save();
-		std::cout << tw.get_total_time() << std::endl;
+	for (uint i = 0; i < iteration_num; ++i, ++total_iter_ct_){
 		iteration();
-		calcTermScore(getWordDistribution(), term_score_);
+		calcTermScore(getPhi(), term_score_);
 		save(Distribution::TOPIC, L"./test data");
 		save(Distribution::TERM_SCORE, L"./test data");
 		save(Distribution::DOCUMENT, L"./test data");
-		double perp = getPerplexity();
-		auto split = sig::split(std::to_string(perp), ",");
-		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+		callback(this);
 		initMR();
 	}
 }
@@ -312,17 +317,17 @@ void MrLDA::learn(uint iteration_num)
 
 void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) const
 {
-	save_folder = sig::impl::modify_dirpass_tail(save_folder, true);
+	save_folder = sig::modify_dirpass_tail(save_folder, true);
 
 	switch (target){
 	case Distribution::DOCUMENT:
-		printTopic(getTopicDistribution(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_mrlda"));
+		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_mrlda"));
 		break;
 	case Distribution::TOPIC:
-		printWord(getWordDistribution(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_mrlda"), detail);
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_mrlda"), detail);
 		break;
 	case Distribution::TERM_SCORE:
-		printWord(getTermScoreOfTopic(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_mrlda"), detail);
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_mrlda"), detail);
 		break;
 	default:
 		printf("\nforget: LDA_Gibbs::print\n");
@@ -330,68 +335,49 @@ void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) c
 	}
 }
 
-auto MrLDA::getTopicDistribution() const->MatrixDK<double>
+auto MrLDA::getTheta() const->MatrixDK<double>
 {
 	MatrixDK<double> theta;
 
 	for (DocumentId d = 0; d < D_; ++d){
-		theta.push_back(getTopicDistribution(d));
+		theta.push_back(getTheta(d));
 	}
 	return theta;
 }
 
-auto MrLDA::getTopicDistribution(DocumentId d_id) const->VectorK<double>
+auto MrLDA::getTheta(DocumentId d_id) const->VectorK<double>
 {
 	double sum = sig::sum(gamma_[d_id]);
 	// computed from the variational distribution
 	return sig::map([sum](double g){ return g / sum; }, gamma_[d_id]);
 }
 
-auto MrLDA::getWordDistribution() const->MatrixKV<double>
+auto MrLDA::getPhi() const->MatrixKV<double>
 {
-	MatrixKV<double> beta;
+	MatrixKV<double> phi;
 
 	for (TopicId k = 0; k < K_; ++k){
-		beta.push_back(getWordDistribution(k));
+		phi.push_back(getPhi(k));
 	}
-	return beta;
+	return phi;
 }
 
-auto MrLDA::getWordDistribution(TopicId k_id) const->VectorV<double>
+auto MrLDA::getPhi(TopicId k_id) const->VectorV<double>
 {
 	/*double sum = sig::sum(lambda_[k_id]);
 	// computed from the variational distribution
 	return sig::map([sum](double l){ return l / sum; }, lambda_[k_id]);*/
-	return beta_[k_id];
+	return phi_[k_id];
 }
 
-auto MrLDA::getTermScoreOfTopic() const->MatrixKV<double>
+auto MrLDA::getTermScore() const->MatrixKV<double>
 {
 	return term_score_;
 }
 
-auto MrLDA::getTermScoreOfTopic(TopicId t_id) const->VectorV<double>
+auto MrLDA::getTermScore(TopicId t_id) const->VectorV<double>
 {
 	return term_score_[t_id];
-}
-
-auto MrLDA::getTermScoreOfDocument(DocumentId d_id) const->std::vector< std::tuple<WordId, double> >
-{
-	const auto theta = getTopicDistribution(d_id);
-	const auto tscore = getTermScoreOfTopic();
-
-	VectorV<double> tmp(V_, 0.0);
-	TopicId t = 0;
-
-	for (auto d1 = theta.begin(), d1end = theta.end(); d1 != d1end; ++d1, ++t){
-		WordId w = 0;
-		for (auto d2 = tscore[t].begin(), d2end = tscore[t].end(); d2 != d2end; ++d2, ++w){
-			tmp[w] += ((*d1) * (*d2));
-		}
-	}
-
-	auto sorted = sig::sort_with_index(tmp); //std::tuple<std::vector<double>, std::vector<uint>>
-	return sig::zipWith([](WordId w, double d){ return std::make_tuple(w, d); }, std::get<1>(sorted), std::get<0>(sorted)); //sig::zip(std::get<1>(sorted), std::get<0>(sorted));
 }
 
 auto MrLDA::getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > >
@@ -409,8 +395,8 @@ auto MrLDA::getWordOfTopic(Distribution target, uint return_word_num, TopicId k_
 	std::vector< std::tuple<std::wstring, double> > result;
 	std::vector<double> df;
 
-	if (target == Distribution::TOPIC) df = getWordDistribution(k_id);
-	else if (target == Distribution::TERM_SCORE) df = getTermScoreOfTopic(k_id);
+	if (target == Distribution::TOPIC) df = getPhi(k_id);
+	else if (target == Distribution::TERM_SCORE) df = getTermScore(k_id);
 	else{
 		std::cout << "MrLDA::getWordOfTopic : Distributionが無効" << std::endl;
 		return result;
@@ -442,15 +428,15 @@ auto MrLDA::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std:
 double MrLDA::getLogLikelihood() const
 {
 	double log_likelihood = 0;
-	const auto theta = getTopicDistribution();
-	const auto beta = getWordDistribution();
+	const auto theta = getTheta();
+	const auto phi = getPhi();
 
 	for (auto const& token : input_data_->tokens_){
 		const auto& theta_d = theta[token.doc_id];
 		uint w = token.word_id;
 		double tmp = 0;
 		for (uint k = 0; k < K_; ++k){
-			tmp += theta_d[k] * beta[k][w];
+			tmp += theta_d[k] * phi[k][w];
 		}
 		log_likelihood += std::log(tmp);
 	}

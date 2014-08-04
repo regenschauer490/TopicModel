@@ -25,24 +25,8 @@ class mrlda::MapValue;
 
 template<class T> using MatrixDV = VectorD<VectorV<T>>;		// document - word
 
-
 using  boost::math::digamma;
 using  boost::math::trigamma;
-
-inline double calcModule1(VectorK<double> const& gamma, uint k)
-{
-	return digamma(gamma[k]) - digamma(sig::sum(gamma));	//todo:第2項を呼び出し元でキャッシュ化する
-}
-
-/*inline double calcModule2(MatrixKV<double> const& lambda, uint k)
-{
-	const double sum = sig::sum_row(lambda, k);
-	return std::accumulate(std::begin(lambda[k]), std::end(lambda[k]), 0.0, [sum](double s, double l){ return s + std::log(l / sum); });
-}*/
-inline double calcModule2(MatrixKV<double> const& beta, uint k)
-{
-	return std::accumulate(std::begin(beta[k]), std::end(beta[k]), 0.0, [](double s, double b){ return s + std::log(b); });
-}
 
 template <class C>
 double calcModule0(C const& vec)
@@ -58,8 +42,8 @@ double calcModule0(C const& vec)
 class MrLDA : public LDA, public std::enable_shared_from_this<MrLDA>
 {
 	static const double global_convergence_threshold;
-	static const double local_convergence_threshold;
-	static const uint max_local_iteration;
+	//static const double local_convergence_threshold;
+	static const uint max_local_iteration_;
 
 	friend class sigtm::mrlda::datasource::MRInputIterator;
 
@@ -79,29 +63,30 @@ public:
 private:
 	class MapTask : public mapreduce::map_task<map_key_type, map_value_type>
 	{
-		void process(value_type const& value, VectorK<double>& gamma, MatrixVK<double>& phi) const;
+		void process(value_type const& value, VectorK<double>& gamma, MatrixVK<double>& omega) const;
 			
 	public:
 		template<typename Runtime>
 		void operator()(Runtime& runobj, key_type const& key, value_type& value) const
 		{
 			VectorK<double>& gamma = *value.gamma_;
-			MatrixVK<double> phi(value.vnum_, std::vector<double>(value.knum_, 0));
+			MatrixVK<double> omega(value.vnum_, std::vector<double>(value.knum_, 0));
 			double lhm1 = 0, lhm2 = 0;
 
-			process(value, gamma, phi);
+			process(value, gamma, omega);
 
+			const double dig_sum_gamma = digamma(sig::sum(gamma));
 			for (uint k = 0; k < value.knum_; ++k){
-				const double ddg = calcModule1(gamma, k);
-				const double sum_log_beta = calcModule2(*value.beta_, k);
+				const double ddg = digamma(gamma[k]) - dig_sum_gamma;
+				const double sum_log_beta = sig::foldl([](double s, double b){ return s + std::log(b); }, 0, (*value.phi_)[k]);
 
 				for (uint v = 0; v < value.vnum_; ++v){
 					if ((*value.word_ct_)[v] != 0){
-						const double wp = (*value.word_ct_)[v] * phi[v][k];
+						const double wp = (*value.word_ct_)[v] * omega[v][k];
 						runobj.emit_intermediate(std::make_tuple(ReduceKeyType::Lambda, k, v), wp);
 						lhm1 += (wp * ddg);
-						lhm2 += (wp * (sum_log_beta - std::log(phi[v][k])));
-						//std::cout << phi[v][k] << ", " << sum_log_beta << ", " << std::log(phi[v][k]) << std::endl;
+						lhm2 += (wp * (sum_log_beta - std::log(omega[v][k])));
+						//std::cout << omega[v][k] << ", " << sum_log_beta << ", " << std::log(omega[v][k]) << std::endl;
 					}
 				}
 				runobj.emit_intermediate(std::make_tuple(ReduceKeyType::Alpha, zero, k), ddg);
@@ -122,12 +107,6 @@ private:
 		}
 	};
 	
-	class DriverTask
-	{
-	public:
-
-	};
-
 	using mr_job = mapreduce::job<
 		sigtm::MrLDA::MapTask,
 		sigtm::MrLDA::ReduceTask,
@@ -137,40 +116,45 @@ private:
 
 private:
 	InputDataPtr input_data_;
-
+	MatrixDV<uint> doc_word_ct_;	// word frequency in each document
+	
 	const uint D_;		// number of documents
 	const uint K_;		// number of topics
 	const uint V_;		// number of words
 		
-	VectorK<double> alpha_;			// dirichlet hyper parameter of gamma
-	MatrixKV<double> eta_;			// dirichlet hyper parameter of lambda
+	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
+	MatrixKV<double> beta_;			// dirichlet hyper parameter of phi
+	MatrixKV<double> phi_;			// parameter of word distribution
+	
 	MatrixDK<double> gamma_;		// variational parameter of theta(document-topic)
-	//MatrixKV<double> lambda_;		// variational parameter of beta(topic-word)
-	MatrixKV<double> beta_;
-	MatrixDV<uint> doc_word_ct_;	// word frequency in each document
+	//MatrixKV<double> lambda_;		// variational parameter of phi(topic-word)
 	
 	std::unique_ptr<mr_job> mapreduce_;
 	mrlda::Specification mr_spec_;
 	mr_performance_result performance_result_;
 	
-	sig::SimpleRandom<double> rand_d_;
-
-	MatrixKV<double> term_score_;
+	MatrixKV<double> term_score_;	// word score of emphasizing each topic
+	uint total_iter_ct_;
 	const double term3_;		// use for calculate liklihood
+
+	sig::SimpleRandom<double> rand_d_;
 
 private:
 	MrLDA() = delete;
 	MrLDA(MrLDA const&) = delete;
 	MrLDA(MrLDA&&) = delete;
-	MrLDA(uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> eta, mrlda::Specification spec) :
+	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<double> alpha, maybe<double> beta, mrlda::Specification spec) : 
+		MrLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha ? sig::fromJust(alpha) : 0), MatrixKV<double>(topic_num, VectorV<double>(input_data->words_.size(), beta ? sig::fromJust(beta) : 0)), spec)
+	{}
+	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> beta, mrlda::Specification spec) :
 		input_data_(input_data), D_(input_data->doc_num_), K_(topic_num), V_(input_data->words_.size()),
-		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, 50.0 / K_)), eta_(eta ? sig::fromJust(eta) : MatrixKV<double>(K_, VectorV<double>(V_, 0.1))),
-		mapreduce_(nullptr), mr_spec_(spec), rand_d_(0.0, 1.0, FixedRandom), term3_(sig::sum(eta_, [&](VectorV<double> const& v){ return calcModule0(v); }))
+		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : MatrixKV<double>(K_, VectorV<double>(V_, default_beta))),
+		mapreduce_(nullptr), mr_spec_(spec), total_iter_ct_(0), term3_(sig::sum(beta_, [&](VectorV<double> const& v){ return calcModule0(v); })), rand_d_(0.0, 1.0, FixedRandom)
 	{
-		init(); 
+		init(resume); 
 	}
 
-	void init();
+	void init(bool resume);
 
 	void initMR(){
 		mrlda::datasource::MRInputIterator::reset();
@@ -193,23 +177,33 @@ public:
 	DynamicType getDynamicType() const override{ return DynamicType::MRLDA; }
 
 	// InputDataで作成した入力データでコンストラクト
-	static LDAPtr makeInstance(uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha = nothing, maybe<MatrixKV<double>> eta = nothing){
-		auto obj = std::shared_ptr<MrLDA>(new MrLDA(topic_num, input_data, alpha, eta, mrlda::Specification(ThreadNum, ThreadNum)));
+	// alpha, beta をsymmetricに設定する場合
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(ThreadNum, ThreadNum)));
+		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
+		return obj;
+	}
+	// alpha, beta を多次元で設定する場合
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha = nothing, maybe<MatrixKV<double>> beta = nothing){
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(ThreadNum, ThreadNum)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
 	}
 
 	// 内部状態を更新する(学習)
-	// 各ノードでの変分パラメータ更新の反復回数を指定
-	void learn(uint iteration_num) override;
+	// iteration_num: 学習の反復回数(mapreduce処理とその結果の統合で1反復とする)
+	void train(uint iteration_num) override{ train(iteration_num, null_lda_callback); }
 
-/*	// 確率分布同士の類似度を測る(メソッドチェーンな感じに使用)
-	// Select: LDA::Distributionから選択, id1,id2：類似度を測る対象のindex
+	// call_back: 毎回の反復終了時に行う処理
+	void train(uint iteration_num, std::function<void(LDA const*)> callback) override;
+	
+
+	// 確率分布同士の類似度を測る(メソッドチェーンな感じに使用)
+	// Select: LDA::Distributionから選択
+	// id1,id2: 類似度を測る対象のindex
 	// return -> 比較関数の選択(関数オブジェクト)
 	template <Distribution Select>
-	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type
-	{}
-*/
+	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type{ return compareDefault<Select>(id1, id2, D_, K_); }
 
 	// コンソールに出力
 	void print(Distribution target) const override{ save(target, L""); }
@@ -218,19 +212,16 @@ public:
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const override;
 
 	//ドキュメントのトピック分布 [doc][topic]
-	auto getTopicDistribution() const->MatrixDK<double> override;
-	auto getTopicDistribution(DocumentId d_id) const->VectorK<double> override;
+	auto getTheta() const->MatrixDK<double> override;
+	auto getTheta(DocumentId d_id) const->VectorK<double> override;
 
 	//トピックの単語分布 [topic][word]
-	auto getWordDistribution() const->MatrixKV<double> override;
-	auto getWordDistribution(TopicId k_id) const->VectorV<double> override;
+	auto getPhi() const->MatrixKV<double> override;
+	auto getPhi(TopicId k_id) const->VectorV<double> override;
 	
-	//トピックを強調する語スコア [topic][word]
-	auto getTermScoreOfTopic() const->MatrixKV<double> override;
-	auto getTermScoreOfTopic(TopicId t_id) const->VectorV<double> override;
-
-	//ドキュメントのThetaとTermScoreの積 [ranking]<word_id,score>
-	auto getTermScoreOfDocument(DocumentId d_id) const->std::vector< std::tuple<WordId, double> > override;
+	//トピックを強調する単語スコア [topic][word]
+	auto getTermScore() const->MatrixKV<double> override;
+	auto getTermScore(TopicId t_id) const->VectorV<double> override;
 
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
 	// [topic][ranking]<vocab, score>
@@ -249,13 +240,13 @@ public:
 	uint getWordNum() const override{ return V_; }
 	
 	// get hyper-parameter of topic distribution
-	auto getHyperParameterAlpha() const->VectorK<double> override{ return alpha_; }
+	auto getAlpha() const->VectorK<double> override{ return alpha_; }
 
 	// get hyper-parameter of word distribution
-	auto getHyperParameterBeta() const->VectorV<double> override{
-		VectorV<double> result;
-		for(uint v=0; v<V_; ++v) result.push_back(sig::sum_col(eta_, v) / K_);	//average over documents
-		return result; 
+	auto getBeta() const->MatrixKV<double> override{
+		//VectorV<double> result;
+		//for(uint v=0; v<V_; ++v) result.push_back(sig::sum_col(beta_, v) / K_);	//average over documents
+		return beta_; 
 	}
 
 	auto getGamma(DocumentId d_id) const->VectorK<double>{ return gamma_[d_id]; }

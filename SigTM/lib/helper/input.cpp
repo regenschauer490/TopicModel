@@ -54,7 +54,7 @@ void InputData::reconstruct()
 		return sig::fromJust(std::move(m_text));
 	};
 
-	auto base_pass = sig::impl::modify_dirpass_tail(working_directory_, true);
+	auto base_pass = sig::modify_dirpass_tail(working_directory_, true);
 
 	auto token_text = fileopen(base_pass + TOKEN_FILENAME);
 
@@ -139,7 +139,7 @@ void InputData::reconstruct()
 
 void InputData::save()
 {
-	auto base_pass = sig::impl::modify_dirpass_tail(working_directory_, true);
+	auto base_pass = sig::modify_dirpass_tail(working_directory_, true);
 
 	auto vocab_pass = base_pass + VOCAB_FILENAME;
 	auto token_pass = base_pass + TOKEN_FILENAME;

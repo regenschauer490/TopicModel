@@ -1,6 +1,8 @@
 #ifndef SIG_PROCESS_WORD_H
 #define SIG_PROCESS_WORD_H
 
+#if USE_SIGNLP
+
 #include <unordered_map>
 #include "mecab_wrapper.h"
 #include "signlp.hpp"
@@ -56,4 +58,5 @@ public:
 };
 
 }
+#endif
 #endif
