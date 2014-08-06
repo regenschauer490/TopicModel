@@ -165,18 +165,9 @@ void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detai
 		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"), detail);
 		break;
 	default :
-		printf("\nforget: LDA_Gibbs::print\n");
+		std::cout << "LDA_Gibbs::save error" << std::endl;
 		getchar();
 	}
-}
-
-auto LDA_Gibbs::getTheta() const->MatrixDK<double>
-{
-	MatrixDK<double> theta;
-
-	for(DocumentId d=0; d < D_; ++d) theta.push_back(getTheta(d));
-  
-	return theta;
 }
 
 auto LDA_Gibbs::getTheta(DocumentId d_id) const->VectorK<double>
@@ -195,15 +186,6 @@ auto LDA_Gibbs::getTheta(DocumentId d_id) const->VectorK<double>
 	return theta;
 }
 
-auto LDA_Gibbs::getPhi() const->MatrixKV<double>
-{
-	MatrixKV<double> phi;
-  
-	for(TopicId k=0; k < K_; ++k) phi.push_back(getPhi(k));
-			
-	return std::move(phi);
-}
-
 auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 {
 	VectorV<double> phi(V_, 0);
@@ -220,24 +202,13 @@ auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 	return std::move(phi);
 }
 
-auto LDA_Gibbs::getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > >
-{
-	VectorK< std::vector< std::tuple<std::wstring, double> > > result;
-
-	for(TopicId k=0; k < K_; ++k){
-		result.push_back( getWordOfTopic(target, return_word_num, k) );
-	}
-
-	return std::move(result);
-}
-
 auto LDA_Gibbs::getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;
 
 	std::vector<double> df;
-	if(target == Distribution::TOPIC) df = getPhi(k_id);
-	else if(target == Distribution::TERM_SCORE) df = getTermScore(k_id);
+	if (target == Distribution::TOPIC) df = getPhi(k_id);
+	else if (target == Distribution::TERM_SCORE) df = getTermScore(k_id);
 	else{
 		std::cout << "LDA_Gibbs::getWordOfTopic : Distribution‚ª–³Œø" << std::endl;
 		return result;
@@ -246,17 +217,6 @@ auto LDA_Gibbs::getWordOfTopic(Distribution target, uint return_word_num, TopicI
 	return getTopWords(df, return_word_num, input_data_->words_);
 }
 
-auto LDA_Gibbs::getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double> > >
-{
-	std::vector< std::vector< std::tuple<std::wstring, double> > > result;
-
-	for(DocumentId d=0; d<D_; ++d){
-		result.push_back( getWordOfDocument(return_word_num, d) );
-	}
-
-	return std::move(result);
-}
-	
 auto LDA_Gibbs::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;

@@ -26,7 +26,7 @@ void makeRandomDistribution(uint elem_num) ->C
 	return result;
 }
 
-void LDA_CVB::init(bool resume)
+void LDA_CVB0::init(bool resume)
 {
 	int i = -1;
 	lambda_ = SIG_INIT_MATRIX(double, V, K);
@@ -41,7 +41,7 @@ void LDA_CVB::init(bool resume)
 	}
 }
 
-void LDA_CVB::update(Token const& t)
+void LDA_CVB0::update(Token const& t)
 {
 	//トピック比率の更新
 	const auto updateTopic = [&](Token const& t)
@@ -64,13 +64,51 @@ void LDA_CVB::update(Token const& t)
 }
 
 
-auto LDA_CVB::getTheta(DocumentId d_id) const->VectorK<double>
+void LDA_CVB0::save(Distribution target, FilepassString save_folder, bool detail) const
+{
+	save_folder = sig::modify_dirpass_tail(save_folder, true);
+
+	switch (target){
+	case Distribution::DOCUMENT:
+		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_cvb0"));
+		break;
+	case Distribution::TOPIC:
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_cvb0"), detail);
+		break;
+	case Distribution::TERM_SCORE:
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_cvb0"), detail);
+		break;
+	default:
+		std::cout << "LDA_CVB0::save error" << std::endl;
+		getchar();
+	}
+}
+
+auto LDA_CVB0::getTheta() const->MatrixDK<double>
+{
+	MatrixDK<double> theta;
+
+	for (DocumentId d = 0; d < D_; ++d) theta.push_back(getTheta(d));
+
+	return theta;
+}
+
+auto LDA_CVB0::getTheta(DocumentId d_id) const->VectorK<double>
 {
 	double sum = sig::sum(gamma_[d_id]);
 	return sig::map([sum](double v){ return v / sum; }, gamma_[d_id]);
 }
 
-auto LDA_CVB::getPhi(TopicId k_id) const->VectorV<double>
+auto LDA_CVB0::getPhi() const->MatrixKV<double>
+{
+	MatrixKV<double> phi;
+
+	for (TopicId k = 0; k < K_; ++k) phi.push_back(getPhi(k));
+
+	return std::move(phi);
+}
+
+auto LDA_CVB0::getPhi(TopicId k_id) const->VectorV<double>
 {
 	double sum = sig::sum_col(lambda_, k_id);
 	// computed from the variational distribution

@@ -25,7 +25,7 @@ class InputData
 protected:
 	friend class LDA_Gibbs;
 	friend class MrLDA;
-	friend class LDA_CVB;
+	friend class LDA_CVB0;
 	friend class MRInputIterator;
 
 	uint doc_num_;

@@ -50,7 +50,7 @@ const double default_beta = 0.1;
 class LDA
 {
 public:
-	enum class DynamicType{ GIBBS, MRLDA };		// 実装次第追加
+	enum class DynamicType{ GIBBS, MRLDA, CVB0 };		// 実装次第追加
 	virtual DynamicType getDynamicType() const = 0;
 
 public:
@@ -116,11 +116,11 @@ public:
 	virtual void save(Distribution target, FilepassString save_folder, bool detail = false) const = 0;
 
 	//ドキュメントのトピック分布 [doc][topic]
-	virtual auto getTheta() const->MatrixDK<double> = 0;
+	virtual auto getTheta() const->MatrixDK<double>;
 	virtual auto getTheta(DocumentId d_id) const->VectorK<double> = 0;
 
 	//トピックの単語分布 [topic][word]
-	virtual auto getPhi() const->MatrixKV<double> = 0;
+	virtual auto getPhi() const->MatrixKV<double>;
 	virtual auto getPhi(TopicId k_id) const->VectorV<double> = 0;
 
 	//トピックを強調する単語スコア [topic][word]
@@ -129,15 +129,15 @@ public:
 	
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
 	// [topic][ranking]<vocab, score>
-	virtual auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > > = 0;
+	virtual auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double>>>;
 	// [ranking]<vocab, score>
-	virtual auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> > = 0;
+	virtual auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>> = 0;
 
 	// 指定ドキュメントの上位return_word_num個の、語彙とスコアを返す
 	// [doc][ranking]<vocab, score>
-	virtual auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double> > > = 0;
+	virtual auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double>>>;
 	//[ranking]<vocab, score>
-	virtual auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> > = 0;
+	virtual auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>> = 0;
 
 	virtual uint getDocumentNum() const = 0;
 	virtual uint getTopicNum() const = 0;
@@ -295,10 +295,52 @@ void LDA::printTopic(CC const& data, std::vector<FilepassString> const& names, m
 }
 
 
+inline auto LDA::getTheta() const->MatrixDK<double>
+{
+	MatrixDK<double> theta;
+
+	for (DocumentId d = 0, D = getDocumentNum(); d < D; ++d) theta.push_back(getTheta(d));
+
+	return theta;
+}
+
+inline auto LDA::getPhi() const->MatrixKV<double>
+{
+	MatrixKV<double> phi;
+
+	for (TopicId k = 0, K = getTopicNum(); k < K; ++k) phi.push_back(getPhi(k));
+
+	return std::move(phi);
+}
+
+inline auto LDA::getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double>>>
+{
+	VectorK< std::vector< std::tuple<std::wstring, double> > > result;
+
+	for (TopicId k = 0, K = getTopicNum(); k < K; ++k){
+		result.push_back(getWordOfTopic(target, return_word_num, k));
+	}
+
+	return std::move(result);
+}
+
+inline auto LDA::getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double>>>
+{
+	std::vector< std::vector< std::tuple<std::wstring, double>>> result;
+
+	for (DocumentId d = 0, D = getDocumentNum(); d < D; ++d){
+		result.push_back(getWordOfDocument(return_word_num, d));
+	}
+
+	return std::move(result);
+}
+
+
 const std::function<void(LDA const*)> null_lda_callback = [](LDA const*){};
 
 class LDA_Gibbs;
 class MrLDA;
+class LDA_CVB0;
 
 // 確率分布同士の類似度を測る(メソッドチェーンな感じに使用)
 template <LDA::Distribution Select>
@@ -309,6 +351,8 @@ auto compare(LDAPtr lda, Id id1, Id id2) ->typename LDA::Map2Cmp<Select>::type
 		return std::static_pointer_cast<LDA_Gibbs>(lda)->compare<Select>(id1, id2);
 	case LDA::DynamicType::MRLDA :
 		return std::static_pointer_cast<MrLDA>(lda)->compare<Select>(id1, id2);
+	case LDA::DynamicType::CVB0 :
+//		return std::static_pointer_cast<LDA_CVB0>(lda)->compare<Select>(id1, id2);
 	default :
 		assert(false);
 	}

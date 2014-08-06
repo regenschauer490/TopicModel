@@ -220,8 +220,8 @@ public:
 	auto getPhi(TopicId k_id) const->VectorV<double> override;
 	
 	//トピックを強調する単語スコア [topic][word]
-	auto getTermScore() const->MatrixKV<double> override;
-	auto getTermScore(TopicId t_id) const->VectorV<double> override;
+	auto getTermScore() const->MatrixKV<double> override{ return term_score_; }
+	auto getTermScore(TopicId t_id) const->VectorV<double> override{ return term_score_[t_id]; }
 
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
 	// [topic][ranking]<vocab, score>

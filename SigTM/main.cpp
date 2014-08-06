@@ -2,7 +2,7 @@
 #include "SigUtil/lib/file.hpp"
 
 const int TopicNum = 20;
-const int IterationNum = 500;
+const int IterationNum = 1000;
 
 static const std::wregex url_reg(L"http(s)?://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?");
 static const std::wregex htag_reg(L"#(\\w)+");
@@ -73,7 +73,7 @@ sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_fold
 	return inputdata;
 }
 
-std::vector<std::vector<double>> experiment(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+void experiment(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
@@ -108,27 +108,24 @@ std::vector<std::vector<double>> experiment(std::wstring src_folder, std::wstrin
 	vector< vector<double> > similarity(doc_num, vector<double>(doc_num, 0));
 
 	for (uint i = 0; i < doc_num; ++i){
-		std::cout << "i:" << i << std::endl;
 		for (uint j = 0; j < i; ++j)	similarity[i][j] = similarity[j][i];
 		for (uint j = i; j < doc_num; ++j)similarity[i][j] = sig::fromJust(sigtm::compare<sigtm::LDA::Distribution::DOCUMENT>(lda, i, j).method(sigtm::CompareMethodD::JS_DIV));
 		//lda->compareDistribution(sigtm::CompareMethodD::JS_DIV, sigtm::LDA::Distribution::DOCUMENT, i, j);
 	}
 	
 	//sig::SaveCSV(similarity, names, names, out_folder + L"similarity_lda.csv");
-
-	return move(similarity);
 }
 
 #include "lib/LDA/mrlda.h"
 
-auto experiment2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new) ->void
+void experiment2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	auto inputdata = makeInputData(src_folder, out_folder, make_new);
 	
 	resume = resume && (!make_new);
-
+	std::cout << resume << " " << make_new;
 	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_mrlda.txt";
-	if(resume) sig::clear_file(perp_pass);
+	if(!resume) sig::clear_file(perp_pass);
 
 	sig::TimeWatch tw;
 	auto savePerplexity = [&](sigtm::LDA const* lda)
@@ -162,7 +159,7 @@ int main()
 	std::wstring data_folder_pass = L"../SigTM/test data";
 	std::wstring input_text_pass = data_folder_pass + L"/processed";
 	
-	experiment(input_text_pass, data_folder_pass, true, false);
+	experiment2(input_text_pass, data_folder_pass, true, false);
 
 	return 0;
 }

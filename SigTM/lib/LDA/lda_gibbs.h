@@ -128,11 +128,11 @@ public:
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const override;
 
 	//ドキュメントのトピック分布 [doc][topic]
-	auto getTheta() const->MatrixDK<double> override;
+	auto getTheta() const->MatrixDK<double> override{ return LDA::getTheta(); }
 	auto getTheta(DocumentId d_id) const->VectorK<double> override;
 
 	//トピックの単語分布 [topic][word]
-	auto getPhi() const->MatrixKV<double> override;
+	auto getPhi() const->MatrixKV<double> override{ return LDA::getPhi(); }
 	auto getPhi(TopicId k_id) const->VectorV<double> override;
 
 	//トピックを強調する単語スコア [topic][word]
@@ -141,15 +141,15 @@ public:
 
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
 	// [topic][ranking]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > > override;
+	auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double>>> override{ return LDA::getWordOfTopic(target, return_word_num); }
 	// [ranking]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> > override;
+	auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>> override;
 
 	// 指定ドキュメントの上位return_word_num個の、語彙とスコアを返す
 	// [doc][ranking]<vocab, score>
-	auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double> > > override;
+	auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double>>> override{ return LDA::getWordOfDocument(return_word_num); }
 	//[ranking]<vocab, score>
-	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> > override;
+	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>> override;
 
 	uint getDocumentNum() const override{ return D_; }
 	uint getTopicNum() const override{ return K_; }

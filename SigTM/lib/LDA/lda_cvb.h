@@ -17,8 +17,8 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-/* Latent Dirichlet Allocation (estimate by Collapsed Variational Bayesian inference) */
-class LDA_CVB : public LDA
+/* Latent Dirichlet Allocation (estimate by Zero-Order Collapsed Variational Bayesian inference) */
+class LDA_CVB0 : public LDA
 {
 	InputDataPtr input_data_;
 	TokenList const& tokens_;
@@ -41,10 +41,10 @@ class LDA_CVB : public LDA
 	sig::SimpleRandom<double> rand_d_;
 	
 private:
-	LDA_CVB() = delete;
-	LDA_CVB(LDA_CVB const&) = delete;
+	LDA_CVB0() = delete;
+	LDA_CVB0(LDA_CVB0 const&) = delete;
 
-	LDA_CVB(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> beta) :
+	LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> beta) :
 		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
 		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : MatrixKV<double>(K_, VectorV<double>(V_, default_beta))),
 		tokens_(input_data->tokens_), omega_(tokens_.size(), VectorK<double>(K_, 0)), gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0),
@@ -57,22 +57,22 @@ private:
 	void update(Token const& t);
 
 public:
-	~LDA_CVB(){}
+	~LDA_CVB0(){}
 
-	DynamicType getDynamicType() const override{ return DynamicType::GIBBS; }
+	DynamicType getDynamicType() const override{ return DynamicType::CVB0; }
 
 	// InputDataで作成した入力データを元にコンストラクト
 	// alpha, beta をsymmetricに設定する場合
-	static LDAPtr makeInstance(uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
-		return LDAPtr(new LDA_Gibbs(topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? MatrixKV<double>(K_, VectorV<double>(V_, beta)): nothing)); 
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
+		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? MatrixKV<double>(K_, VectorV<double>(V_, beta)): nothing)); 
 	}
 	// alpha, beta を多次元で設定する場合
-	static LDAPtr makeInstance(uint topic_num, InputDataPtr input_data, maybe<double> alpha = nothing, maybe<double> beta = nothing){
-		return LDAPtr(new LDA_Gibbs(topic_num, input_data, alpha, beta)); 
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, maybe<double> alpha = nothing, maybe<double> beta = nothing){
+		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, alpha, beta)); 
 	}
 	
 	// モデルの学習を行う
-	// iteration_num: 学習の反復回数(ギブスサンプリングによる全変数の更新を1反復とする)
+	// iteration_num: 学習の反復回数(全トークンの変分パラメータωの更新を1反復とする)
 	void train(uint iteration_num) override{ train(iteration_num, null_lda_callback);  }
 
 	// call_back: 毎回の反復終了時に行う処理
@@ -84,7 +84,7 @@ public:
 	// id1,id2: 類似度を測る対象のindex
 	// return -> 比較関数の選択(関数オブジェクト)
 	template <Distribution Select>
-	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type{	return compareDefault<Select>(id1, id2); }
+	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type{	return compareDefault<Select>(id1, id2, D_, K_); }
 
 	// コンソールに出力
 	void print(Distribution target) const override{ save(target, L""); }

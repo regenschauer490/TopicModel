@@ -24,6 +24,7 @@ const double MrLDA::global_convergence_threshold = 0.0001;
 const double alpha_convergence_threshold = 0.001;
 const uint max_alpha_update_iteration = 100;
 
+const auto resume_info_fname = SIG_STR_TO_FPSTR("mrlda_info");
 const auto resume_alpha_fname = SIG_STR_TO_FPSTR("mrlda_alpha");
 const auto resume_gamma_fname = SIG_STR_TO_FPSTR("mrlda_gamma");
 const auto resume_phi_fname = SIG_STR_TO_FPSTR("mrlda_phi");
@@ -69,6 +70,12 @@ void MrLDA::init(bool resume)
 	auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
 
 	if (resume){
+		auto load_info = sig::read_line<std::string>(base_pass + resume_info_fname);
+		if (sig::is_container_valid(load_info)){
+			auto info = sig::fromJust(load_info);
+			total_iter_ct_ = std::stoul(info[0]);
+		}
+
 		auto tmp_alpha = std::move(alpha_);
 		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname, " ");
 		if (sig::is_container_valid(load_alpha)){
@@ -119,9 +126,13 @@ void MrLDA::saveResumeData() const
 	std::cout << "save resume data... ";
 
 	auto base_pass = input_data_->working_directory_;
+
 	sig::save_num(alpha_, base_pass + resume_alpha_fname, " ");
 	sig::save_num(gamma_, base_pass + resume_gamma_fname, " ");
 	sig::save_num(phi_, base_pass + resume_phi_fname, " ");
+
+	sig::clear_file(base_pass + resume_info_fname);
+	sig::save_line(total_iter_ct_, base_pass + resume_info_fname, sig::WriteMode::append);
 
 	std::cout << "completed" << std::endl;
 }
@@ -330,7 +341,7 @@ void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) c
 		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_mrlda"), detail);
 		break;
 	default:
-		printf("\nforget: LDA_Gibbs::print\n");
+		std::cout << "MrLDA::save error" << std::endl;
 		getchar();
 	}
 }
@@ -368,16 +379,6 @@ auto MrLDA::getPhi(TopicId k_id) const->VectorV<double>
 	// computed from the variational distribution
 	return sig::map([sum](double l){ return l / sum; }, lambda_[k_id]);*/
 	return phi_[k_id];
-}
-
-auto MrLDA::getTermScore() const->MatrixKV<double>
-{
-	return term_score_;
-}
-
-auto MrLDA::getTermScore(TopicId t_id) const->VectorV<double>
-{
-	return term_score_[t_id];
 }
 
 auto MrLDA::getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > >

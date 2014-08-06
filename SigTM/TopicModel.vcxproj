@@ -131,6 +131,7 @@
     <ClCompile Include="lib\helper\SigNLP\process_word.cpp" />
     <ClCompile Include="lib\LDA\lda_cvb.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="lib\LDA\lda_gibbs.cpp" />
     <ClCompile Include="lib\LDA\mrlda.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="lib\helper\SigNLP\signlp.hpp" />
     <ClInclude Include="lib\LDA\lda_cvb.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="lib\LDA\lda_gibbs.h" />
     <ClInclude Include="lib\LDA\lda_interface.hpp" />
