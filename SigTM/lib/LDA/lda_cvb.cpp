@@ -1,4 +1,4 @@
-/*
+ï»¿/*
 Copyright(c) 2014 Akihiro Nishimura
 
 This software is released under the MIT License.
@@ -43,7 +43,7 @@ void LDA_CVB0::init(bool resume)
 
 void LDA_CVB0::update(Token const& t)
 {
-	//ƒgƒsƒbƒN”ä—¦‚ÌXV
+	//ãƒˆãƒ”ãƒƒã‚¯æ¯”ç‡ã®æ›´æ–°
 	const auto updateTopic = [&](Token const& t)
 	{
 		for (TopicId k = 0; k < K_; ++k){

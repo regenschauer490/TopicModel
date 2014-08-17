@@ -123,7 +123,7 @@ private:
 	const uint V_;		// number of words
 		
 	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
-	MatrixKV<double> beta_;			// dirichlet hyper parameter of phi
+	MatrixKV<double> eta_;			// dirichlet hyper parameter of phi
 	MatrixKV<double> phi_;			// parameter of word distribution
 	
 	MatrixDK<double> gamma_;		// variational parameter of theta(document-topic)
@@ -143,13 +143,10 @@ private:
 	MrLDA() = delete;
 	MrLDA(MrLDA const&) = delete;
 	MrLDA(MrLDA&&) = delete;
-	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<double> alpha, maybe<double> beta, mrlda::Specification spec) : 
-		MrLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha ? sig::fromJust(alpha) : 0), MatrixKV<double>(topic_num, VectorV<double>(input_data->words_.size(), beta ? sig::fromJust(beta) : 0)), spec)
-	{}
-	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> beta, mrlda::Specification spec) :
-		input_data_(input_data), D_(input_data->doc_num_), K_(topic_num), V_(input_data->words_.size()),
-		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : MatrixKV<double>(K_, VectorV<double>(V_, default_beta))),
-		mapreduce_(nullptr), mr_spec_(spec), total_iter_ct_(0), term3_(sig::sum(beta_, [&](VectorV<double> const& v){ return calcModule0(v); })), rand_d_(0.0, 1.0, FixedRandom)
+	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta, mrlda::Specification spec) :
+		input_data_(input_data), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
+		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), eta_(MatrixKV<double>(K_, beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta))),
+		mapreduce_(nullptr), mr_spec_(spec), total_iter_ct_(0), term3_(sig::sum(eta_, [&](VectorV<double> const& v){ return calcModule0(v); })), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume); 
 	}
@@ -176,15 +173,21 @@ public:
 	
 	DynamicType getDynamicType() const override{ return DynamicType::MRLDA; }
 
-	// InputDataで作成した入力データでコンストラクト
+	/* InputDataで作成した入力データを元にコンストラクト */
+	// デフォルト設定で使用する場合
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data){
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, nothing, nothing, mrlda::Specification(ThreadNum, ThreadNum)));
+		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
+		return obj;
+	}
 	// alpha, beta をsymmetricに設定する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
-		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(ThreadNum, ThreadNum)));
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing, mrlda::Specification(ThreadNum, ThreadNum)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
 	}
 	// alpha, beta を多次元で設定する場合
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha = nothing, maybe<MatrixKV<double>> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
 		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(ThreadNum, ThreadNum)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
@@ -243,10 +246,10 @@ public:
 	auto getAlpha() const->VectorK<double> override{ return alpha_; }
 
 	// get hyper-parameter of word distribution
-	auto getBeta() const->MatrixKV<double> override{
-		//VectorV<double> result;
-		//for(uint v=0; v<V_; ++v) result.push_back(sig::sum_col(beta_, v) / K_);	//average over documents
-		return beta_; 
+	auto getBeta() const->VectorV<double> override{
+		VectorV<double> result;
+		for(uint v=0; v<V_; ++v) result.push_back(sig::sum_col(eta_, v) / K_);	//average over documents
+		return result;
 	}
 
 	auto getGamma(DocumentId d_id) const->VectorK<double>{ return gamma_[d_id]; }

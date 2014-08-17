@@ -55,6 +55,9 @@ void LDA_Gibbs::init(bool resume)
 		}
 	}
 
+	alpha_sum_ = sig::sum(alpha_);
+	beta_sum_ = sig::sum(beta_);
+
 	int i = -1;	
 	for(auto const& t : tokens_){
 		int assign = id_z_map.empty() ? rand_ui_() : id_z_map[t.self_id];
@@ -65,24 +68,24 @@ void LDA_Gibbs::init(bool resume)
 	}
 }
 
-inline TopicId LDA_Gibbs::sampleTopic(Token const& t)
-{
-	for(TopicId k = 0; k < K_; ++k){
-		//tmp_p_[k] = (doc_ct_[t.doc_id][k] + alpha_[k]) * (word_ct_[t.word_id][k] + beta) / (topic_ct_[k] + V_ * beta);
-		tmp_p_[k] = sampling_(this, t, k);
-		if(k != 0) tmp_p_[k] += tmp_p_[k-1];
-	}
-
-	double u = rand_d_() * tmp_p_[K_-1];
-
-	for(TopicId k = 0; k < K_; ++k){
-		if(u < tmp_p_[k]) return k;
-	}
-	return K_ -1;
-}
-
 void LDA_Gibbs::update(Token const& t)
 {
+	auto sampleTopic = [&](Token const& t)->TopicId
+	{
+		for (TopicId k = 0; k < K_; ++k){
+			//tmp_p_[k] = (doc_ct_[t.doc_id][k] + alpha_[k]) * (word_ct_[t.word_id][k] + beta) / (topic_ct_[k] + V_ * beta);
+			tmp_p_[k] = sampling_(this, t, k);
+			if (k != 0) tmp_p_[k] += tmp_p_[k - 1];
+		}
+
+		double u = rand_d_() * tmp_p_[K_ - 1];
+
+		for (TopicId k = 0; k < K_; ++k){
+			if (u < tmp_p_[k]) return k;
+		}
+		return K_ - 1;
+	};
+
 	auto assign_topic = z_[t.self_id];
 
 	--word_ct_[t.word_id][assign_topic];
@@ -192,7 +195,7 @@ auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 	double sum = 0.0;
 
 	for(WordId w=0; w < V_; ++w){
-		phi[w] = beta_[k_id][w] + word_ct_[w][k_id];
+		phi[w] = beta_[w] + word_ct_[w][k_id];
 		sum += phi[w];
 	}
 	//³‹K‰»

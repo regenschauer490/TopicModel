@@ -113,7 +113,7 @@ void MrLDA::init(bool resume)
 		phi_ = MatrixKV<double>(K_, VectorV<double>(V_));
 		for (TopicId k = 0; k<K_; ++k){
 			for (WordId v = 0; v<V_; ++v){
-				phi_[k][v] = beta_[k][v] + rand_d_();
+				phi_[k][v] = eta_[k][v] + rand_d_();
 			}
 			bool f = sig::normalize_dist(phi_[k]);
 		}
@@ -278,7 +278,7 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 double MrLDA::iteration()
 {
 	auto updatePhi = [&](TopicId k, WordId v, double delta){
-		phi_[k][v] = beta_[k][v] + delta;
+		phi_[k][v] = eta_[k][v] + delta;
 	};
 	
 	double term2;

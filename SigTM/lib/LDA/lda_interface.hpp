@@ -146,7 +146,7 @@ public:
 	// get hyper-parameter of topic distribution
 	virtual auto getAlpha() const->VectorK<double> = 0;
 	// get hyper-parameter of word distribution
-	virtual auto getBeta() const->MatrixKV<double> = 0;
+	virtual auto getBeta() const->VectorV<double> = 0;
 
 	virtual double getLogLikelihood() const = 0;
 

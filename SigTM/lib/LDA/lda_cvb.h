@@ -28,7 +28,7 @@ class LDA_CVB0 : public LDA
 	const uint V_;		// number of words
 
 	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
-	MatrixKV<double> beta_;			// dirichlet hyper parameter of phi
+	VectorV<double> beta_;			// dirichlet hyper parameter of phi
 			
 	MatrixTK<double> omega_;		// variational parameter of z(assigned topic)
 	MatrixDK<double> gamma_;		// variational parameter of theta(document-topic)
@@ -44,9 +44,9 @@ private:
 	LDA_CVB0() = delete;
 	LDA_CVB0(LDA_CVB0 const&) = delete;
 
-	LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> beta) :
+	LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
 		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
-		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : MatrixKV<double>(K_, VectorV<double>(V_, default_beta))),
+		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
 		tokens_(input_data->tokens_), omega_(tokens_.size(), VectorK<double>(K_, 0)), gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0),
 		term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct(0), rand_d_(0.0, 1.0, FixedRandom)
 	{
@@ -61,13 +61,17 @@ public:
 
 	DynamicType getDynamicType() const override{ return DynamicType::CVB0; }
 
-	// InputDataで作成した入力データを元にコンストラクト
+	/* InputDataで作成した入力データを元にコンストラクト */
+	// デフォルト設定で使用する場合
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data){
+		return LDAPtr(new LDA_CVB0(SamplingMethod(), resume, topic_num, input_data, nothing, nothing));
+	}
 	// alpha, beta をsymmetricに設定する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
-		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? MatrixKV<double>(K_, VectorV<double>(V_, beta)): nothing)); 
+		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing));
 	}
 	// alpha, beta を多次元で設定する場合
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, maybe<double> alpha = nothing, maybe<double> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
 		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, alpha, beta)); 
 	}
 	

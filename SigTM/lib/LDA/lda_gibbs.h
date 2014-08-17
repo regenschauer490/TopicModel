@@ -30,13 +30,15 @@ class LDA_Gibbs : public LDA
 	const uint V_;		// number of words
 
 	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
-	MatrixKV<double> beta_;			// dirichlet hyper parameter of phi
+	VectorV<double> beta_;			// dirichlet hyper parameter of phi
 	VectorT<uint> z_;				// topic assigned to each tokens temporary
 			
 	MatrixVK<uint> word_ct_;		// topic count of each words
 	MatrixDK<uint> doc_ct_;			// topic count of each documents
 	VectorK<uint> topic_ct_;		// topic count of all tokens
 
+	double alpha_sum_;
+	double beta_sum_;
 	VectorK<double> tmp_p_;
 	MatrixKV<double> term_score_;	// word score of emphasizing each topic
 	uint total_iter_ct_;
@@ -53,19 +55,19 @@ public:
 			static int pre_k = -1;
 			static double dk_sum = 0;
 			double const& alpha = obj->alpha_[k];
-			double const& beta = obj->beta_[k][t.word_id];
+			double const& beta = obj->beta_[t.word_id];
 			
 			if(k != pre_k) dk_sum = sig::sum(obj->doc_ct_[t.doc_id]);
 			pre_k = k;
-			return ((obj->doc_ct_[t.doc_id][k] + alpha) / (dk_sum + obj->K_ * alpha)) * ((obj->word_ct_[t.word_id][k] + beta) / (obj->topic_ct_[k] + obj->V_ * beta));
+			return ((obj->doc_ct_[t.doc_id][k] + alpha) / (dk_sum + obj->alpha_sum_)) * ((obj->word_ct_[t.word_id][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_));
 		}
 	};
 
 	struct CollapsedGibbsSampling
 	{
 		double operator()(LDA_Gibbs const* obj, Token const& t, uint k){
-			double const& beta = obj->beta_[k][t.word_id];
-			return (obj->doc_ct_[t.doc_id][k] + obj->alpha_[k]) * (obj->word_ct_[t.word_id][k] + beta) / (obj->topic_ct_[k] + obj->V_ * beta);
+			double const& beta = obj->beta_[t.word_id];
+			return (obj->doc_ct_[t.doc_id][k] + obj->alpha_[k]) * (obj->word_ct_[t.word_id][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_);
 		}
 	};
 
@@ -75,17 +77,17 @@ private:
 
 	// alpha_:各単語のトピック更新時の選択確率平滑化定数, beta_:
 	template <class SamplingMethod>
-	LDA_Gibbs(SamplingMethod sm,bool resume,  uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<MatrixKV<double>> beta) :
+	LDA_Gibbs(SamplingMethod sm,bool resume,  uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
 		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
-		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : MatrixKV<double>(K_, VectorV<double>(V_, default_beta))),
+		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
 		tokens_(input_data->tokens_), word_ct_(V_, VectorK<uint>(K_, 0)), doc_ct_(D_, VectorK<uint>(K_, 0)), topic_ct_(K_, 0),
-		tmp_p_(K_, 0.0), z_(tokens_.size(), 0), term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), sampling_(SamplingMethod()), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom)
+		alpha_sum_(0), beta_sum_(0), tmp_p_(K_, 0.0), z_(tokens_.size(), 0), term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), 
+		sampling_(SamplingMethod()), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);
 	}
 
 	void init(bool resume);
-	auto sampleTopic(Token const& t)->TopicId;
 	void update(Token const& t);
 	void saveResumeData() const;
 
@@ -94,15 +96,20 @@ public:
 
 	DynamicType getDynamicType() const override{ return DynamicType::GIBBS; }
 
-	// InputDataで作成した入力データを元にコンストラクト
+	/* InputDataで作成した入力データを元にコンストラクト */
+	// デフォルト設定で使用する場合
+	template <class SamplingMethod = CollapsedGibbsSampling>
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data){
+		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, nothing, nothing));
+	}
 	// alpha, beta をsymmetricに設定する場合
 	template <class SamplingMethod = CollapsedGibbsSampling>
 	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
-		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? MatrixKV<double>(K_, VectorV<double>(V_, beta)) : nothing));
+		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing));
 	}
 	// alpha, beta を多次元で設定する場合
 	template <class SamplingMethod = CollapsedGibbsSampling>
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha = nothing, maybe<MatrixKV<double>> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
 		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, alpha, beta));
 	}
 	
@@ -128,7 +135,7 @@ public:
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const override;
 
 	//ドキュメントのトピック分布 [doc][topic]
-	auto getTheta() const->MatrixDK<double> override{ return LDA::getTheta(); }
+	using LDA::getTheta;//auto getTheta() const->MatrixDK<double> override{ return LDA::getTheta(); }
 	auto getTheta(DocumentId d_id) const->VectorK<double> override;
 
 	//トピックの単語分布 [topic][word]
@@ -158,7 +165,7 @@ public:
 	// get hyper-parameter of topic distribution
 	auto getAlpha() const->VectorK<double> override{ return alpha_; }
 	// get hyper-parameter of word distribution
-	auto getBeta() const->MatrixKV<double> override{ return beta_; }
+	auto getBeta() const->VectorV<double> override{ return beta_; }
 
 	// 
 	double getLogLikelihood() const override;
