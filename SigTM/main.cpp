@@ -159,7 +159,7 @@ int main()
 	std::wstring data_folder_pass = L"../SigTM/test data";
 	std::wstring input_text_pass = data_folder_pass + L"/processed";
 	
-	experiment2(input_text_pass, data_folder_pass, true, false);
+	experiment(input_text_pass, data_folder_pass, true, false);
 
 	return 0;
 }

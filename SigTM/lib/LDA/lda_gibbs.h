@@ -79,9 +79,9 @@ private:
 	template <class SamplingMethod>
 	LDA_Gibbs(SamplingMethod sm,bool resume,  uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
 		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
-		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
-		tokens_(input_data->tokens_), word_ct_(V_, VectorK<uint>(K_, 0)), doc_ct_(D_, VectorK<uint>(K_, 0)), topic_ct_(K_, 0),
-		alpha_sum_(0), beta_sum_(0), tmp_p_(K_, 0.0), z_(tokens_.size(), 0), term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), 
+		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta)),
+		tokens_(input_data->tokens_), word_ct_(SIG_INIT_MATRIX(uint, V, K, 0)), doc_ct_(SIG_INIT_MATRIX(uint, D, K, 0)), topic_ct_(SIG_INIT_VECTOR(uint, K, 0)),
+		alpha_sum_(0), beta_sum_(0), tmp_p_(SIG_INIT_VECTOR(double, K, 0)), z_(tokens_.size(), 0), term_score_(SIG_INIT_MATRIX(double, K, V, 0)), total_iter_ct_(0),
 		sampling_(SamplingMethod()), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);

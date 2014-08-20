@@ -48,10 +48,13 @@ private:
 		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
 		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
 		tokens_(input_data->tokens_), omega_(tokens_.size(), VectorK<double>(K_, 0)), gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0),
-		term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct(0), rand_d_(0.0, 1.0, FixedRandom)
+		term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);
 	}
+
+	template <class C>
+	auto makeRandomDistribution(uint elem_num) ->C;
 
 	void init(bool resume);
 	void update(Token const& t);
@@ -64,7 +67,7 @@ public:
 	/* InputDataで作成した入力データを元にコンストラクト */
 	// デフォルト設定で使用する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data){
-		return LDAPtr(new LDA_CVB0(SamplingMethod(), resume, topic_num, input_data, nothing, nothing));
+		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, nothing, nothing));
 	}
 	// alpha, beta をsymmetricに設定する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
@@ -125,15 +128,28 @@ public:
 	uint getWordNum() const override{ return V_; }
 
 	// get hyper-parameter of topic distribution
-	auto getAlpha() const->VectorK<double> override{ return sig::replicate(K_, alpha_); }
+	auto getAlpha() const->VectorK<double> override{ return alpha_; }
 	// get hyper-parameter of word distribution
-	auto getBeta() const->VectorV<double> override{ return sig::replicate(V_, beta_); }
+	auto getBeta() const->VectorV<double> override{ return beta_; }
 
 	// 
 	double getLogLikelihood() const override;
 
 	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / tokens_.size()); }
 };
+
+
+template <class C>
+auto LDA_CVB0::makeRandomDistribution(uint elem_num) ->C
+{
+	C result;
+	for (uint i = 0; i < elem_num; ++i){
+		sig::container_traits<C>::add_element(result, rand_d_());
+	}
+	sig::normalize_dist(result);
+
+	return result;
+}
 
 }
 #endif

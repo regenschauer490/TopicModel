@@ -14,24 +14,12 @@ http://opensource.org/licenses/mit-license.php
 namespace sigtm
 {
 
-template <class C>
-void makeRandomDistribution(uint elem_num) ->C
-{
-	C result;
-	for (uint i = 0; i < elem_num; ++i){
-		sig::container_traits<C>::add_element(result, rand_d_());
-	}
-	sig::normalize_dist(result);
-
-	return result;
-}
-
 void LDA_CVB0::init(bool resume)
 {
 	int i = -1;
-	lambda_ = SIG_INIT_MATRIX(double, V, K);
-	gamma_ = SIG_INIT_MATRIX(double, D, K);
-	topic_sum_ = SIG_INIT_VECTOR(double, K);
+	lambda_ = SIG_INIT_MATRIX(double, V, K, 0);
+	gamma_ = SIG_INIT_MATRIX(double, D, K, 0);
+	topic_sum_ = SIG_INIT_VECTOR(double, K, 0);
 
 	for (auto const& t : tokens_){
 		auto omega_rand = makeRandomDistribution<VectorK<double>>(K_);
@@ -48,7 +36,7 @@ void LDA_CVB0::update(Token const& t)
 	{
 		for (TopicId k = 0; k < K_; ++k){
 			WordId v = t.word_id;
-			omega_[t.self_id][k] = (gamma_[t.doc_id][k] + alpha_[k]) * (lambda_[v][k] + beta_[k][v]) / (topic_sum_[k] + V_ * beta_[k][v]);
+			omega_[t.self_id][k] = (gamma_[t.doc_id][k] + alpha_[k]) * (lambda_[v][k] + beta_[v]) / (topic_sum_[k] + V_ * beta_[v]);
 		}
 	};
 

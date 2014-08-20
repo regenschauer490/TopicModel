@@ -60,12 +60,12 @@ void MrLDA::MapTask::process(value_type const& value, VectorK<double>& gamma, Ma
 
 void MrLDA::init(bool resume)
 {
-	doc_word_ct_ = MatrixDV<uint>(D_, VectorV<uint>(V_));
+	doc_word_ct_ = SIG_INIT_MATRIX(uint, D, V, 0);
 	for (auto const& t : input_data_->tokens_){
 		++doc_word_ct_[t.doc_id][t.word_id];
 	}
 
-	term_score_ = MatrixKV<double>(K_, VectorV<double>(V_, 0));
+	term_score_ = SIG_INIT_MATRIX(double, K, V, 0);
 
 	auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
 
