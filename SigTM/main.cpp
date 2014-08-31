@@ -1,4 +1,4 @@
-﻿#include "lib/LDA/lda_gibbs.h"
+﻿#include "lib/model/lda_gibbs.h"
 #include "SigUtil/lib/file.hpp"
 
 const int TopicNum = 20;
@@ -116,7 +116,7 @@ void experiment(std::wstring src_folder, std::wstring out_folder, bool resume, b
 	//sig::SaveCSV(similarity, names, names, out_folder + L"similarity_lda.csv");
 }
 
-#include "lib/LDA/mrlda.h"
+#include "lib/model/mrlda.h"
 
 void experiment2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {

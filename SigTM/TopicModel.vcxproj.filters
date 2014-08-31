@@ -57,16 +57,16 @@
     <ClCompile Include="lib\helper\SigNLP\process_word.cpp">
       <Filter>ソース ファイル\helper\signlp</Filter>
     </ClCompile>
-    <ClCompile Include="lib\LDA\lda_gibbs.cpp">
-      <Filter>ソース ファイル\lda</Filter>
-    </ClCompile>
-    <ClCompile Include="lib\LDA\mrlda.cpp">
-      <Filter>ソース ファイル\lda</Filter>
-    </ClCompile>
     <ClCompile Include="lib\helper\mapreduce_module.cpp">
       <Filter>ソース ファイル\helper</Filter>
     </ClCompile>
-    <ClCompile Include="lib\LDA\lda_cvb.cpp">
+    <ClCompile Include="lib\model\lda_cvb.cpp">
+      <Filter>ソース ファイル\lda</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\model\lda_gibbs.cpp">
+      <Filter>ソース ファイル\lda</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\model\mrlda.cpp">
       <Filter>ソース ファイル\lda</Filter>
     </ClCompile>
   </ItemGroup>
@@ -82,15 +82,6 @@
     </ClInclude>
     <ClInclude Include="lib\helper\input_text.h">
       <Filter>ヘッダー ファイル\helper</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\LDA\lda_gibbs.h">
-      <Filter>ヘッダー ファイル\lda</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\LDA\lda_interface.hpp">
-      <Filter>ヘッダー ファイル\lda</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\LDA\mrlda.h">
-      <Filter>ヘッダー ファイル\lda</Filter>
     </ClInclude>
     <ClInclude Include="lib\helper\data_format.hpp">
       <Filter>ヘッダー ファイル\helper</Filter>
@@ -143,11 +134,17 @@
     <ClInclude Include="lib\helper\SigNLP\signlp.hpp">
       <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
     </ClInclude>
-    <ClInclude Include="lib\LDA\lda_cvb.h">
+    <ClInclude Include="lib\model\lda_cvb.h">
       <Filter>ヘッダー ファイル\lda</Filter>
     </ClInclude>
-    <ClInclude Include="lib\LDA\tmp.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="lib\model\lda_gibbs.h">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\model\lda_interface.hpp">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\model\mrlda.h">
+      <Filter>ヘッダー ファイル\lda</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

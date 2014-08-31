@@ -8,7 +8,7 @@ http://opensource.org/licenses/mit-license.php
 #ifndef SIGTM_MAPREDUCE_MODULE_H
 #define  SIGTM_MAPREDUCE_MODULE_H
 
-#include "../LDA/lda_interface.hpp"
+#include "../model/lda_interface.hpp"
 #include "../../external/mapreduce/include/mapreduce.hpp"
 
 namespace sigtm

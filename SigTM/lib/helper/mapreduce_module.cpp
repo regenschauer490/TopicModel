@@ -6,7 +6,7 @@ http://opensource.org/licenses/mit-license.php
 */
 
 #include "mapreduce_module.h"
-#include "../lda/mrlda.h"
+#include "../model/mrlda.h"
 
 namespace sigtm
 {
