@@ -7,18 +7,18 @@ http://opensource.org/licenses/mit-license.php
 
 #include "input_text.h"
 #include "SigUtil/lib/modify.hpp"
+#include "SigUtil/lib/calculation.hpp"
 #include <future>
 
 namespace sigtm
 {
 
 #if USE_SIGNLP
-
-void InputDataFromText::makeData(Documents const& raw_texts)
+void InputDataFromText::makeData(DocumentType type, Documents const& raw_texts)
 {
 
 	const auto ParallelFunc = [](Document document, FilterSetting const& filter){
-		std::vector<std::wstring> result;
+		std::vector<std::vector<std::wstring>> result;
 		auto& mecab = signlp::MecabWrapper::getInstance();
 
 		for (auto& sentence : document){
@@ -36,7 +36,8 @@ void InputDataFromText::makeData(Documents const& raw_texts)
 
 			sig::remove_all(parsed, L"");
 
-			std::move(parsed.begin(), parsed.end(), std::back_inserter(result));
+			result.push_back(std::vector<std::wstring>());
+			std::move(parsed.begin(), parsed.end(), std::back_inserter(result.back()));
 		}
 
 		return std::move(result);
@@ -45,38 +46,43 @@ void InputDataFromText::makeData(Documents const& raw_texts)
 	std::cout << "make token data : " << std::endl;
 	sig::TimeWatch tw;
 
-	std::vector< std::future< std::vector<std::wstring> > > results;
+	std::vector< std::future< std::vector<std::vector<std::wstring>> > > results;
 
 	for (auto const& document : raw_texts){
 		results.push_back(std::async(std::launch::async, ParallelFunc, document, filter_));
 	}
 
-	Documents doc_words;
+	std::vector<std::vector<std::vector<std::wstring>>> doc_line_words;
 
 	for (auto& result : results){
-		doc_words.push_back(result.get());
+		doc_line_words.push_back(result.get());
 	}
-	for (uint i = 0; i<doc_words.size(); ++i) std::wcout << doc_names_[i] << L" parsed. word-num: " << doc_words[i].size() << std::endl;
+	for (uint i = 0; i<doc_line_words.size(); ++i) std::wcout << doc_names_[i] << L" parsed. word-num: " << sig::sum(doc_line_words[i], [](std::vector<std::wstring> const& e){ return e.size(); }) << std::endl;
 	std::cout << std::endl;
 
 	int token_ct = 0;
 	int doc_id = -1;
-
-	for (auto const& words : doc_words){
+	int line_id = -1;
+	for (auto const& line_words : doc_line_words){
 		++doc_id;
-		for (auto& word : words){
-			auto wp = std::make_shared<std::wstring const>(word);
+		for (auto const& words : line_words){
+			++line_id;
+			for (auto const& word : words){
+				auto wp = std::make_shared<std::wstring const>(word);
 
-			//wordÇ™ä˘èoÇ©îªíË
-			if (words_.hasElement(wp)){
-				tokens_.push_back(Token(token_ct, doc_id, words_.getWordID(wp)));
-				++token_ct;
-			}
-			else{
-				uint index = words_.size();
-				words_.emplace(index, wp);
-				tokens_.push_back(Token(token_ct, doc_id, index));
-				++token_ct;
+				//wordÇ™ä˘èoÇ©îªíË
+				if (words_.hasElement(wp)){
+					if (DocumentType::Tweet == type) tokens_.push_back(Token(token_ct, doc_id, line_id, words_.getWordID(wp)));
+					else tokens_.push_back(Token(token_ct, doc_id, words_.getWordID(wp)));
+					++token_ct;
+				}
+				else{
+					uint index = words_.size();
+					words_.emplace(index, wp);
+					if (DocumentType::Tweet == type) tokens_.push_back(Token(token_ct, doc_id, line_id, index));
+					else tokens_.push_back(Token(token_ct, doc_id, index));
+					++token_ct;
+				}
 			}
 		}
 	}

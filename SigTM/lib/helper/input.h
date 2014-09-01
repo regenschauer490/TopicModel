@@ -19,6 +19,9 @@ const std::function< void(std::wstring&) > df = [](std::wstring& s){};
 class InputData;
 using InputDataPtr = std::shared_ptr<InputData const>;
 
+/* 入力する文書の種類 */
+enum class DocumentType{ Defaut = 0, Tweet = 1 };
+
 /* 各モデルへの入力データを作成 */
 class InputData
 {
@@ -27,6 +30,8 @@ protected:
 	friend class MrLDA;
 	friend class LDA_CVB0;
 	friend class MRInputIterator;
+
+	DocumentType doc_type_;
 
 	uint doc_num_;
 	TokenList tokens_;		// 単語トークン列
@@ -44,7 +49,7 @@ private:
 	void reconstruct();
 	
 protected:
-	InputData(uint doc_num, FilepassString working_directory) : doc_num_(doc_num), working_directory_(sig::modify_dirpass_tail(working_directory, true)){};
+	InputData(DocumentType type,uint doc_num, FilepassString working_directory) : doc_num_(doc_num), working_directory_(sig::modify_dirpass_tail(working_directory, true)){};
 	void save();
 
 public:

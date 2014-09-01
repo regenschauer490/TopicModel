@@ -69,6 +69,9 @@
     <ClCompile Include="lib\model\mrlda.cpp">
       <Filter>ソース ファイル\lda</Filter>
     </ClCompile>
+    <ClCompile Include="lib\model\twitter_lda.cpp">
+      <Filter>ソース ファイル\lda</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lib\sigtm.hpp">
@@ -144,6 +147,9 @@
       <Filter>ヘッダー ファイル\lda</Filter>
     </ClInclude>
     <ClInclude Include="lib\model\mrlda.h">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\model\twitter_lda.h">
       <Filter>ヘッダー ファイル\lda</Filter>
     </ClInclude>
   </ItemGroup>

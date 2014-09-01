@@ -33,9 +33,9 @@ class LDA_Gibbs : public LDA
 	VectorV<double> beta_;			// dirichlet hyper parameter of phi
 	VectorT<uint> z_;				// topic assigned to each tokens temporary
 			
-	MatrixVK<uint> word_ct_;		// topic count of each words
-	MatrixDK<uint> doc_ct_;			// topic count of each documents
-	VectorK<uint> topic_ct_;		// topic count of all tokens
+	MatrixVK<uint> word_ct_;		// topic count of each word
+	MatrixDK<uint> doc_ct_;			// topic count of each document
+	VectorK<uint> topic_ct_;		// topic count of all token
 
 	double alpha_sum_;
 	double beta_sum_;

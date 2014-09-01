@@ -17,19 +17,25 @@ namespace sigtm
 inline bool InputData::parseLine(std::wstring const& line)
 {
 	std::wistringstream is(line);
-	int doc_id = 0;
-	int word_id = 0;
-	int count = 0;
+	int elem1 = 0;
+	int elem2 = 0;
+	int elem3 = 0;
 
-	is >> doc_id >> word_id >> count;
-	if (!doc_id || !word_id || !count) {
+	is >> elem1 >> elem2 >> elem3;
+	if (!elem1 || !elem2 || !elem3) {
 		std::cout << "parse error" << std::endl;
 		return false;
 	}
   
-	for(uint i = 0; i < count; ++i){
+	if (DocumentType::Tweet == doc_type_){
 		uint tsize = tokens_.size();
-		tokens_.push_back(Token(tsize, doc_id-1, word_id-1));
+		tokens_.push_back(Token(tsize, elem1-1, elem2-1, elem3-1));
+	}
+	else{
+		for(uint i = 0; i < elem3; ++i){
+			uint tsize = tokens_.size();
+			tokens_.push_back(Token(tsize, elem1-1, elem2-1));
+		}
 	}
 
 	return true;
@@ -57,11 +63,13 @@ void InputData::reconstruct()
 	auto base_pass = sig::modify_dirpass_tail(working_directory_, true);
 
 	auto token_text = fileopen(base_pass + TOKEN_FILENAME);
+	uint line_iter = 0;
 
 	// get feature size
-	int doc_num = std::stoi(token_text[0]);
-	int wnum = std::stoi(token_text[1]);
-	int tnum = std::stoi(token_text[2]);
+	int doc_type = std::stoi(token_text[line_iter]);
+	int doc_num = std::stoi(token_text[++line_iter]);
+	int wnum = std::stoi(token_text[++line_iter]);
+	int tnum = std::stoi(token_text[++line_iter]);
 
 	std::cout << "document_num: " << doc_num << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl << std::endl;
 
@@ -70,11 +78,12 @@ void InputData::reconstruct()
 		assert(false);
 	}
 
+	doc_type_ = static_cast<DocumentType>(doc_type);
 	doc_num_ = static_cast<uint>(doc_num);
 	//words_.reserve(wnum);
 	tokens_.reserve(tnum);
 
-	for(uint i=3; i<token_text.size(); ++i){
+	for (uint i = ++line_iter; i<token_text.size(); ++i){
 		if (!parseLine(token_text[i]) && token_text[i] != L"") {
 			std::cout << "error in token file at line : " << i << std::endl;
 			assert(false);
@@ -159,22 +168,32 @@ void InputData::save()
 
 	// save tokens
 	std::ofstream ofs(token_pass);
+	ofs << static_cast<int>(doc_type_) << std::endl;
 	ofs << doc_num_ << std::endl;
 	ofs << words_.size() << std::endl;
 	ofs << tokens_.size() << std::endl;
  
 	std::cout << "word_num: " << words_.size() << std::endl << "token_num: " << tokens_.size() << std::endl << std::endl;
 
-	std::vector< std::unordered_map<uint, uint> > d_w_ct(doc_num_);
-
-	for (auto const& token : tokens_){
-		if (d_w_ct[token.doc_id].count(token.word_id)) ++d_w_ct[token.doc_id][token.word_id];
-		else d_w_ct[token.doc_id].emplace(token.word_id, 1);
+	if (DocumentType::Tweet == doc_type_){
+		for (auto const& token : tokens_){
+			// user doc(tweet) word
+			ofs << token.user_id+1 << " " << token.doc_id+1 << " " << token.word_id+1 << std::endl;
+		}
 	}
+	else{
+		std::vector< std::unordered_map<uint, uint> > d_w_ct(doc_num_);
 
-	for (int d = 0; d < doc_num_; ++d){
-		for (auto const& w2ct : d_w_ct[d]){
-			ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;
+		for (auto const& token : tokens_){
+			if (d_w_ct[token.doc_id].count(token.word_id)) ++d_w_ct[token.doc_id][token.word_id];
+			else d_w_ct[token.doc_id].emplace(token.word_id, 1);
+		}
+
+		for (int d = 0; d < doc_num_; ++d){
+			for (auto const& w2ct : d_w_ct[d]){
+				// doc word count
+				ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;
+			}
 		}
 	}
 

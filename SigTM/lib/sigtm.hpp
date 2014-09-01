@@ -12,7 +12,7 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-#define USE_SIGNLP 0				// 文字列解析を行うためにSigNLPを使用するか
+#define USE_SIGNLP 1				// 文字列解析を行うためにSigNLPを使用するか
 
 const bool FixedRandom = true;		// 乱数を固定するか(テスト用)
 const std::size_t ThreadNum = 15;		// 並列処理部分で起動するスレッド数
@@ -37,10 +37,10 @@ using Documents = std::vector< std::vector<std::wstring> >;
 using DocumentId = uint;
 using TopicId = uint;
 using WordId = uint;
-using Id = std::common_type<DocumentId, TopicId>::type;
+using UserId = uint;
+using Id = uint;
 
 const uint zero = 0;
-
 }
 
 namespace std

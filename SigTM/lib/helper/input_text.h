@@ -73,8 +73,8 @@ class InputDataFromText : public InputData
 private:
 	InputDataFromText() = delete;
 	InputDataFromText(InputDataFromText const& src) = delete;
-	InputDataFromText(Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
-		: InputData(raw_texts.size(), save_folder_pass), filter_(filter)
+	InputDataFromText(DocumentType type, Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
+		: InputData(type, raw_texts.size(), save_folder_pass), filter_(filter)
 	{
 		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) doc_names_.push_back(sig::to_fpstring(i));
 		else{
@@ -82,24 +82,26 @@ private:
 			for (auto e : doc_names) doc_names_.push_back(sig::split(e, L".")[0]);
 		}
 
-		makeData(raw_texts);
+		makeData(type, raw_texts);
 		save();
 	}
 	
-	void makeData(Documents const& raw_texts);
+	void makeData(DocumentType type, Documents const& raw_texts);
 	
 public:
-	// 形態素解析前の生のテキストからモデルへの入力データを生成する ( raw_texts[document_id][sentence_line] ) 
+	/* 形態素解析前の生のテキストからモデルへの入力形式データを生成する */
+
+	// 変数に保持している一般的なdocument集合から生成 ( raw_texts[document_id][sentence_line] ) 
 	static InputDataPtr makeInstance(
-		Documents const& raw_texts,			// 生のテキストデータ
-		FilterSetting const& filter,		// テキストへのフィルタ処理
+		Documents const& raw_texts,				// 生のテキストデータ
+		FilterSetting const& filter,			// テキストへのフィルタ処理
 		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
 		std::vector<FilepassString> doc_names		// 各documentの識別名
 	){
-		return InputDataPtr(new InputDataFromText(raw_texts, filter, save_folder_pass, doc_names)); 
+		return InputDataPtr(new InputDataFromText(DocumentType::Defaut, raw_texts, filter, save_folder_pass, doc_names));
 	}
 
-	// 形態素解析前の生のテキストからモデルへの入力データを生成する (各.txtファイルがdocumentに相当)
+	// テキストファイルに保存された一般的なdocument集合から生成 (各.txtファイルがdocumentに相当)
 	static InputDataPtr makeInstance(
 		FilepassString const& src_folder_pass,		// 生のテキストデータが保存されているフォルダ
 		FilterSetting const& filter,				// テキストへのフィルタ処理
@@ -113,10 +115,43 @@ public:
 		}
 		
 		return InputDataPtr(new InputDataFromText(
+			DocumentType::Defaut,
 			sig::map([&](FilepassString file){
 				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
 				}, sig::fromJust(doc_passes)
 			), filter, save_folder_pass, doc_names ? sig::fromJust(doc_names) : sig::fromJust(doc_passes))
+		);
+	}
+
+	// 変数に保持しているtweet集合から生成 ( raw_tweets[user_id][tweet_id] ) 
+	static InputDataPtr makeInstanceFromTweet(
+		Documents const& raw_tweets,			// 生のテキストデータ
+		FilterSetting const& filter,			// テキストへのフィルタ処理
+		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
+		std::vector<FilepassString> user_names		// 各userの識別名
+	){
+		return InputDataPtr(new InputDataFromText(DocumentType::Tweet, raw_tweets, filter, save_folder_pass, user_names));
+	}
+
+	// テキストファイルに保存されたtweet集合から生成 (各.txtファイルがユーザのtweet集合、各行がtweetに相当)
+	static InputDataPtr makeInstanceFromTweet(
+		FilepassString const& src_folder_pass,		// 生のテキストデータが保存されているフォルダ
+		FilterSetting const& filter,				// テキストへのフィルタ処理
+		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
+		maybe<std::vector<FilepassString>> user_names = nothing	// 各ユーザの識別名(デフォルトはファイル名)
+	){
+		auto doc_passes = sig::get_file_names(src_folder_pass, false);
+		if (!sig::is_container_valid(doc_passes)){
+			sig::FileOpenErrorPrint(src_folder_pass);
+			assert(false);
+		}
+
+		return InputDataPtr(new InputDataFromText(
+			DocumentType::Tweet,
+			sig::map([&](FilepassString file){
+				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
+			}, sig::fromJust(doc_passes)
+			), filter, save_folder_pass, user_names ? sig::fromJust(user_names) : sig::fromJust(doc_passes))
 		);
 	}
 };
