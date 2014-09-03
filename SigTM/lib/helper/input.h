@@ -29,9 +29,11 @@ protected:
 	friend class LDA_Gibbs;
 	friend class MrLDA;
 	friend class LDA_CVB0;
+	friend class TwitterLDA;
 	friend class MRInputIterator;
 
 	DocumentType doc_type_;
+	bool is_token_sorted_;	 // priority1: user_id, priority2: doc_id
 
 	uint doc_num_;
 	TokenList tokens_;		// 単語トークン列
@@ -49,8 +51,10 @@ private:
 	void reconstruct();
 	
 protected:
-	InputData(DocumentType type,uint doc_num, FilepassString working_directory) : doc_num_(doc_num), working_directory_(sig::modify_dirpass_tail(working_directory, true)){};
-	void save();
+	InputData(DocumentType type,uint doc_num, FilepassString working_directory) : doc_type_(type), is_token_sorted_(false), doc_num_(doc_num), working_directory_(sig::modify_dirpass_tail(working_directory, true)){};
+	
+	void sortToken();
+	void save() const;
 
 public:
 	virtual ~InputData(){}

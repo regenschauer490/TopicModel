@@ -66,7 +66,8 @@ void InputData::reconstruct()
 	uint line_iter = 0;
 
 	// get feature size
-	int doc_type = std::stoi(token_text[line_iter]);
+	doc_type_ = static_cast<DocumentType>(std::stoi(token_text[line_iter]));
+	is_token_sorted_  = static_cast<bool>(std::stoi(token_text[++line_iter]));
 	int doc_num = std::stoi(token_text[++line_iter]);
 	int wnum = std::stoi(token_text[++line_iter]);
 	int tnum = std::stoi(token_text[++line_iter]);
@@ -78,7 +79,6 @@ void InputData::reconstruct()
 		assert(false);
 	}
 
-	doc_type_ = static_cast<DocumentType>(doc_type);
 	doc_num_ = static_cast<uint>(doc_num);
 	//words_.reserve(wnum);
 	tokens_.reserve(tnum);
@@ -146,7 +146,14 @@ void InputData::reconstruct()
 */
 }
 
-void InputData::save()
+void InputData::sortToken()
+{
+	sig::sort(tokens_, [](Token const& a, Token const& b){ return a.doc_id < b.doc_id; });
+	sig::sort(tokens_, [](Token const& a, Token const& b){ return a.user_id < b.user_id; });
+	input_data_->is_token_sorted_ = true;
+}
+
+void InputData::save() const
 {
 	auto base_pass = sig::modify_dirpass_tail(working_directory_, true);
 
@@ -169,6 +176,7 @@ void InputData::save()
 	// save tokens
 	std::ofstream ofs(token_pass);
 	ofs << static_cast<int>(doc_type_) << std::endl;
+	ofs << static_cast<int>(is_token_sorted_) << std::endl;
 	ofs << doc_num_ << std::endl;
 	ofs << words_.size() << std::endl;
 	ofs << tokens_.size() << std::endl;

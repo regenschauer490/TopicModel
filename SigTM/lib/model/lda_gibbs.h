@@ -31,12 +31,13 @@ class LDA_Gibbs : public LDA
 
 	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
 	VectorV<double> beta_;			// dirichlet hyper parameter of phi
-	VectorT<uint> z_;				// topic assigned to each tokens temporary
-			
+	
 	MatrixVK<uint> word_ct_;		// topic count of each word
 	MatrixDK<uint> doc_ct_;			// topic count of each document
 	VectorK<uint> topic_ct_;		// topic count of all token
 
+	VectorT<uint> z_;				// topic assigned to each token
+			
 	double alpha_sum_;
 	double beta_sum_;
 	VectorK<double> tmp_p_;
@@ -75,13 +76,12 @@ private:
 	LDA_Gibbs() = delete;
 	LDA_Gibbs(LDA_Gibbs const&) = delete;
 
-	// alpha_:各単語のトピック更新時の選択確率平滑化定数, beta_:
 	template <class SamplingMethod>
 	LDA_Gibbs(SamplingMethod sm,bool resume,  uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
-		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
+		input_data_(input_data), tokens_(input_data->tokens_), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta)),
-		tokens_(input_data->tokens_), word_ct_(SIG_INIT_MATRIX(uint, V, K, 0)), doc_ct_(SIG_INIT_MATRIX(uint, D, K, 0)), topic_ct_(SIG_INIT_VECTOR(uint, K, 0)),
-		alpha_sum_(0), beta_sum_(0), tmp_p_(SIG_INIT_VECTOR(double, K, 0)), z_(tokens_.size(), 0), term_score_(SIG_INIT_MATRIX(double, K, V, 0)), total_iter_ct_(0),
+		word_ct_(SIG_INIT_MATRIX(uint, V, K, 0)), doc_ct_(SIG_INIT_MATRIX(uint, D, K, 0)), topic_ct_(SIG_INIT_VECTOR(uint, K, 0)),
+		z_(tokens_.size(), 0), alpha_sum_(0), beta_sum_(0), tmp_p_(SIG_INIT_VECTOR(double, K, 0)), term_score_(SIG_INIT_MATRIX(double, K, V, 0)), total_iter_ct_(0),
 		sampling_(SamplingMethod()), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);

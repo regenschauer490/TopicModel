@@ -86,6 +86,7 @@ void InputDataFromText::makeData(DocumentType type, Documents const& raw_texts)
 			}
 		}
 	}
+	is_token_sorted_ = true;
 
 	/*			//Žw’èŒêœb‚Ìœ‹Ž
 	if(!filter_->excepted_words_.empty()){

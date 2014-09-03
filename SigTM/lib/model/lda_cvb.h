@@ -45,9 +45,9 @@ private:
 	LDA_CVB0(LDA_CVB0 const&) = delete;
 
 	LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
-		D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()), input_data_(input_data),
+		input_data_(input_data), tokens_(input_data->tokens_), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
-		tokens_(input_data->tokens_), omega_(tokens_.size(), VectorK<double>(K_, 0)), gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0),
+		omega_(tokens_.size(), VectorK<double>(K_, 0)), gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0),
 		term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);

@@ -18,16 +18,16 @@ http://opensource.org/licenses/mit-license.php
 namespace sigtm
 {
 struct Token;
-using TokenPtr = std::shared_ptr<Token const>;
+//using TokenPtr = std::shared_ptr<Token const>;
 
 
 /* ある単語を表すトークン */
 struct Token
 {
 	const uint self_id;
+	const UserId user_id;
 	const DocumentId doc_id;
 	const WordId word_id;
-	const UserId user_id;
 
 	Token() = delete;
 	Token(uint self_id, DocumentId d_id, WordId w_id) : self_id(self_id), doc_id(d_id), word_id(w_id), user_id(0){}

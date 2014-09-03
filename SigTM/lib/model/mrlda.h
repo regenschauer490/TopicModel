@@ -143,6 +143,7 @@ private:
 	MrLDA() = delete;
 	MrLDA(MrLDA const&) = delete;
 	MrLDA(MrLDA&&) = delete;
+
 	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta, mrlda::Specification spec) :
 		input_data_(input_data), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), eta_(MatrixKV<double>(K_, beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta))),
