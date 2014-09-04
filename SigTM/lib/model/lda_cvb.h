@@ -78,7 +78,7 @@ public:
 		return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, alpha, beta)); 
 	}
 	
-	// モデルの学習を行う
+	/* モデルの学習を行う*/
 	// iteration_num: 学習の反復回数(全トークンの変分パラメータωの更新を1反復とする)
 	void train(uint iteration_num) override{ train(iteration_num, null_lda_callback);  }
 

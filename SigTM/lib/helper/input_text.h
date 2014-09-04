@@ -36,7 +36,7 @@ private:
 	FilterSetting() = delete;
 
 	//_word_class に設定された品詞であるか
-	bool isSelected(WordClass self) const{ return selected_word_class_.count(self); }
+	bool isSelected(WordClass self) const{ return selected_word_class_.count(self) > 0 ? true : false; }
 
 public:
 	FilterSetting(FilterSetting const&) = default;

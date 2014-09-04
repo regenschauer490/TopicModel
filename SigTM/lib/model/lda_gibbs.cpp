@@ -70,11 +70,11 @@ void LDA_Gibbs::init(bool resume)
 
 void LDA_Gibbs::update(Token const& t)
 {
-	auto sampleTopic = [&](Token const& t)->TopicId
+	auto sampleTopic = [&](const DocumentId d, const WordId v)->TopicId
 	{
 		for (TopicId k = 0; k < K_; ++k){
 			//tmp_p_[k] = (doc_ct_[t.doc_id][k] + alpha_[k]) * (word_ct_[t.word_id][k] + beta) / (topic_ct_[k] + V_ * beta);
-			tmp_p_[k] = sampling_(this, t, k);
+			tmp_p_[k] = sampling_(this, d, v, k);
 			if (k != 0) tmp_p_[k] += tmp_p_[k - 1];
 		}
 
@@ -86,20 +86,20 @@ void LDA_Gibbs::update(Token const& t)
 		return K_ - 1;
 	};
 
-	auto assign_topic = z_[t.self_id];
+	const auto z = z_[t.self_id];
+	const auto d = t.doc_id;
+	const auto v = t.word_id;
 
-	--word_ct_[t.word_id][assign_topic];
-	--doc_ct_[t.doc_id][assign_topic];
-	--topic_ct_[assign_topic];
+	--word_ct_[v][z];
+	--doc_ct_[d][z];
+	--topic_ct_[z];
     
-	//新しくサンプリング
-	assign_topic = sampleTopic(t);
-	z_[t.self_id] = assign_topic;
+	const auto new_z = sampleTopic(d, v);
+	z_[t.self_id] = new_z;
 
-	++word_ct_[t.word_id][assign_topic];
-	++doc_ct_[t.doc_id][assign_topic];
-	++topic_ct_[assign_topic];
-  
+	++word_ct_[v][new_z];
+	++doc_ct_[d][new_z];
+	++topic_ct_[new_z];
 }
 
 void LDA_Gibbs::saveResumeData() const
@@ -194,13 +194,13 @@ auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 	VectorV<double> phi(V_, 0);
 	double sum = 0.0;
 
-	for(WordId w=0; w < V_; ++w){
-		phi[w] = beta_[w] + word_ct_[w][k_id];
-		sum += phi[w];
+	for(WordId v=0; v < V_; ++v){
+		phi[v] = beta_[v] + word_ct_[v][k_id];
+		sum += phi[v];
 	}
 	//正規化
 	double corr = 1.0 / sum;
-	for (WordId w = 0; w < V_; ++w) phi[w] *= corr;
+	for (WordId v = 0; v < V_; ++v) phi[v] *= corr;
 
 	return std::move(phi);
 }

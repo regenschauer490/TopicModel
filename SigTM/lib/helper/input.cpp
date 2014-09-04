@@ -9,6 +9,7 @@ http://opensource.org/licenses/mit-license.php
 #include <sstream>
 #include "SigUtil/lib/file.hpp"
 #include "SigUtil/lib/iteration.hpp"
+#include "SigUtil/lib/modify.hpp"
 #include "input.h"
 
 namespace sigtm
@@ -32,7 +33,7 @@ inline bool InputData::parseLine(std::wstring const& line)
 		tokens_.push_back(Token(tsize, elem1-1, elem2-1, elem3-1));
 	}
 	else{
-		for(uint i = 0; i < elem3; ++i){
+		for(int i = 0; i < elem3; ++i){
 			uint tsize = tokens_.size();
 			tokens_.push_back(Token(tsize, elem1-1, elem2-1));
 		}
@@ -67,7 +68,7 @@ void InputData::reconstruct()
 
 	// get feature size
 	doc_type_ = static_cast<DocumentType>(std::stoi(token_text[line_iter]));
-	is_token_sorted_  = static_cast<bool>(std::stoi(token_text[++line_iter]));
+	is_token_sorted_ = std::stoi(token_text[++line_iter]) > 0 ? true : false;
 	int doc_num = std::stoi(token_text[++line_iter]);
 	int wnum = std::stoi(token_text[++line_iter]);
 	int tnum = std::stoi(token_text[++line_iter]);
@@ -150,7 +151,7 @@ void InputData::sortToken()
 {
 	sig::sort(tokens_, [](Token const& a, Token const& b){ return a.doc_id < b.doc_id; });
 	sig::sort(tokens_, [](Token const& a, Token const& b){ return a.user_id < b.user_id; });
-	input_data_->is_token_sorted_ = true;
+	is_token_sorted_ = true;
 }
 
 void InputData::save() const
@@ -197,7 +198,7 @@ void InputData::save() const
 			else d_w_ct[token.doc_id].emplace(token.word_id, 1);
 		}
 
-		for (int d = 0; d < doc_num_; ++d){
+		for (uint d = 0; d < doc_num_; ++d){
 			for (auto const& w2ct : d_w_ct[d]){
 				// doc word count
 				ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;

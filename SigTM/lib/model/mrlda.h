@@ -194,7 +194,7 @@ public:
 		return obj;
 	}
 
-	// 内部状態を更新する(学習)
+	/* モデルの学習を行う */
 	// iteration_num: 学習の反復回数(mapreduce処理とその結果の統合で1反復とする)
 	void train(uint iteration_num) override{ train(iteration_num, null_lda_callback); }
 

@@ -32,9 +32,9 @@ class LDA_Gibbs : public LDA
 	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
 	VectorV<double> beta_;			// dirichlet hyper parameter of phi
 	
-	MatrixVK<uint> word_ct_;		// topic count of each word
-	MatrixDK<uint> doc_ct_;			// topic count of each document
-	VectorK<uint> topic_ct_;		// topic count of all token
+	MatrixVK<uint> word_ct_;		// token count of each topic in each word
+	MatrixDK<uint> doc_ct_;			// token count of each topic in each document
+	VectorK<uint> topic_ct_;		// token count of each topic
 
 	VectorT<uint> z_;				// topic assigned to each token
 			
@@ -44,31 +44,31 @@ class LDA_Gibbs : public LDA
 	MatrixKV<double> term_score_;	// word score of emphasizing each topic
 	uint total_iter_ct_;
 	
-	const std::function<double(LDA_Gibbs const* obj, Token const& t, uint k)> sampling_;
+	const std::function<double(LDA_Gibbs const* obj, DocumentId d, WordId v, TopicId k)> sampling_;
 	sig::SimpleRandom<uint> rand_ui_;
 	sig::SimpleRandom<double> rand_d_;
 
 public:
 	struct GibbsSampling
 	{
-		double operator()(LDA_Gibbs const* obj, Token const& t, uint k)
+		double operator()(LDA_Gibbs const* obj, DocumentId d, WordId v, TopicId k)
 		{
 			static int pre_k = -1;
 			static double dk_sum = 0;
 			double const& alpha = obj->alpha_[k];
-			double const& beta = obj->beta_[t.word_id];
+			double const& beta = obj->beta_[v];
 			
-			if(k != pre_k) dk_sum = sig::sum(obj->doc_ct_[t.doc_id]);
+			if(k != pre_k) dk_sum = sig::sum(obj->doc_ct_[d]);
 			pre_k = k;
-			return ((obj->doc_ct_[t.doc_id][k] + alpha) / (dk_sum + obj->alpha_sum_)) * ((obj->word_ct_[t.word_id][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_));
+			return ((obj->doc_ct_[d][k] + alpha) / (dk_sum + obj->alpha_sum_)) * ((obj->word_ct_[v][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_));
 		}
 	};
 
 	struct CollapsedGibbsSampling
 	{
-		double operator()(LDA_Gibbs const* obj, Token const& t, uint k){
-			double const& beta = obj->beta_[t.word_id];
-			return (obj->doc_ct_[t.doc_id][k] + obj->alpha_[k]) * (obj->word_ct_[t.word_id][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_);
+		double operator()(LDA_Gibbs const* obj, DocumentId d, WordId v, TopicId k){
+			double const& beta = obj->beta_[v];
+			return (obj->doc_ct_[d][k] + obj->alpha_[k]) * (obj->word_ct_[v][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_);
 		}
 	};
 
@@ -81,7 +81,7 @@ private:
 		input_data_(input_data), tokens_(input_data->tokens_), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta)),
 		word_ct_(SIG_INIT_MATRIX(uint, V, K, 0)), doc_ct_(SIG_INIT_MATRIX(uint, D, K, 0)), topic_ct_(SIG_INIT_VECTOR(uint, K, 0)),
-		z_(tokens_.size(), 0), alpha_sum_(0), beta_sum_(0), tmp_p_(SIG_INIT_VECTOR(double, K, 0)), term_score_(SIG_INIT_MATRIX(double, K, V, 0)), total_iter_ct_(0),
+		z_(tokens_.size(), 0), tmp_p_(SIG_INIT_VECTOR(double, K, 0)), term_score_(SIG_INIT_MATRIX(double, K, V, 0)), total_iter_ct_(0),
 		sampling_(SamplingMethod()), rand_ui_(0, K_ - 1, FixedRandom), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);
@@ -113,7 +113,7 @@ public:
 		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, alpha, beta));
 	}
 	
-	// モデルの学習を行う
+	/* モデルの学習を行う */
 	// iteration_num: 学習の反復回数(ギブスサンプリングによる全変数の更新を1反復とする)
 	void train(uint iteration_num) override{ train(iteration_num, null_lda_callback);  }
 

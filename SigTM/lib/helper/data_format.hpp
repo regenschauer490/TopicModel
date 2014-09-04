@@ -32,6 +32,9 @@ struct Token
 	Token() = delete;
 	Token(uint self_id, DocumentId d_id, WordId w_id) : self_id(self_id), doc_id(d_id), word_id(w_id), user_id(0){}
 	Token(uint self_id, UserId u_id, DocumentId d_id, WordId w_id) : self_id(self_id), doc_id(d_id), word_id(w_id), user_id(u_id){}
+
+	Token(Token const&) = default;
+	Token& operator=(Token const& src){ Token tmp(src); std::swap(*this, tmp); }
 };
 
 /* トークン列 */
@@ -91,8 +94,8 @@ public:
 	WordId getWordID(const_iterator iter) const{ return iter->left; }
 	WordId getWordID(const_iterator::value_type const& elem) const{ return elem.left; }
 
-	bool hasElement(C_WStrPtr word) const{ return id_word_.right.count(word); }
-	bool hasElement(WordId id) const{ return id_word_.left.count(id); }
+	bool hasElement(C_WStrPtr word) const{ return id_word_.right.count(word) > 0 ? true : false; }
+	bool hasElement(WordId id) const{ return id_word_.left.count(id) > 0 ? true : false; }
 #else
 	void emplace(WordId id, C_WStrPtr word){
 		id_word_.push_back(word);
