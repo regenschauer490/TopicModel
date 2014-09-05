@@ -88,8 +88,8 @@ private:
 	}
 
 	void init(bool resume);
-	void update(Token const& t);
 	void saveResumeData() const;
+	void update(Token const& t);
 
 public:
 	~LDA_Gibbs(){}
@@ -134,29 +134,25 @@ public:
 	// ファイルに出力
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const override;
 
-	//ドキュメントのトピック分布 [doc][topic]
-	using LDA::getTheta;//auto getTheta() const->MatrixDK<double> override{ return LDA::getTheta(); }
-	auto getTheta(DocumentId d_id) const->VectorK<double> override;
+	//ドキュメントのトピック分布
+	using LDA::getTheta;		// [doc][topic]
+	auto getTheta(DocumentId d_id) const->VectorK<double> override;	// [topic]
 
-	//トピックの単語分布 [topic][word]
-	auto getPhi() const->MatrixKV<double> override{ return LDA::getPhi(); }
-	auto getPhi(TopicId k_id) const->VectorV<double> override;
+	//トピックの単語分布
+	using LDA::getPhi;		// [topic][word]
+	auto getPhi(TopicId k_id) const->VectorV<double> override;	// [word]
 
-	//トピックを強調する単語スコア [topic][word]
-	auto getTermScore() const->MatrixKV<double> override{ return term_score_; }
-	auto getTermScore(TopicId t_id) const->VectorV<double> override{ return term_score_[t_id]; }
+	//トピックを強調する単語スコア
+	auto getTermScore() const->MatrixKV<double> override{ return term_score_; }		// [topic][word]
+	auto getTermScore(TopicId t_id) const->VectorV<double> override{ return term_score_[t_id]; }	// [word]
 
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
-	// [topic][ranking]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double>>> override{ return LDA::getWordOfTopic(target, return_word_num); }
-	// [ranking]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>> override;
+	using LDA::getWordOfTopic;		// [topic][ranking]<vocab, score>
+	auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>> override;	// [ranking]<vocab, score>
 
 	// 指定ドキュメントの上位return_word_num個の、語彙とスコアを返す
-	// [doc][ranking]<vocab, score>
-	auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double>>> override{ return LDA::getWordOfDocument(return_word_num); }
-	//[ranking]<vocab, score>
-	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>> override;
+	using LDA::getWordOfDocument;		// [doc][ranking]<vocab, score>	
+	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>> override;	//[ranking]<vocab, score>
 
 	uint getDocumentNum() const override{ return D_; }
 	uint getTopicNum() const override{ return K_; }
@@ -167,7 +163,7 @@ public:
 	// get hyper-parameter of word distribution
 	auto getBeta() const->VectorV<double> override{ return beta_; }
 
-	// 
+
 	double getLogLikelihood() const override{ return calcLogLikelihood(tokens_); }
 
 	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / tokens_.size()); }

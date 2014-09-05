@@ -34,7 +34,7 @@ struct Token
 	Token(uint self_id, UserId u_id, DocumentId d_id, WordId w_id) : self_id(self_id), doc_id(d_id), word_id(w_id), user_id(u_id){}
 
 	Token(Token const&) = default;
-	Token& operator=(Token const& src){ Token tmp(src); std::swap(*this, tmp); }
+	Token& operator=(Token const& src){ Token tmp(src); std::swap(*this, tmp); return *this; }
 };
 
 /* トークン列 */

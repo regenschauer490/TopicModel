@@ -20,7 +20,9 @@ enum class CompareMethodV{ COS };
 //確率分布の比較手法
 enum class CompareMethodD{ KL_DIV, JS_DIV };
 
+// todo: enum class -> functor
 
+/*
 //類似度行列
 struct SimilarityMatrix{
 	std::vector<std::vector<double>> data;
@@ -32,7 +34,7 @@ struct DisSimilarityMatrix{
 	std::vector<std::vector<double>> data;
 };
 typedef std::shared_ptr <DisSimilarityMatrix const> DisSimilarityMatrixPtr;
-
+*/
 
 //各モデルクラスの内部に定義するインナークラス
 

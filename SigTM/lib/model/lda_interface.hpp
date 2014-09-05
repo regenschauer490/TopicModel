@@ -55,7 +55,7 @@ template<class T> using SMatrixKV = SVectorK<SVectorV<T>>;
 
 
 const double default_alpha_base = 50;
-const double default_beta = 0.1;
+const double default_beta = 0.01;
 
 // LDAインタフェース
 class LDA
@@ -78,7 +78,8 @@ protected:
 	SIG_MakeDist2CmpMap(Distribution::TERM_SCORE, LDA::CmpV<std::function< VectorK<double>(TopicId) >>);
 	//SIG_MakeDist2CmpMap(Distribution::DOC_TERM, LDA::CmpV);
 	
-	template <LDA::Distribution Select> friend auto compare(LDAPtr lda, Id id1, Id id2) ->typename Map2Cmp<Select>::type;
+	template <LDA::Distribution Select>
+	friend auto compare(LDAPtr lda, Id id1, Id id2) ->typename Map2Cmp<Select>::type;
 
 protected:
 	LDA() = default;

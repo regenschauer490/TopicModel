@@ -5,7 +5,9 @@
 #include "SigUtil/lib/file.hpp"
 
 namespace signlp{
-	
+
+#define USE_SIGNLP 1				// •¶š—ñ‰ğÍ‚ğs‚¤‚½‚ß‚ÉSigNLP‚ğg—p‚·‚é‚©
+
 const bool enable_warning = false;
 
 using sig::uint;

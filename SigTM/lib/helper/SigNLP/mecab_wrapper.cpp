@@ -5,9 +5,9 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#if USE_SIGNLP
-
 #include "mecab_wrapper.h"
+
+#if USE_SIGNLP
 
 namespace signlp{
 	using sig::wstr_to_str;

@@ -1,8 +1,8 @@
-﻿#include "lib/model/lda_gibbs.h"
+﻿#include "lib/helper/input_text.h"
 #include "SigUtil/lib/file.hpp"
 
 const int TopicNum = 20;
-const int IterationNum = 1000;
+const int IterationNum = 100;
 
 static const std::wregex url_reg(L"http(s)?://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?");
 static const std::wregex htag_reg(L"#(\\w)+");
@@ -10,7 +10,16 @@ static const std::wregex res_reg(L"@(\\w)+");
 static const std::wregex noise_reg(L"^[ＴWＷwｗω・･、。*＊:：;；ー－…´`ﾟo｡.,_|│~~\\-\\^\"”'’＂@!！?？#⇒() () ｢」{}\\[\\]\/ 　]+$");
 static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 
+/*
+	[ 入力形式のデータ作成 ]
 
+・新規作成(外部ファイル or プログラム内の変数)
+	・別途MeCabのインストールが必要
+
+・過去の作成データを使用
+	・tokenデータ：テキスト中の各トークンに関する情報
+	・vocabデータ：出現単語に関する情報
+*/
 sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_folder, bool make_new)
 {
 	using namespace std;
@@ -48,18 +57,8 @@ sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_fold
 	sigtm::InputDataPtr inputdata;
 
 	if(make_new){
-		// 新しくデータセットを作成(現在サポートしているのはテキストからの生成)
 #if USE_SIGNLP
-/*		auto doc_pass = sig::get_file_names(, false);
-
-		vector<vector<wstring>> docs;
-		for (auto dp : sig::fromJust(doc_pass)){
-			auto tdoc = sig::read_line<wstring>(sig::modify_dirpass_tail(src_folder, true) + dp);
-			docs.push_back(
-				sig::fromJust(tdoc)
-			);
-		}
-*/
+		// 新しくデータセットを作成(外部ファイルから生成)
 		inputdata = sigtm::InputDataFromText::makeInstance(src_folder, filter, out_folder);
 #else
 		assert(false);
@@ -73,7 +72,23 @@ sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_fold
 	return inputdata;
 }
 
-void experiment(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+
+/*
+	[ Latent Dirichlet Allocation (estimate by Gibbs Sampling or Collapsed Gibbs Sampling) ]
+
+・標準的なGibbsSamplingによるLDA
+・指定するパラメータ
+	・K:トピック数
+	・iteration：反復回数
+	・alpha：トピック分布thetaの平滑化度合．デフォルトは全ての値が 50 / K
+	・beta：単語分布phiの平滑化度合．デフォルトは全ての値が 0.01
+	・sampling method：Gibbs Sampling か Collapsed Gibbs Sampling
+・最終的な反復回数はperplexityを参考に模索して決める
+・レジューム機能あり
+*/
+#include "lib/model/lda_gibbs.h"
+
+void sample1(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
@@ -93,6 +108,7 @@ void experiment(std::wstring src_folder, std::wstring out_folder, bool resume, b
 	};
 
 	auto lda = sigtm::LDA_Gibbs::makeInstance(resume, TopicNum, inputdata);
+	// sigtm::LDA_Gibbs::makeInstance<sigtm::LDA_Gibbs::GibbsSampling>(resume, TopicNum, inputdata);
 	uint doc_num = lda->getDocumentNum();
 
 	cout << "model calculate" << endl;
@@ -104,34 +120,90 @@ void experiment(std::wstring src_folder, std::wstring out_folder, bool resume, b
 	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
 	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
 
-	// LDA後の人物間類似度測定
+	auto theta = lda->getTheta();
+	auto theta1 = lda->getTheta(1);
+
+	// document間の類似度測定
 	vector< vector<double> > similarity(doc_num, vector<double>(doc_num, 0));
 
 	for (uint i = 0; i < doc_num; ++i){
-		for (uint j = 0; j < i; ++j)	similarity[i][j] = similarity[j][i];
-		for (uint j = i; j < doc_num; ++j)similarity[i][j] = sig::fromJust(sigtm::compare<sigtm::LDA::Distribution::DOCUMENT>(lda, i, j).method(sigtm::CompareMethodD::JS_DIV));
-		//lda->compareDistribution(sigtm::CompareMethodD::JS_DIV, sigtm::LDA::Distribution::DOCUMENT, i, j);
+		for (uint j = 0; j < i; ++j) similarity[i][j] = similarity[j][i];
+		for (uint j = i; j < doc_num; ++j){
+			similarity[i][j] = sig::fromJust(sigtm::compare<sigtm::LDA::Distribution::DOCUMENT>(lda, i, j).method(sigtm::CompareMethodD::JS_DIV));
+		}
 	}
-	
 	//sig::SaveCSV(similarity, names, names, out_folder + L"similarity_lda.csv");
 }
 
+
+/*
+	[ Latent Dirichlet Allocation (estimate by Zero-Order Collapsed Variational Bayesian inference) ]
+
+・標準的なCVB0によるLDA
+・指定するパラメータ
+	・K : トピック数
+	・iteration：反復回数
+	・alpha：トピック分布thetaの平滑化度合．デフォルトは全ての値が 50 / K
+	・beta：単語分布phiの平滑化度合．デフォルトは全ての値が 0.01
+・最終的な反復回数はperplexityを参考に模索して決める
+ */
+#include "lib/model/lda_cvb.h"
+
+void sample2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+{
+	using namespace std;
+	using sig::uint;
+
+	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+
+	resume = resume && (!make_new);
+
+	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_cvb.txt";
+	if (!resume) sig::clear_file(perp_pass);
+
+	auto savePerplexity = [&](sigtm::LDA const* lda)
+	{
+		double perp = lda->getPerplexity();
+		auto split = sig::split(std::to_string(perp), ",");
+		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+	};
+
+	auto lda = sigtm::LDA_CVB0::makeInstance(resume, TopicNum, inputdata);
+	uint doc_num = lda->getDocumentNum();
+
+	cout << "model calculate" << endl;
+
+	// 学習開始
+	lda->train(IterationNum, savePerplexity);
+
+	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
+	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
+	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
+}
+
+
 #include "lib/model/mrlda.h"
 
-void experiment2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+void sample3(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	auto inputdata = makeInputData(src_folder, out_folder, make_new);
 	
 	resume = resume && (!make_new);
 	std::cout << resume << " " << make_new;
+
 	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_mrlda.txt";
-	if(!resume) sig::clear_file(perp_pass);
+	const std::wstring time_pass = sig::modify_dirpass_tail(out_folder, true) + L"time_mrlda.txt";
+	if(!resume){
+		sig::clear_file(perp_pass);
+		sig::clear_file(time_pass);
+	}
 
 	sig::TimeWatch tw;
 	auto savePerplexity = [&](sigtm::LDA const* lda)
 	{		
 		tw.save();
 		std::cout << "1 iteration time: " << tw.get_total_time() << std::endl;
+		sig::save_line(tw.get_total_time<std::chrono::seconds>(), time_pass, sig::WriteMode::append);
 		tw.reset();
 
 		double perp = lda->getPerplexity();
@@ -145,6 +217,41 @@ void experiment2(std::wstring src_folder, std::wstring out_folder, bool resume, 
 	mrlda->train(100, savePerplexity);
 }
 
+/*
+#include "lib/model/twitter_lda.h"
+
+void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+{
+	using namespace std;
+	using sig::uint;
+
+	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+
+	resume = resume && (!make_new);
+
+	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_twlda.txt";
+	if (!resume) sig::clear_file(perp_pass);
+
+	auto savePerplexity = [&](sigtm::LDA const* lda)
+	{
+		double perp = lda->getPerplexity();
+		auto split = sig::split(std::to_string(perp), ",");
+		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+	};
+
+	auto lda = sigtm::TwitterLDA::makeInstance(resume, TopicNum, inputdata);
+	uint doc_num = lda->getDocumentNum();
+
+	cout << "model calculate" << endl;
+
+	// 学習開始
+	lda->train(IterationNum, savePerplexity);
+
+	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
+	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
+	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
+}
+*/
 int main()
 {
 	/*
@@ -159,7 +266,7 @@ int main()
 	std::wstring data_folder_pass = L"../SigTM/test data";
 	std::wstring input_text_pass = data_folder_pass + L"/processed";
 	
-	experiment(input_text_pass, data_folder_pass, true, false);
+	sample3(input_text_pass, data_folder_pass, true, false);
 
 	return 0;
 }

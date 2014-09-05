@@ -23,6 +23,7 @@ void LDA_CVB0::init(bool resume)
 
 	for (auto const& t : tokens_){
 		auto omega_rand = makeRandomDistribution<VectorK<double>>(K_);
+		sig::compound_assignment(sig::assign_plus<double>(), omega_[t.self_id], omega_rand);
 		sig::compound_assignment(sig::assign_plus<double>(), lambda_[t.word_id], omega_rand);
 		sig::compound_assignment(sig::assign_plus<double>(), gamma_[t.doc_id], omega_rand);
 		sig::compound_assignment(sig::assign_plus<double>(), topic_sum_, omega_rand);
@@ -34,10 +35,12 @@ void LDA_CVB0::update(Token const& t)
 	//トピック比率の更新
 	const auto updateTopic = [&](Token const& t)
 	{
+		double sum = 0;
 		for (TopicId k = 0; k < K_; ++k){
 			WordId v = t.word_id;
-			omega_[t.self_id][k] = (gamma_[t.doc_id][k] + alpha_[k]) * (lambda_[v][k] + beta_[v]) / (topic_sum_[k] + V_ * beta_[v]);
+			omega_[t.self_id][k] = (gamma_[t.doc_id][k] + alpha_[k]) * (lambda_[v][k] + beta_[v]) / (topic_sum_[k] + beta_sum_);
 		}
+		sig::normalize(omega_[t.self_id]);
 	};
 
 	sig::compound_assignment(sig::assign_minus<double>(), lambda_[t.word_id], omega_[t.self_id]);
@@ -51,6 +54,21 @@ void LDA_CVB0::update(Token const& t)
 	sig::compound_assignment(sig::assign_plus<double>(), topic_sum_, omega_[t.self_id]);
 }
 
+void LDA_CVB0::train(uint iteration_num, std::function<void(LDA const*)> callback)
+{
+	const auto iteration_impl = [&]{
+		for (uint i = 0; i < iteration_num; ++i, ++total_iter_ct_){
+			std::string numstr = "iteration: " + std::to_string(total_iter_ct_ + 1);
+			std::cout << numstr << std::endl;
+			std::for_each(std::begin(tokens_), std::end(tokens_), std::bind(&LDA_CVB0::update, this, std::placeholders::_1));
+			callback(this);
+		}
+	};
+
+	iteration_impl();
+	//saveResumeData();
+	calcTermScore(getPhi(), term_score_);
+}
 
 void LDA_CVB0::save(Distribution target, FilepassString save_folder, bool detail) const
 {
@@ -102,5 +120,32 @@ auto LDA_CVB0::getPhi(TopicId k_id) const->VectorV<double>
 	// computed from the variational distribution
 	return sig::map([&](uint i){ return lambda_[i][k_id] / sum; }, sig::seq(0, 1, V_));
 }
+
+
+auto LDA_CVB0::getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>>
+{
+	std::vector< std::tuple<std::wstring, double> > result;
+
+	std::vector<double> df;
+	if (target == Distribution::TOPIC) df = getPhi(k_id);
+	else if (target == Distribution::TERM_SCORE) df = getTermScore(k_id);
+	else{
+		std::cout << "LDA_CVB0::getWordOfTopic : Distributionが無効" << std::endl;
+		return result;
+	}
+
+	return getTopWords(df, return_word_num, input_data_->words_);
+}
+
+auto LDA_CVB0::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>>
+{
+	std::vector< std::tuple<std::wstring, double> > result;
+	auto top_wscore = getTermScoreOfDocument(d_id);
+
+	for (uint i = 0; i<return_word_num; ++i) result.push_back(std::make_tuple(*input_data_->words_.getWord(std::get<0>(top_wscore[i])), std::get<1>(top_wscore[i])));
+
+	return std::move(result);
+}
+
 
 }

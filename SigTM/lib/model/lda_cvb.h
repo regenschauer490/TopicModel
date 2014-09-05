@@ -30,11 +30,13 @@ class LDA_CVB0 : public LDA
 	VectorK<double> alpha_;			// dirichlet hyper parameter of theta
 	VectorV<double> beta_;			// dirichlet hyper parameter of phi
 			
-	MatrixTK<double> omega_;		// variational parameter of z(assigned topic)
 	MatrixDK<double> gamma_;		// variational parameter of theta(document-topic)
 	MatrixVK<double> lambda_;		// variational parameter of phi(topic-word)
 	VectorK<double> topic_sum_;		
 	
+	MatrixTK<double> omega_;		// variational parameter of z(assigned topic)
+
+	double beta_sum_;
 	MatrixKV<double> term_score_;	// word score of emphasizing each topic
 	uint total_iter_ct_;
 
@@ -47,8 +49,8 @@ private:
 	LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
 		input_data_(input_data), tokens_(input_data->tokens_), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
-		omega_(tokens_.size(), VectorK<double>(K_, 0)), gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0),
-		term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), rand_d_(0.0, 1.0, FixedRandom)
+		gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0), omega_(tokens_.size(), VectorK<double>(K_, 0)), 
+		beta_sum_(sig::sum(beta_)), term_score_(K_, VectorV<double>(V_, 0)), total_iter_ct_(0), rand_d_(0.0, 1.0, FixedRandom)
 	{
 		init(resume);
 	}
@@ -113,13 +115,13 @@ public:
 
 	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
 	// [topic][ranking]<vocab, score>
-	auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > > override;
+	auto getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > > override{ return LDA::getWordOfTopic(target, return_word_num); }
 	// [ranking]<vocab, score>
 	auto getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> > override;
 
 	// 指定ドキュメントの上位return_word_num個の、語彙とスコアを返す
 	// [doc][ranking]<vocab, score>
-	auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double> > > override;
+	auto getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double> > > override{ return LDA::getWordOfDocument(return_word_num); }
 	//[ranking]<vocab, score>
 	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> > override;
 

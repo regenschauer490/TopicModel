@@ -5,7 +5,7 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-//#define _SCL_SECURE_NO_WARNINGS
+#define _SCL_SECURE_NO_WARNINGS
 
 #include "mrlda.h"
 #include "../helper/mapreduce_module.h"

@@ -1,8 +1,6 @@
 #ifndef SIG_MECAB_WRAPPER_H
 #define SIG_MECAB_WRAPPER_H
 
-#if USE_SIGNLP
-
 #include <iostream>
 #include <vector>
 #include <string>
@@ -11,6 +9,8 @@
 #include <functional>
 
 #include "signlp.hpp"
+
+#if USE_SIGNLP
 
 #if defined(_WIN64)
 #include "../external/mecab/x64/mecab.h"

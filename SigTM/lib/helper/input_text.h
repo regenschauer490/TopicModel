@@ -9,11 +9,10 @@ http://opensource.org/licenses/mit-license.php
 #define SIGTM_INPUT_FILTER_H
 
 #include "input.h"
+#include "SigNLP/signlp.hpp"
 
 #if USE_SIGNLP
 #include "SigNlp/process_word.h"
-#else
-#include "SigNLP/signlp.hpp"
 #endif
 
 namespace sigtm

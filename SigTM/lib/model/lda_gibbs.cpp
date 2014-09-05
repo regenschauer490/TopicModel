@@ -10,14 +10,13 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-const auto resume_info_fname = SIG_STR_TO_FPSTR("gibbs_info");
-const auto resume_alpha_fname = SIG_STR_TO_FPSTR("gibbs_alpha");
-const auto resume_token_id_fname = SIG_STR_TO_FPSTR("gibbs_token_ids");
-const auto resume_token_z_fname = SIG_STR_TO_FPSTR("gibbs_token_assigned");
+const auto resume_info_fname = SIG_STR_TO_FPSTR("ldagb_info");
+const auto resume_alpha_fname = SIG_STR_TO_FPSTR("ldagb_alpha");
+const auto resume_token_z_fname = SIG_STR_TO_FPSTR("ldagb_token_z");
 
 void LDA_Gibbs::init(bool resume)
 {
-	std::unordered_map<uint, TopicId> id_z_map;
+	std::unordered_map<TokenId, TopicId> id_z_map;
 	if (resume){
 		auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
 	
@@ -27,7 +26,8 @@ void LDA_Gibbs::init(bool resume)
 			total_iter_ct_ = std::stoul(info[0]);
 		}
 
-		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname, " ");
+		// resume alpha
+		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname);
 		auto tmp_alpha = std::move(alpha_);
 	
 		if (sig::is_container_valid(load_alpha)){
@@ -39,19 +39,20 @@ void LDA_Gibbs::init(bool resume)
 			std::cout << "resume alpha error : alpha is set as default" << std::endl;
 		}
 	
-		auto load_token_id = sig::read_line<std::string>(base_pass + resume_token_id_fname);
+		// resume z
 		auto load_token_z = sig::read_line<std::string>(base_pass + resume_token_z_fname);
 	
-		if (sig::is_container_valid(load_token_id) && sig::is_container_valid(load_token_z)){
-			auto ids = sig::fromJust(load_token_id);
+		if (sig::is_container_valid(load_token_z)){
 			auto zs = sig::fromJust(load_token_z);
-			for(uint i = 0; i < ids.size(); ++i){
-				id_z_map.emplace(std::stod(ids[i]), std::stod(zs[i]));			
+			for(auto const& z : zs){
+				auto id_z = sig::split(z, " ");
+				id_z_map.emplace(std::stoul(id_z[0]), std::stoul(id_z[1]));			
 			}
-			std::cout << "resume token_assigned_info" << std::endl;
+			if (id_z_map.size() != tokens_.size()){ std::cout << "resume error: unmatch input data and reesume data." << std::endl; getchar(); abort(); }
+			std::cout << "resume token_z" << std::endl;
 		}
 		else{
-			std::cout << "resume token_assigned_info error : topic assigned to each tokens is set by random" << std::endl;
+			std::cout << "resume token_z error : topic assigned to each token is set by random" << std::endl;
 		}
 	}
 
@@ -60,12 +61,29 @@ void LDA_Gibbs::init(bool resume)
 
 	int i = -1;	
 	for(auto const& t : tokens_){
-		int assign = id_z_map.empty() ? rand_ui_() : id_z_map[t.self_id];
-		++word_ct_[t.word_id][assign];
-		++doc_ct_[t.doc_id][assign];
-		++topic_ct_[assign];
-		z_[++i] = assign;
+		int z = id_z_map.empty() ? rand_ui_() : id_z_map[t.self_id];
+		++word_ct_[t.word_id][z];
+		++doc_ct_[t.doc_id][z];
+		++topic_ct_[z];
+		z_[++i] = z;
 	}
+}
+
+void LDA_Gibbs::saveResumeData() const
+{
+	std::cout << "save resume data... ";
+
+	auto base_pass = input_data_->working_directory_;
+
+	sig::save_num(alpha_, base_pass + resume_alpha_fname, "\n");
+
+	auto zs = sig::map([&](Token const& t){ return std::to_string(t.self_id) + " " + std::to_string(z_[t.self_id]); }, tokens_);
+	sig::save_line(zs, base_pass + resume_token_z_fname);
+
+	sig::clear_file(base_pass + resume_info_fname);
+	sig::save_line(total_iter_ct_, base_pass + resume_info_fname, sig::WriteMode::append);
+
+	std::cout << "completed" << std::endl;
 }
 
 void LDA_Gibbs::update(Token const& t)
@@ -73,7 +91,6 @@ void LDA_Gibbs::update(Token const& t)
 	auto sampleTopic = [&](const DocumentId d, const WordId v)->TopicId
 	{
 		for (TopicId k = 0; k < K_; ++k){
-			//tmp_p_[k] = (doc_ct_[t.doc_id][k] + alpha_[k]) * (word_ct_[t.word_id][k] + beta) / (topic_ct_[k] + V_ * beta);
 			tmp_p_[k] = sampling_(this, d, v, k);
 			if (k != 0) tmp_p_[k] += tmp_p_[k - 1];
 		}
@@ -100,26 +117,6 @@ void LDA_Gibbs::update(Token const& t)
 	++word_ct_[v][new_z];
 	++doc_ct_[d][new_z];
 	++topic_ct_[new_z];
-}
-
-void LDA_Gibbs::saveResumeData() const
-{
-	std::cout << "save resume data... ";
-
-	auto base_pass = input_data_->working_directory_;
-	
-	sig::save_num(alpha_, base_pass + resume_alpha_fname, " ");
-
-	auto ids = sig::map([](Token const& t){ return t.self_id; }, tokens_);
-	sig::save_num(ids, base_pass + resume_token_id_fname, " ");
-
-	auto zs = sig::map([&](uint id){ return z_[id]; }, ids);
-	sig::save_num(zs, base_pass + resume_token_z_fname, " ");
-	
-	sig::clear_file(base_pass + resume_info_fname);
-	sig::save_line(total_iter_ct_, base_pass + resume_info_fname, sig::WriteMode::append);
-
-	std::cout << "completed" << std::endl;
 }
 
 
