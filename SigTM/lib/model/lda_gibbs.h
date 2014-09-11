@@ -8,7 +8,7 @@ http://opensource.org/licenses/mit-license.php
 #ifndef SIGTM_LDA_GIBBS_H
 #define SIGTM_LDA_GIBBS_H
 
-#include "lda_interface.hpp"
+#include "lda_common_module.hpp"
 #include "../helper/input.h"
 
 #if USE_SIGNLP
@@ -20,7 +20,7 @@ http://opensource.org/licenses/mit-license.php
 namespace sigtm
 {
 /* Latent Dirichlet Allocation (estimate by Gibbs Sampling or Collapsed Gibbs Sampling) */
-class LDA_Gibbs : public LDA
+class LDA_Gibbs : public LDA, private impl::LDA_Module
 {
 	InputDataPtr input_data_;
 	TokenList const& tokens_;
@@ -139,7 +139,7 @@ public:
 	auto getTheta(DocumentId d_id) const->VectorK<double> override;	// [topic]
 
 	//トピックの単語分布
-	using LDA::getPhi;		// [topic][word]
+	using LDA::getPhi;		// [topic][word] //std::bind(std::mem_fn<VectorV<double>, LDA_Gibbs, TopicId>(LDA_Gibbs::getPhi), *this,)
 	auto getPhi(TopicId k_id) const->VectorV<double> override;	// [word]
 
 	//トピックを強調する単語スコア
@@ -164,7 +164,7 @@ public:
 	auto getBeta() const->VectorV<double> override{ return beta_; }
 
 
-	double getLogLikelihood() const override{ return calcLogLikelihood(tokens_); }
+	double getLogLikelihood() const override{ return calcLogLikelihood(tokens_, getTheta(), getPhi()); }
 
 	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / tokens_.size()); }
 };

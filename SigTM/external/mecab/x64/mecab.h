@@ -1122,7 +1122,7 @@ public:
 
   virtual ~Model() {}
 
-#ifndef SWIG
+#ifndef SIWG
   /**
    * Factory method to create a new Model with a specified main's argc/argv-style parameters.
    * Return NULL if new model cannot be initialized. Use MeCab::getLastError() to obtain the

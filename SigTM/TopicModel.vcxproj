@@ -133,7 +133,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="lib\model\twitter_lda.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -159,14 +159,15 @@
     <ClInclude Include="lib\helper\mapreduce_module.h" />
     <ClInclude Include="lib\helper\SigNLP\mecab_wrapper.hpp" />
     <ClInclude Include="lib\helper\SigNLP\polar_evaluation.hpp" />
-    <ClInclude Include="lib\helper\SigNLP\polar_spin.h" />
+    <ClInclude Include="lib\helper\SigNLP\polar_spin.hpp" />
     <ClInclude Include="lib\helper\SigNLP\signlp.hpp" />
+    <ClInclude Include="lib\model\lda_common_module.hpp" />
     <ClInclude Include="lib\model\lda_cvb.h" />
     <ClInclude Include="lib\model\lda_gibbs.h" />
     <ClInclude Include="lib\model\lda_interface.hpp" />
     <ClInclude Include="lib\model\mrlda.h" />
     <ClInclude Include="lib\model\twitter_lda.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>

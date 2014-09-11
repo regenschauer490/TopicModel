@@ -13,6 +13,8 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
+class MrLDA;
+
 namespace mrlda{
 
 // map時にkeyとして渡されるオブジェクト

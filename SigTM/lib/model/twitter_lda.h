@@ -8,7 +8,7 @@ http://opensource.org/licenses/mit-license.php
 #ifndef SIGTM_TWITTER_LDA_H
 #define SIGTM_TWITTER_LDA_H
 
-#include "lda_interface.hpp"
+#include "lda_common_module.hpp"
 #include "SigUtil/lib/array.hpp"
 
 #include "../helper/input.h"
@@ -32,7 +32,7 @@ using TwitterLDAPtr = std::shared_ptr<TwitterLDA>;
 const std::function<void(TwitterLDA const*)> null_twlda_callback = [](TwitterLDA const*){};
 
 
-class TwitterLDA : private LDA
+class TwitterLDA : private impl::LDA_Module
 {
 	InputDataPtr input_data_;
 	TokenList const& tokens_;	// ※ソート操作による元データ変更の可能性あり
@@ -80,18 +80,6 @@ protected:
 	SIG_MakeDist2CmpMap(Distribution::TOPIC, TwitterLDA::CmpD<std::function< VectorK<double>(TopicId) >>);
 	SIG_MakeDist2CmpMap(Distribution::TERM_SCORE, TwitterLDA::CmpV<std::function< VectorK<double>(TopicId) >>);
 	
-private:
-	// dummys
-	DynamicType getDynamicType() const override{}
-	void train(uint iteration_num, std::function<void(LDA const*)> callback) override{}
-	void print(LDA::Distribution target) const override{}
-	void save(LDA::Distribution target, FilepassString save_folder, bool detail = false) const override{}
-	auto getTermScore() const->MatrixKV<double> override{}
-	auto getTermScore(TopicId t_id) const->VectorV<double> override{}
-	auto getWordOfTopic(LDA::Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>> override{}
-	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>> override{}
-	uint getDocumentNum() const override{}
-
 private:
 	TwitterLDA() = delete;
 	TwitterLDA(TwitterLDA const&) = delete;
@@ -156,7 +144,7 @@ public:
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const;
 
 	// ユーザのトピック分布
-	auto getTheta() const->MatrixUK<double>{ return LDA::getTheta(); }	// [user][topic]
+	auto getTheta() const->MatrixUK<double>;			// [user][topic]
 	auto getTheta(UserId u_id) const->VectorK<double>;		// [topic]
 
 	// tweetのトピック分布
@@ -164,7 +152,7 @@ public:
 	auto getTopicOfTweet(UserId u_id, DocumentId d_id) const->VectorK<double>;	// [topic]
 
 	//トピックの単語分布
-	auto getPhi() const->MatrixKV<double>{ return LDA::getPhi(); }	// [topic][word]
+	auto getPhi() const->MatrixKV<double>;	// [topic][word]
 	auto getPhi(TopicId k_id) const->VectorV<double>;		// [word]
 
 	// backgroundの単語分布
@@ -189,14 +177,14 @@ public:
 	uint getWordNum() const{ return V_; }
 
 	// get hyper-parameter of topic distribution
-	auto getAlpha() const->VectorK<double> override{ return alpha_; }
+	auto getAlpha() const->VectorK<double>{ return alpha_; }
 	// get hyper-parameter of word distribution
-	auto getBeta() const->VectorV<double> override{ return beta_; }
+	auto getBeta() const->VectorV<double>{ return beta_; }
 
 	// 
-	double getLogLikelihood() const override{ return calcLogLikelihood(tokens_); }
+	double getLogLikelihood() const;
 
-	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / tokens_.size()); }
+	double getPerplexity() const{ return std::exp(-getLogLikelihood() / tokens_.size()); }
 };
 
 }

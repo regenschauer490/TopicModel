@@ -146,7 +146,10 @@
     <ClInclude Include="lib\helper\SigNLP\polar_evaluation.hpp">
       <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
     </ClInclude>
-    <ClInclude Include="lib\helper\SigNLP\polar_spin.h">
+    <ClInclude Include="lib\model\lda_common_module.hpp">
+      <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\polar_spin.hpp">
       <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
     </ClInclude>
   </ItemGroup>

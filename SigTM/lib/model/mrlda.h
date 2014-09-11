@@ -8,12 +8,11 @@ http://opensource.org/licenses/mit-license.php
 #ifndef SIGTM_MRLDA_H
 #define SIGTM_MRLDA_H
 
-#include "lda_interface.hpp"
+#include "lda_common_module.hpp"
 #include "../helper/mapreduce_module.h"
-#include "../helper/input.h"
 #include "../../external/mapreduce/include/mapreduce.hpp"
-#include "boost/math/special_functions/digamma.hpp"
 #include "../../external/boost_sub/math/special_functions/polygamma.hpp"
+#include "boost/math/special_functions/digamma.hpp"
 
 #if USE_SIGNLP
 #include "../helper/input_text.h"
@@ -39,7 +38,7 @@ double calcModule0(C const& vec)
 
 
 /* Latent Dirichlet Allocation on mapreduce (estimate by Variational Bayesian inference) */
-class MrLDA : public LDA, public std::enable_shared_from_this<MrLDA>
+class MrLDA : public LDA, private impl::LDA_Module, public std::enable_shared_from_this<MrLDA>
 {
 	static const double global_convergence_threshold;
 	//static const double local_convergence_threshold;
@@ -257,7 +256,7 @@ public:
  
 	//auto getLambda(TopicId k_id) const->VectorV<double>{ return lambda_[k_id]; }
 
-	double getLogLikelihood() const override{ return calcLogLikelihood(input_data_->tokens_); }
+	double getLogLikelihood() const override{ return calcLogLikelihood(input_data_->tokens_, getTheta(), getPhi()); }
 
 	double getPerplexity() const override{ return std::exp(-getLogLikelihood() / input_data_->tokens_.size()); }
 };

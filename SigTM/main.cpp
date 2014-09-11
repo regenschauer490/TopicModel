@@ -253,7 +253,7 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 }
 */
 
-#include "lib/helper/SigNLP/polar_spin.h"
+#include "lib/helper/SigNLP/polar_spin.hpp"
 #include "lib/helper/SigNLP/mecab_wrapper.hpp"
 void polar_train()
 {	

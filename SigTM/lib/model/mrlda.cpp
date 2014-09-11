@@ -418,7 +418,7 @@ auto MrLDA::getWordOfDocument(uint return_word_num) const->VectorD< std::vector<
 auto MrLDA::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;
-	auto top_wscore = getTermScoreOfDocument(d_id);
+	auto top_wscore = getTermScoreOfDocument(getTheta(d_id), getTermScore());
 
 	for (uint i = 0; i<return_word_num; ++i){
 		result.push_back(std::make_tuple(*input_data_->words_.getWord(std::get<0>(top_wscore[i])), std::get<1>(top_wscore[i])));
