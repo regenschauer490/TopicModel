@@ -11,26 +11,28 @@ use MyUtility;
 use MyTwitter;
 
 #
-our $base_pass = "./";
-our $save_pass = $base_pass . "raw" ."/";
-our $ac_conf = ( YAML::Tiny->read ('conf.yml'))->[0];
+my $base_pass = "./";
+my $save_pass1 = $base_pass . "query" ."/";
+my $save_pass2 = $base_pass . "user/timeline" ."/";
+my $ac_conf = ( YAML::Tiny->read ('conf.yml'))->[0];
 #
 
 our $twitter = MyTwitter->new($ac_conf);
 my @queries = @{&SimpleReadDataFile($base_pass . "query.txt", "cp932")};
 
-&CrawlTweet(\@queries);
+#&CrawlTweet(\@queries, $save_pass1);
 
-my @users = @{&SimpleReadDataFile($save_pass . "user_ids.txt", "cp932")};
+my @users = @{&SimpleReadDataFile($save_pass1 . "user_ids.txt", "cp932")};
 print "user num" . scalar(@users) . "\n";
 	
-&CrawlTimeline(\@users);
+&CrawlTimeline(\@users, $save_pass2);
 	
 END;
 
-sub TweetCrawl
+sub CrawlTweet
 {
 	my $qref = shift;
+	my $save_pass = shift;
 	my @users;
 
 	foreach my $query (@{$qref}){
@@ -38,8 +40,12 @@ sub TweetCrawl
 		my @tweets_sr;
 		
 		my @local_querys = split(/,/, $query);
-		shift(@local_querys);
-				 
+		
+		if(&DoesExistFile($save_pass."raw/".encode("cp932",$local_querys[0]). ".txt")){
+			 &Print("skip:".$local_querys[0]."\n");
+			 next;
+		 }
+		 
 		foreach my $local_query (@local_querys){
 			my $max_id = 900000000000000000;
 			my $prev_max_id = $max_id;
@@ -47,10 +53,11 @@ sub TweetCrawl
 			&Print("q:".$local_query."\n");
 			
 			while(1){
-				RETRY1:
 				my $sr = 0;
 				my $size = 0;
+				my $ct = 0;
 
+				RETRY1:
 				eval{
 					$sr = $twitter->SearchTweet({q => $local_query." exclude:retweets", lang => "ja", count => 100, max_id => $max_id}); sleep( int(rand 3) + 3 );
 					$size = scalar(@{$sr->{statuses}});
@@ -58,8 +65,13 @@ sub TweetCrawl
 				};
 				if($@ || $size eq 0){
 					print "catch exception : $local_query - $loop\n";
-					sleep(60);
-					goto RETRY1;
+					if(++$ct < 5){
+						sleep(30);
+						goto RETRY1;
+					}
+					else{
+						last;
+					}
 				}
 							
 				foreach my $e (@{$sr->{statuses}}){
@@ -75,7 +87,7 @@ sub TweetCrawl
 					$max_id = $e->{id};
 					
 					my $jtmp = &JsonEncode($e);
-					&SimpleSaveAddDataFile($jtmp."\n", $save_pass."all_".encode("cp932",$local_querys[0]).".txt", "cp932");
+					&SimpleSaveAddDataFile($jtmp."\n", $save_pass."raw/all_".encode("cp932",$local_querys[0]).".txt", "cp932");
 					
 					if(!defined($e->{user}->{id})){ next;}
 					
@@ -85,7 +97,8 @@ sub TweetCrawl
 					if($tyofuku2 != 0){ next; }
 					else{ push(@users_sr, $e->{user}->{id}); }
 				
-					&SimpleSaveAddDataFile($jtmp."\n", $save_pass.encode("cp932",$local_querys[0]).".txt", "cp932" );
+					&SimpleSaveAddDataFile($jtmp."\n", $save_pass."raw/".encode("cp932",$local_querys[0]).".txt", "cp932" );
+					&SimpleSaveAddDataFile($e->{text}."\n", $save_pass.encode("cp932",$local_querys[0]).".txt", "cp932" );
 				}
 				
 				&Print($loop."【$size】 ");
@@ -110,37 +123,51 @@ sub TweetCrawl
 sub CrawlTimeline
 {
 	my $uref = shift;
+	my $save_pass = shift;
 	my $twitter = MyTwitter->new($ac_conf);
 	
 	foreach my $uid (@{$uref}){
 		my $max_id = 900000000000000000;
 		my $prev_max_id = $max_id;
 		my $loop = 1;
+		
+		if(&DoesExistFile($save_pass."raw/".encode("cp932",$uid).".txt")){
+			 &Print("skip:".$uid."\n");
+			 next;
+		 }
+
 		&Print("user_id:".$uid."\n");
 			
 		while(1){
-			RETRY2:
 			my $sr;
 			my $size = 0;
+			my $ct = 0;
 			
+			RETRY2:
 			eval{			
 				$sr = $twitter->StatusUserTimeline({user_id => $uid, lang => "ja", count => 100, max_id => $max_id});	sleep( int(rand 10) + 4 );
-				#print Dumper $udata;
+				#print Dumper $sr;
 				$size = scalar(@$sr);
 			};
 			if($@ || $size eq 0){
 				print "catch exception : $uid\n";
-				sleep(60);
-				goto RETRY2;
+				if(++$ct < 2){
+					sleep(30);
+					goto RETRY2;
+				}
+				else{
+					last;
+				}
 			}
 		
-			foreach my $e (@{$sr->{statuses}}){	
+			foreach my $e (@{$sr}){	
 				if( &SkipFilter($e->{text}) ){ next; }
 					
 				$max_id = $e->{id};
 					
 				my $jtmp = &JsonEncode($e);								
-				&SimpleSaveAddDataFile($jtmp."\n", $save_pass.encode("cp932",$uid).".txt", "cp932" );
+				&SimpleSaveAddDataFile($jtmp."\n", $save_pass."raw/".encode("cp932",$uid).".txt", "cp932" );
+				&SimpleSaveAddDataFile($e->{text}."\n", $save_pass.encode("cp932",$uid).".txt", "cp932" );
 			}
 				
 			&Print($loop."【$size】 ");

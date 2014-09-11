@@ -92,9 +92,11 @@ protected:
 
 	auto getTermScoreOfDocument(DocumentId d_id) const->std::vector< std::tuple<WordId, double>>;
 
+	// data[class][word], names[class]
 	template <class CC>
-	void printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass, bool detail) const;
+	void printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass) const;
 
+	// data[class][topic], names[class]
 	template <class CC>
 	void printTopic(CC const& data, std::vector<FilepassString> const& names, maybe<FilepassString> save_pass) const;
 
@@ -243,7 +245,7 @@ inline auto LDA::getTermScoreOfDocument(DocumentId d_id) const->std::vector< std
 }
 
 template <class CC>
-void LDA::printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass, bool detail) const
+void LDA::printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass) const
 {
 	auto Output = [](std::wostream& ofs, std::vector<std::tuple<std::wstring, double>> const& data, maybe<FilepassString> header)
 	{
@@ -256,10 +258,11 @@ void LDA::printWord(CC const& data, std::vector<FilepassString> const& names, Wo
 
 	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_STR_TO_FPSTR(".txt")) : std::wofstream(SIG_STR_TO_FPSTR(""));
 
-	sig::for_each([&](int i, VectorV<double> const& d)
+	// 各クラス(ex.トピック)のスコア上位top_num個の単語を出力
+	sig::for_each([&](int i, VectorV<double> const& wscore)
 	{
-		auto rank_words = top_num ? getTopWords(d, sig::fromJust(top_num), words) : getTopWords(d, d.size(), words);
-		auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i-1];
+		auto rank_words = top_num ? getTopWords(wscore, sig::fromJust(top_num), words) : getTopWords(wscore, wscore.size(), words);
+		auto header = names.empty() ? L"class:" + std::to_wstring(i) : names[i-1];
 
 		if (save_pass){
 			Output(ofs, rank_words, header);
@@ -269,16 +272,18 @@ void LDA::printWord(CC const& data, std::vector<FilepassString> const& names, Wo
 		}
 	}
 	, 1, data);
-
+/*
 	if (save_pass && detail){
+		// 全単語を出力
 		sig::for_each([&](int i, VectorV<double> const& d)
 		{
-			auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i-1];
+			auto header = names.empty() ? L"class:" + std::to_wstring(i) : names[i-1];
 			std::wofstream ofs2(sig::fromJust(save_pass) + header + SIG_STR_TO_FPSTR(".txt"));
 			for (auto const& e : d) ofs2 << e << L' ' << *words.getWord(i-1) << std::endl;
 		}
 		, 1, data);
 	}
+*/
 }
 
 template <class CC>
@@ -295,14 +300,15 @@ void LDA::printTopic(CC const& data, std::vector<FilepassString> const& names, m
 
 	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_STR_TO_FPSTR(".txt")) : std::wofstream(SIG_STR_TO_FPSTR(""));
 
-	sig::for_each([&](int i, VectorK<double> const& d)
+	// 各クラス(ex.ドキュメント)のトピック分布を出力
+	sig::for_each([&](int i, VectorK<double> const& tscore)
 	{
 		auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i-1];
 		if (save_pass){
-			Output(ofs, d, header);
+			Output(ofs, tscore, header);
 		}
 		else{
-			Output(std::wcout, d, header);
+			Output(std::wcout, tscore, header);
 		}
 	}
 	, 1, data);

@@ -127,8 +127,6 @@
     <ClCompile Include="lib\helper\input.cpp" />
     <ClCompile Include="lib\helper\input_text.cpp" />
     <ClCompile Include="lib\helper\mapreduce_module.cpp" />
-    <ClCompile Include="lib\helper\SigNLP\mecab_wrapper.cpp" />
-    <ClCompile Include="lib\helper\SigNLP\process_word.cpp" />
     <ClCompile Include="lib\model\lda_cvb.cpp" />
     <ClCompile Include="lib\model\lda_gibbs.cpp" />
     <ClCompile Include="lib\model\mrlda.cpp">
@@ -159,8 +157,9 @@
     <ClInclude Include="lib\helper\input.h" />
     <ClInclude Include="lib\helper\input_text.h" />
     <ClInclude Include="lib\helper\mapreduce_module.h" />
-    <ClInclude Include="lib\helper\SigNLP\mecab_wrapper.h" />
-    <ClInclude Include="lib\helper\SigNLP\process_word.h" />
+    <ClInclude Include="lib\helper\SigNLP\mecab_wrapper.hpp" />
+    <ClInclude Include="lib\helper\SigNLP\polar_evaluation.hpp" />
+    <ClInclude Include="lib\helper\SigNLP\polar_spin.h" />
     <ClInclude Include="lib\helper\SigNLP\signlp.hpp" />
     <ClInclude Include="lib\model\lda_cvb.h" />
     <ClInclude Include="lib\model\lda_gibbs.h" />

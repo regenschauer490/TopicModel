@@ -81,6 +81,18 @@ protected:
 	SIG_MakeDist2CmpMap(Distribution::TERM_SCORE, TwitterLDA::CmpV<std::function< VectorK<double>(TopicId) >>);
 	
 private:
+	// dummys
+	DynamicType getDynamicType() const override{}
+	void train(uint iteration_num, std::function<void(LDA const*)> callback) override{}
+	void print(LDA::Distribution target) const override{}
+	void save(LDA::Distribution target, FilepassString save_folder, bool detail = false) const override{}
+	auto getTermScore() const->MatrixKV<double> override{}
+	auto getTermScore(TopicId t_id) const->VectorV<double> override{}
+	auto getWordOfTopic(LDA::Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double>> override{}
+	auto getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double>> override{}
+	uint getDocumentNum() const override{}
+
+private:
 	TwitterLDA() = delete;
 	TwitterLDA(TwitterLDA const&) = delete;
 
@@ -93,7 +105,7 @@ private:
 	{
 		init(resume);
 	}
-
+	
 	void init(bool resume);
 	void saveResumeData() const;
 	void updateY(Token const& token, const uint t_pos);

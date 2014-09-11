@@ -278,7 +278,7 @@ void TwitterLDA::train(uint iteration_num, std::function<void(TwitterLDA const*)
 	}
 }
 
-void TwitterLDA::save(Distribution target, FilepassString save_folder, bool detail = false) const
+void TwitterLDA::save(Distribution target, FilepassString save_folder, bool detail) const
 {
 	save_folder = sig::modify_dirpass_tail(save_folder, true);
 
@@ -287,13 +287,13 @@ void TwitterLDA::save(Distribution target, FilepassString save_folder, bool deta
 		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("user_twlda"));
 		break;
 	case Distribution::TWEET:
-		printTopic(getTopicOfTweet(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("tweet_twlda"));
+		//printTopic(getTopicOfTweet(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("tweet_twlda"));
 		break;
 	case Distribution::TOPIC:
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_twlda"), detail);
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_twlda"));
 		break;
 	case Distribution::TERM_SCORE:
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_twlda"), detail);
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_twlda"));
 		break;
 	default:
 		std::cout << "TwitterLDA::save error" << std::endl;
@@ -303,27 +303,74 @@ void TwitterLDA::save(Distribution target, FilepassString save_folder, bool deta
 
 auto TwitterLDA::getTheta(UserId u_id) const->VectorK<double>
 {
+	VectorK<double> theta(K_, 0);
 
+	for (TopicId k = 0; k < K_; ++k){
+		theta[k] = alpha_[k] + user_ct_[u_id][k];
+	}
+	sig::normalize(theta);
+
+	return theta;
 }
 
 auto TwitterLDA::getTopicOfTweet(UserId u_id) const->MatrixDK<double>
 {
+	MatrixDK<double> tau;
 
+	for (DocumentId d = 0; d < D_[u_id]; ++d) tau.push_back(getTopicOfTweet(u_id, d));
+
+	return std::move(tau);
 }
 
 auto TwitterLDA::getTopicOfTweet(UserId u_id, DocumentId d_id) const->VectorK<double>
 {
+	VectorK<double> tau(K_, 0);
+	const auto token = tokens_.begin();
+	uint st = 0, ed = 0;
 
+	for (uint i = 0; i<u_id; ++i) st += sig::sum(T_[i]);
+	for (uint j = 0; j<d_id; ++j) st += T_[u_id][j];
+	ed = st + T_[u_id][d_id];
+
+	for (TopicId k = 0; k < K_; ++k){
+		auto p_z = (user_ct_[u_id][k] + alpha_[k]) / (D_[u_id] + alpha_sum_);
+
+		uint tct = 0;
+		for (auto it = token + st, end = token + ed; it != end; ++it, ++tct){
+			if (y_[u_id][d_id][tct]){
+				const auto v = it->word_id;
+				p_z *= (word_ct_[v][k] + beta_[v]) / (topic_ct_[k] + beta_sum_ + tct);
+			}
+		}
+		tau[k] = p_z;
+	}
+	sig::normalize(tau);
+
+	return std::move(tau);
 }
 
 auto TwitterLDA::getPhi(TopicId k_id) const->VectorV<double>
 {
+	VectorV<double> phi(V_, 0);
 
+	for (WordId v = 0; v < V_; ++v){
+		phi[v] = beta_[v] + word_ct_[v][k_id];
+	}
+	sig::normalize(phi);
+
+	return std::move(phi);
 }
 
 auto TwitterLDA::getPhiBackground() const->VectorV<double>
 {
+	VectorV<double> phi(V_, 0);
 
+	for (WordId v = 0; v < V_; ++v){
+		phi[v] = beta_[v] + word_ct_[v][K_];
+	}
+	sig::normalize(phi);
+
+	return std::move(phi);
 }
 
 }

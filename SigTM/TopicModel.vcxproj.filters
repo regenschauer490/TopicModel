@@ -51,12 +51,6 @@
     <ClCompile Include="lib\helper\input_text.cpp">
       <Filter>ソース ファイル\helper</Filter>
     </ClCompile>
-    <ClCompile Include="lib\helper\SigNLP\mecab_wrapper.cpp">
-      <Filter>ソース ファイル\helper\signlp</Filter>
-    </ClCompile>
-    <ClCompile Include="lib\helper\SigNLP\process_word.cpp">
-      <Filter>ソース ファイル\helper\signlp</Filter>
-    </ClCompile>
     <ClCompile Include="lib\helper\mapreduce_module.cpp">
       <Filter>ソース ファイル\helper</Filter>
     </ClCompile>
@@ -128,12 +122,6 @@
     <ClInclude Include="external\mapreduce\include\detail\intermediates\local_disk.hpp">
       <Filter>ヘッダー ファイル\helper\external\mapreduce</Filter>
     </ClInclude>
-    <ClInclude Include="lib\helper\SigNLP\mecab_wrapper.h">
-      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
-    </ClInclude>
-    <ClInclude Include="lib\helper\SigNLP\process_word.h">
-      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
-    </ClInclude>
     <ClInclude Include="lib\helper\SigNLP\signlp.hpp">
       <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
     </ClInclude>
@@ -151,6 +139,15 @@
     </ClInclude>
     <ClInclude Include="lib\model\twitter_lda.h">
       <Filter>ヘッダー ファイル\lda</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\mecab_wrapper.hpp">
+      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\polar_evaluation.hpp">
+      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\helper\SigNLP\polar_spin.h">
+      <Filter>ヘッダー ファイル\helper\SigNLP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

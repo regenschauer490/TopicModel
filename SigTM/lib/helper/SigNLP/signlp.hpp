@@ -1,4 +1,4 @@
-#ifndef SIG_NLP_HPP
+ï»¿#ifndef SIG_NLP_HPP
 #define SIG_NLP_HPP
 
 #include "SigUtil/lib/string.hpp"
@@ -6,32 +6,32 @@
 
 namespace signlp{
 
-#define USE_SIGNLP 1				// •¶š—ñ‰ğÍ‚ğs‚¤‚½‚ß‚ÉSigNLP‚ğg—p‚·‚é‚©
+#define USE_SIGNLP 1				// æ–‡å­—åˆ—è§£æã‚’è¡Œã†ãŸã‚ã«SigNLPã‚’ä½¿ç”¨ã™ã‚‹ã‹
 
 const bool enable_warning = false;
 
 using sig::uint;
 
-enum class WordClass{ NA, –¼Œ, “®Œ, Œ`—eŒ, •›Œ, Ú‘±Œ, Š´“®Œ, •Œ, •“®Œ, ˜A‘ÌŒ, ‹L† };
+enum class WordClass{ NA, åè©, å‹•è©, å½¢å®¹è©, å‰¯è©, æ¥ç¶šè©, æ„Ÿå‹•è©, åŠ©è©, åŠ©å‹•è©, é€£ä½“è©, è¨˜å· };
 
 //Positive, Negative, nEutral
 enum class PosiNega { NA, P, N, E };
 
-//ysˆ×z,y•]‰¿EŠ´î/åŠÏz,yo—ˆ–z,y‘¶İE«¿z,yŒoŒ±z,yêŠz,yó‘Ô/‹qŠÏz
+//ã€è¡Œç‚ºã€‘,ã€è©•ä¾¡ãƒ»æ„Ÿæƒ…/ä¸»è¦³ã€‘,ã€å‡ºæ¥äº‹ã€‘,ã€å­˜åœ¨ãƒ»æ€§è³ªã€‘,ã€çµŒé¨“ã€‘,ã€å ´æ‰€ã€‘,ã€çŠ¶æ…‹/å®¢è¦³ã€‘
 enum class PNStandard { NA, Act, EvaEmo_Sbj, Event, ExisProp, Exp, State_Obj, Place };
 
 
 inline WordClass StrToWC(std::string const& str){
-	if (str == "–¼Œ") return WordClass::–¼Œ;
-	if (str == "“®Œ") return WordClass::“®Œ;
-	if (str == "Œ`—eŒ") return WordClass::Œ`—eŒ;
-	if (str == "•›Œ") return WordClass::•›Œ;
-	if (str == "Š´“®Œ") return WordClass::Š´“®Œ;
-	if (str == "Ú‘±Œ") return WordClass::Ú‘±Œ;
-	if (str == "•Œ") return WordClass::•Œ;
-	if (str == "•“®Œ") return WordClass::•“®Œ;
-	if (str == "˜A‘ÌŒ") return WordClass::˜A‘ÌŒ;
-	if (str == "‹L†") return WordClass::‹L†;
+	if (str == "åè©") return WordClass::åè©;
+	if (str == "å‹•è©") return WordClass::å‹•è©;
+	if (str == "å½¢å®¹è©") return WordClass::å½¢å®¹è©;
+	if (str == "å‰¯è©") return WordClass::å‰¯è©;
+	if (str == "æ„Ÿå‹•è©") return WordClass::æ„Ÿå‹•è©;
+	if (str == "æ¥ç¶šè©") return WordClass::æ¥ç¶šè©;
+	if (str == "åŠ©è©") return WordClass::åŠ©è©;
+	if (str == "åŠ©å‹•è©") return WordClass::åŠ©å‹•è©;
+	if (str == "é€£ä½“è©") return WordClass::é€£ä½“è©;
+	if (str == "è¨˜å·") return WordClass::è¨˜å·;
 	return WordClass::NA;
 };
 

@@ -159,10 +159,10 @@ void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detai
 		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_gibbs"));
 		break;
 	case Distribution::TOPIC :
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"), detail);
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"));
 		break;
 	case Distribution::TERM_SCORE :
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"), detail);
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"));
 		break;
 	default :
 		std::cout << "LDA_Gibbs::save error" << std::endl;
@@ -173,15 +173,11 @@ void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detai
 auto LDA_Gibbs::getTheta(DocumentId d_id) const->VectorK<double>
 {
 	VectorK<double> theta(K_, 0);
-	double sum = 0.0;
 
 	for(TopicId k=0; k < K_; ++k){
 		theta[k] = alpha_[k] + doc_ct_[d_id][k];
-		sum += theta[k];
 	}
-	//³‹K‰»
-	double corr = 1.0 / sum;
-	for(TopicId k=0; k < K_; ++k) theta[k] *= corr;
+	sig::normalize(theta);
 
 	return theta;
 }
@@ -189,15 +185,11 @@ auto LDA_Gibbs::getTheta(DocumentId d_id) const->VectorK<double>
 auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 {
 	VectorV<double> phi(V_, 0);
-	double sum = 0.0;
 
 	for(WordId v=0; v < V_; ++v){
 		phi[v] = beta_[v] + word_ct_[v][k_id];
-		sum += phi[v];
 	}
-	//³‹K‰»
-	double corr = 1.0 / sum;
-	for (WordId v = 0; v < V_; ++v) phi[v] *= corr;
+	sig::normalize(phi);
 
 	return std::move(phi);
 }

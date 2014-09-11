@@ -12,7 +12,7 @@ http://opensource.org/licenses/mit-license.php
 #include "SigNLP/signlp.hpp"
 
 #if USE_SIGNLP
-#include "SigNlp/process_word.h"
+#include "SigNlp/polar_evaluation.hpp"
 #endif
 
 namespace sigtm

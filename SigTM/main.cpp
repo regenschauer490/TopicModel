@@ -252,6 +252,90 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
 }
 */
+
+#include "lib/helper/SigNLP/polar_spin.h"
+#include "lib/helper/SigNLP/mecab_wrapper.hpp"
+void polar_train()
+{	
+	using Spin = signlp::SpinModel;
+	using signlp::WordClass;
+	auto& mecab = signlp::MecabWrapper::getInstance();
+	auto texts = sig::read_line<std::string>(L"Z:/Nishimura/IVRC/data/streaming/test.txt");
+	auto label_texts = sig::read_line<std::string>(L"Z:/Nishimura/IVRC/evaluation_lib/polar.csv");
+
+	Spin::Graph graph;
+	std::unordered_map<std::wstring, Spin::pNode> wmap;
+	const int sigma2 = 9;
+	const double z = std::sqrt(2 * 3.1415 * sigma2);
+
+	for (auto const& line : sig::fromJust(label_texts)){
+		auto sp = sig::split(line, ",");
+		auto w = sig::str_to_wstr(sp[0]);
+		auto sc = std::stod(sp[3]);
+		if (std::abs(sc) < 0.75) continue;
+
+		wmap.emplace(w, Spin::make_node(graph, w, sc));
+	}
+
+	for (auto const& line : sig::fromJust(texts)){
+		auto parsed = sig::str_to_wstr(
+			mecab.parseGenkeiThroughFilter(line, [](WordClass wc){ return WordClass::名詞 == wc || WordClass::形容詞 == wc || WordClass::動詞 == wc; })
+		);
+		
+		// 新規ノード(単語)追加
+		for (auto const& w : parsed){
+			if (!wmap.count(w)){
+				wmap.emplace(w, Spin::make_node(graph, w));
+			}
+		}
+
+		// エッジ追加
+		for (int i=0; i<parsed.size(); ++i){
+			auto v = wmap[parsed[i]];
+			/* 左側の単語
+			for (int l=i-1, dist=0; l>=0; --l, ++dist){
+				double weight = z * std::exp(-0.5 * std::pow((l - i) / sigma2, 2));
+				auto e = boost::edge(v, wmap[parsed[l]], graph);
+
+				if (e.second){
+					boost::get(boost::edge_weight, graph, e.first) += weight;
+				}
+				else{
+					Spin::make_edge(graph, v, wmap[parsed[l]], weight);
+				}
+			}*/
+			// 右側の単語
+			for (int r = i + 1, dist = 0; r<parsed.size(); ++r, ++dist){
+				auto v2 = wmap[parsed[r]];
+				auto weight = 1 * std::exp(-std::pow((r - i), 2) / (2*sigma2));
+				auto e = boost::edge(v, v2, graph);
+
+				if (e.second){
+					boost::get(boost::edge_weight, graph, e.first) += weight;
+				}
+				else{
+					Spin::make_edge(graph, v, v2, weight);
+				}				
+			}
+		}
+	}
+	
+	for (int i=1; i<21; ++i){
+		signlp::SpinModel spin(graph, 10, 0.1 * i);
+
+		auto callback = [&](signlp::SpinModel const* obj){
+			sig::save_line(obj->getErrorRate(), L"./test data/spinmodel/error" + std::to_wstring(i) + L".txt", sig::WriteMode::append);
+			sig::save_line(obj->getMeanPolar(), L"./test data/spinmodel/mp" + std::to_wstring(i) + L".txt", sig::WriteMode::append);
+		};
+
+		spin.train(50, callback);
+		auto score = spin.getScore();
+		for (auto e : score) sig::save_line(e.first + L"," + std::to_wstring(e.second), L"./test data/spinmodel/score" + std::to_wstring(i) + L".txt", sig::WriteMode::append);
+	}
+
+	getchar();
+}
+
 int main()
 {
 	/*
@@ -265,8 +349,11 @@ int main()
 	
 	std::wstring data_folder_pass = L"../SigTM/test data";
 	std::wstring input_text_pass = data_folder_pass + L"/processed";
-	
-	sample3(input_text_pass, data_folder_pass, true, false);
+
+	setlocale(LC_ALL, "Japanese");
+
+	polar_train();
+	//sample3(input_text_pass, data_folder_pass, true, false);
 
 	return 0;
 }
