@@ -164,10 +164,12 @@ sub CrawlTimeline
 				if( &SkipFilter($e->{text}) ){ next; }
 					
 				$max_id = $e->{id};
-					
+				my $line = $e->{text};
+				$line =~ s/\n/./g;
+				
 				my $jtmp = &JsonEncode($e);								
 				&SimpleSaveAddDataFile($jtmp."\n", $save_pass."raw/".encode("cp932",$uid).".txt", "cp932" );
-				&SimpleSaveAddDataFile($e->{text}."\n", $save_pass.encode("cp932",$uid).".txt", "cp932" );
+				&SimpleSaveAddDataFile($line."\n", $save_pass.encode("cp932",$uid).".txt", "cp932" );
 			}
 				
 			&Print($loop."【$size】 ");

@@ -199,67 +199,6 @@ inline double LDA_Module::calcLogLikelihood(TokenList const& tokens, MatrixDK<do
 	return log_likelihood;
 }
 
-/*
-inline auto LDA_Module::getTheta() const->MatrixDK<double>
-{
-	MatrixDK<double> theta;
-
-	for (DocumentId d = 0, D = getDocumentNum(); d < D; ++d) theta.push_back(getTheta(d));
-
-	return theta;
-}
-
-inline auto LDA_Module::getPhi() const->MatrixKV<double>
-{
-	MatrixKV<double> phi;
-
-	for (TopicId k = 0, K = getTopicNum(); k < K; ++k) phi.push_back(getPhi(k));
-
-	return std::move(phi);
-}
-
-inline auto LDA_Module::getWordOfTopic(LDA::Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double>>>
-{
-	VectorK< std::vector< std::tuple<std::wstring, double> > > result;
-
-	for (TopicId k = 0, K = getTopicNum(); k < K; ++k){
-		result.push_back(getWordOfTopic(target, return_word_num, k));
-	}
-
-	return std::move(result);
-}
-
-inline auto LDA_Module::getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double>>>
-{
-	std::vector< std::vector< std::tuple<std::wstring, double>>> result;
-
-	for (DocumentId d = 0, D = getDocumentNum(); d < D; ++d){
-		result.push_back(getWordOfDocument(return_word_num, d));
-	}
-
-	return std::move(result);
-}
-
-inline double LDA_Module::calcLogLikelihood(TokenList const& tokens) const
-{
-	double log_likelihood = 0;
-	const auto theta = getTheta();
-	const auto phi = getPhi();
-	const uint K = phi.size();
-
-	for (auto const& token : tokens){
-		const auto& theta_d = theta[token.doc_id];
-		uint w = token.word_id;
-		double tmp = 0;
-		for (uint k = 0; k < K; ++k){
-			tmp += theta_d[k] * phi[k][w];
-		}
-		log_likelihood += std::log(tmp);
-	}
-
-	return log_likelihood;
-}
-*/
 }	// namespace impl
 
 

@@ -21,6 +21,8 @@ std::wstring const TOKEN_FILENAME = L"token";
 std::wstring const VOCAB_FILENAME = L"vocab";
 std::wstring const DOC_FILENAME = L"document_names.txt";
 
+const double default_alpha_base = 50;
+const double default_beta = 0.1;
 
 using sig::uint;
 using sig::StrPtr;

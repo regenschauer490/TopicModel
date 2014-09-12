@@ -61,12 +61,10 @@ void InputDataFromText::makeData(DocumentType type, Documents const& raw_texts)
 	std::cout << std::endl;
 
 	int token_ct = 0;
-	int doc_id = -1;
-	int line_id = -1;
+	int doc_id = 0;
 	for (auto const& line_words : doc_line_words){
-		++doc_id;
+		int line_id = 0;
 		for (auto const& words : line_words){
-			++line_id;
 			for (auto const& word : words){
 				auto wp = std::make_shared<std::wstring const>(word);
 
@@ -84,7 +82,9 @@ void InputDataFromText::makeData(DocumentType type, Documents const& raw_texts)
 					++token_ct;
 				}
 			}
+			++line_id;
 		}
+		++doc_id;
 	}
 	is_token_sorted_ = true;
 

@@ -24,6 +24,7 @@ template<class T> using VectorB = sig::array<T, 2>;	// for bernoulli parameter
 template<class T> using VectorU = std::vector<T>;	// all users
 template<class T> using MatrixUD = VectorU<VectorD<T>>;	// user - tweet
 template<class T> using MatrixUK = VectorU<VectorK<T>>;	// user - topic
+template<class T> using MatrixUB = VectorU<VectorB<T>>;	// user - choice(topic or background)
 template<class T> using MatrixUDT = VectorU<VectorD<VectorT<T>>>;	// user - tweet - token
 
 class TwitterLDA;
@@ -158,6 +159,13 @@ public:
 	// backgroundの単語分布
 	auto getPhiBackground() const->VectorV<double>;	// [word]
 
+	// 全単語におけるtopic[0]とbackground[1]の比率
+	auto getY() const->VectorB<double>;
+
+	// 各ユーザにおける単語のtopic[0]とbackground[1]の比率
+	auto getEachY() const->MatrixUB<double>;
+	auto getEachY(UserId u_id) const->VectorB<double>;
+
 	//トピックを強調する単語スコア
 //	auto getTermScore() const->MatrixKV<double> override{ return term_score_; }		// [topic][word]
 //	auto getTermScore(TopicId t_id) const->VectorV<double> override{ return term_score_[t_id]; }	// [word]
@@ -181,7 +189,7 @@ public:
 	// get hyper-parameter of word distribution
 	auto getBeta() const->VectorV<double>{ return beta_; }
 
-	// 
+
 	double getLogLikelihood() const;
 
 	double getPerplexity() const{ return std::exp(-getLogLikelihood() / tokens_.size()); }

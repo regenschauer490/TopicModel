@@ -1,4 +1,14 @@
-﻿#include "twitter_lda.h"
+﻿/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
+#include "twitter_lda.h"
+#include "SigUtil/lib/calculation.hpp"
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 
 namespace sigtm
 {
@@ -15,29 +25,50 @@ void TwitterLDA::init(bool resume)
 		input_data_->save();
 	}
 
+	
 	UserId uid = 0;
 	DocumentId twid = 0;
 	Id tkid = 0;
+	auto& D = const_cast<VectorU<UserId>&>(D_);
+	auto& T = const_cast<MatrixUD<Id>&>(T_);
+
+	D.resize(U_);
+	T.resize(U_);
 	for (auto const& token : tokens_){
 		if (token.user_id <= uid){
 			if (token.doc_id <= twid){
 				++tkid;
 			}
 			else{
-				const_cast<MatrixUD<Id>&>(T_)[uid][twid] = tkid + 1;
-				tkid = 0;
+				T[uid].push_back(tkid);
+				tkid = 1;
 				++twid;
 			}
 		}
 		else{
-			const_cast<VectorU<UserId>&>(D_)[uid] = twid + 1;
-			const_cast<MatrixUD<Id>&>(T_)[uid][twid] = tkid + 1;
+			D[uid] = twid+1;
+			T[uid].push_back(tkid);
 			twid = 0;
-			tkid = 0;
+			tkid = 1;
 			++uid;
 		}
 	}
-	if (U_ != uid){ std::cout << "error in init: input data isn't sorted." << std::endl; getchar(); abort(); }
+	D[uid] = twid+1;
+	T[uid].push_back(tkid);
+	++uid;
+	if (U_ != uid && sig::sum(T_, [&](VectorD<uint> const& v){ return sig::sum(v); }) != tokens_.size()){
+		std::cout << "error in init: input data is invalid (maybe because it isn't sorted)" << std::endl; getchar(); abort();
+	}
+
+	z_.resize(U_);
+	y_.resize(U_);
+	for (uint u = 0 ; u < U_; ++u){
+		z_[u].resize(D_[u]);
+		y_[u].resize(D_[u]);
+		for (uint d = 0; d < D_[u]; ++d){
+			y_[u][d].resize(T_[u][d]);
+		}
+	}
 
 	// resume
 	std::unordered_map<TokenId, bool> id_y_map;
@@ -210,10 +241,12 @@ inline void TwitterLDA::updateZ(const TokenIter begin, const TokenIter end)
 			auto p_z = (user_ct_[u][k] + alpha_[k]) / (D_[u] + alpha_sum_);	// todo: collapsedにできないか
 			
 			uint tct = 0;
+			std::unordered_map<WordId, uint> wct;
 			for (auto it = begin; it != end; ++it, ++tct){
 				if (y_[u][d][tct]){
 					const auto v = it->word_id;
-					p_z *= (word_ct_[v][k] + beta_[v]) / (topic_ct_[k] + beta_sum_ + tct);
+					uint ct = wct.count(v) ? ++wct[v] : (wct[v] = 1);
+					p_z *= (word_ct_[v][k] + beta_[v] + ct - 1) / (topic_ct_[k] + beta_sum_ + tct);
 				}
 			}
 
@@ -376,7 +409,7 @@ auto TwitterLDA::getPhi(TopicId k_id) const->VectorV<double>
 	for (WordId v = 0; v < V_; ++v){
 		phi[v] = beta_[v] + word_ct_[v][k_id];
 	}
-	sig::normalize(phi);
+	bool b = sig::normalize(phi);
 
 	return std::move(phi);
 }
@@ -391,6 +424,82 @@ auto TwitterLDA::getPhiBackground() const->VectorV<double>
 	sig::normalize(phi);
 
 	return std::move(phi);
+}
+
+auto TwitterLDA::getY() const->VectorB<double>
+{
+	VectorB<double> result(2, 0);
+
+	auto denom = y_ct_[0] + y_ct_[1] + gamma_[0] + gamma_[1];
+	result[0] = (y_ct_[0] + gamma_[0]) / denom;
+	result[1] = (y_ct_[1] + gamma_[1]) / denom;
+
+	return result;
+}
+
+auto TwitterLDA::getEachY() const->MatrixUB<double>
+{
+	MatrixUB<double> result;
+
+	for (uint u = 0; u < U_; ++u) result.push_back(getEachY(u));
+
+	return std::move(result);
+}
+
+auto TwitterLDA::getEachY(UserId u_id) const->VectorB<double>
+{
+	VectorB<double> result(2, 0);
+
+	for (uint d = 0; d < D_[u_id]; ++d){
+		for (uint t = 0; t < T_[u_id][d]; ++t){
+			y_[u_id][d][t] ? ++result[0] : ++result[1];
+		}
+	}
+	sig::normalize(result);
+
+	return result;
+}
+
+double TwitterLDA::getLogLikelihood() const
+{
+	namespace mp = boost::multiprecision;
+	using ddouble = double;//mp::cpp_dec_float_100;
+
+	double log_likelihood = 0;
+	auto token = tokens_.begin();
+	auto theta = getTheta();
+	auto phi = getPhi();
+	auto phib = getPhiBackground();
+	auto py = getY();
+
+	for (uint u = 0; u < U_; ++u){
+		for (uint d = 0; d < D_[u]; ++d){
+			ddouble ptw = 0;
+
+			for (uint k = 0; k < K_; ++k){
+				auto t_token = token;
+				ddouble tmp = 1;
+
+				for (Id t = 0; t < T_[u][d]; ++t, ++t_token){
+					uint w = t_token->word_id;
+
+					ddouble pt = py[0] * phi[k][w];
+					ddouble pb = py[1] * phib[w];
+
+					tmp *= (pt + pb);
+				}
+				ptw += (tmp * theta[u][k]);
+			}
+			auto expptw = std::log(ptw);
+			if (!sig::is_finite_number(expptw)){
+				getchar();
+			}
+			log_likelihood += expptw;
+			token += T_[u][d];
+		}
+	}
+
+	return log_likelihood;
 }
 
 }

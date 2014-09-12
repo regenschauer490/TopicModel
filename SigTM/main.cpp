@@ -4,6 +4,9 @@
 const int TopicNum = 20;
 const int IterationNum = 100;
 
+// 入力テキストの種類 (Webページやレビュー文などの各記事はDocument, マイクロブログでの各ユーザの投稿はTweet)
+enum class InputTextType { Document, Tweet };
+
 static const std::wregex url_reg(L"http(s)?://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?");
 static const std::wregex htag_reg(L"#(\\w)+");
 static const std::wregex res_reg(L"@(\\w)+");
@@ -20,7 +23,7 @@ static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 	・tokenデータ：テキスト中の各トークンに関する情報
 	・vocabデータ：出現単語に関する情報
 */
-sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_folder, bool make_new)
+sigtm::InputDataPtr makeInputData(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
@@ -59,7 +62,8 @@ sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_fold
 	if(make_new){
 #if USE_SIGNLP
 		// 新しくデータセットを作成(外部ファイルから生成)
-		inputdata = sigtm::InputDataFromText::makeInstance(src_folder, filter, out_folder);
+		if (InputTextType::Tweet == tt) inputdata = sigtm::InputDataFromText::makeInstanceFromTweet(src_folder, filter, out_folder);
+		else inputdata = sigtm::InputDataFromText::makeInstance(src_folder, filter, out_folder);
 #else
 		assert(false);
 #endif
@@ -88,12 +92,12 @@ sigtm::InputDataPtr makeInputData(std::wstring src_folder, std::wstring out_fold
 */
 #include "lib/model/lda_gibbs.h"
 
-void sample1(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+void sample1(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
 
-	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+	auto inputdata = makeInputData(tt, src_folder, out_folder, make_new);
 
 	resume = resume && (!make_new);
 	
@@ -149,12 +153,12 @@ void sample1(std::wstring src_folder, std::wstring out_folder, bool resume, bool
  */
 #include "lib/model/lda_cvb.h"
 
-void sample2(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+void sample2(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
 
-	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+	auto inputdata = makeInputData(tt, src_folder, out_folder, make_new);
 
 	resume = resume && (!make_new);
 
@@ -184,9 +188,9 @@ void sample2(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 #include "lib/model/mrlda.h"
 
-void sample3(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+void sample3(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
-	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+	auto inputdata = makeInputData(tt, src_folder, out_folder, make_new);
 	
 	resume = resume && (!make_new);
 	std::cout << resume << " " << make_new;
@@ -217,7 +221,7 @@ void sample3(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	mrlda->train(100, savePerplexity);
 }
 
-/*
+
 #include "lib/model/twitter_lda.h"
 
 void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
@@ -225,14 +229,14 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	using namespace std;
 	using sig::uint;
 
-	auto inputdata = makeInputData(src_folder, out_folder, make_new);
+	auto inputdata = makeInputData(InputTextType::Tweet, src_folder, out_folder, make_new);
 
 	resume = resume && (!make_new);
 
 	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_twlda.txt";
 	if (!resume) sig::clear_file(perp_pass);
 
-	auto savePerplexity = [&](sigtm::LDA const* lda)
+	auto savePerplexity = [&](sigtm::TwitterLDA const* lda)
 	{
 		double perp = lda->getPerplexity();
 		auto split = sig::split(std::to_string(perp), ",");
@@ -240,18 +244,19 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	};
 
 	auto lda = sigtm::TwitterLDA::makeInstance(resume, TopicNum, inputdata);
-	uint doc_num = lda->getDocumentNum();
 
 	cout << "model calculate" << endl;
 
 	// 学習開始
 	lda->train(IterationNum, savePerplexity);
 
-	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
-	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
-	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
+	lda->save(sigtm::TwitterLDA::Distribution::USER, out_folder);
+	lda->save(sigtm::TwitterLDA::Distribution::TOPIC, out_folder);
+	lda->save(sigtm::TwitterLDA::Distribution::TERM_SCORE, out_folder);
+
+	getchar();
 }
-*/
+
 
 #include "lib/helper/SigNLP/polar_spin.hpp"
 #include "lib/helper/SigNLP/mecab_wrapper.hpp"
@@ -348,12 +353,14 @@ int main()
 	*/
 	
 	std::wstring data_folder_pass = L"../SigTM/test data";
-	std::wstring input_text_pass = data_folder_pass + L"/processed";
+	std::wstring input_text_pass = data_folder_pass + L"/dataset/query";
+	std::wstring input_tw_pass = data_folder_pass + L"/dataset/user/timeline/tmp";
 
 	setlocale(LC_ALL, "Japanese");
 
-	polar_train();
-	//sample3(input_text_pass, data_folder_pass, true, false);
+	//polar_train();
+	//sample3(InputTextType::Document, input_text_pass, data_folder_pass, true, false);
+	sample4(input_tw_pass, data_folder_pass, true, true);
 
 	return 0;
 }

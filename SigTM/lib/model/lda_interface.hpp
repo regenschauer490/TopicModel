@@ -52,9 +52,6 @@ template<class T> using SMatrixKV = SVectorK<SVectorV<T>>;
 	Vector ## index_name1 ## <type>(index_name1 ## _, SIG_INIT_MATRIX(type, index_name2, index_name3, value))
 
 
-const double default_alpha_base = 50;
-const double default_beta = 0.01;
-
 // LDAインタフェース
 class LDA
 {

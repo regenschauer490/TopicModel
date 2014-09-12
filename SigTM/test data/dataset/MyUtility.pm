@@ -9,7 +9,7 @@ use Array::Utils qw(:all);
 use Exporter;	# Exporterモジュールを使う
 
 our @ISA    = qw(Exporter);				# Exporterモジュールを継承
-our @EXPORT = qw(ListDrop ListTake ListDiff DoesExistFile Print SimpleReadDataFile SimpleSaveAddDataFile SimpleSaveArrayDataFile SimpleSaveAddArrayDataFile JsonEncode JsonDecode);	# デフォルトでエクスポートするシンボル
+our @EXPORT = qw(ListDrop ListTake ListDiff DoesExistFile GetFileList Print SimpleReadDataFile SimpleSaveAddDataFile SimpleSaveArrayDataFile SimpleSaveAddArrayDataFile JsonEncode JsonDecode);	# デフォルトでエクスポートするシンボル
 
 
 # listの先頭からnum個を除去したlistを取得(元のlistは変更を加えない)
@@ -64,6 +64,20 @@ sub DoesExistFile($){
 	my $filename = shift;
 	
 	return -f $filename;
+}
+
+#
+sub GetFileList{
+	my $dir = shift;
+	my @result;
+	opendir(DIRHANDLE, $dir);
+	
+	foreach(readdir(DIRHANDLE)){
+		next if /^\.{1,2}$/;    # '.'や'..'をスキップ
+		push(@result, $_);
+	}
+	closedir(DIRHANDLE);
+	return \@result;
 }
 
 sub Print(){
