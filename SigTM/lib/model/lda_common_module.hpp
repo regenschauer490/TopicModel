@@ -29,11 +29,11 @@ protected:
 
 	// data[class][word], names[class]
 	template <class CC>
-	void printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass) const;
+	void printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, Maybe<uint> top_num, Maybe<FilepassString> save_pass) const;
 
 	// data[class][topic], names[class]
 	template <class CC>
-	void printTopic(CC const& data, std::vector<FilepassString> const& names, maybe<FilepassString> save_pass) const;
+	void printTopic(CC const& data, std::vector<FilepassString> const& names, Maybe<FilepassString> save_pass) const;
 
 	double calcLogLikelihood(TokenList const& tokens, MatrixDK<double> const& theta, MatrixKV<double> const& phi) const;
 };
@@ -111,9 +111,9 @@ inline auto LDA_Module::getTermScoreOfDocument(VectorK<double> const& theta, Mat
 }
 
 template <class CC>
-void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, maybe<uint> top_num, maybe<FilepassString> save_pass) const
+void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, Maybe<uint> top_num, Maybe<FilepassString> save_pass) const
 {
-	auto Output = [](std::wostream& ofs, std::vector<std::tuple<std::wstring, double>> const& data, maybe<FilepassString> header)
+	auto Output = [](std::wostream& ofs, std::vector<std::tuple<std::wstring, double>> const& data, Maybe<FilepassString> header)
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
@@ -122,13 +122,13 @@ void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& na
 		ofs << std::endl;
 	};
 
-	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_STR_TO_FPSTR(".txt")) : std::wofstream(SIG_STR_TO_FPSTR(""));
+	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : std::wofstream(SIG_TO_FPSTR(""));
 
 	// 各クラス(ex.トピック)のスコア上位top_num個の単語を出力
 	sig::for_each([&](int i, VectorV<double> const& wscore)
 	{
 		auto rank_words = top_num ? getTopWords(wscore, sig::fromJust(top_num), words) : getTopWords(wscore, wscore.size(), words);
-		auto header = names.empty() ? L"class:" + std::to_wstring(i) : names[i - 1];
+		auto header = L"class:" + (names.empty() ? std::to_wstring(i) : names[i - 1]);
 
 		if (save_pass){
 			Output(ofs, rank_words, header);
@@ -144,7 +144,7 @@ void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& na
 	sig::for_each([&](int i, VectorV<double> const& d)
 	{
 	auto header = names.empty() ? L"class:" + std::to_wstring(i) : names[i-1];
-	std::wofstream ofs2(sig::fromJust(save_pass) + header + SIG_STR_TO_FPSTR(".txt"));
+	std::wofstream ofs2(sig::fromJust(save_pass) + header + SIG_TO_FPSTR(".txt"));
 	for (auto const& e : d) ofs2 << e << L' ' << *words.getWord(i-1) << std::endl;
 	}
 	, 1, data);
@@ -153,9 +153,9 @@ void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& na
 }
 
 template <class CC>
-void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& names, maybe<FilepassString> save_pass) const
+void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& names, Maybe<FilepassString> save_pass) const
 {
-	auto Output = [](std::wostream& ofs, VectorK<double> data, maybe<FilepassString> header)
+	auto Output = [](std::wostream& ofs, VectorK<double> data, Maybe<FilepassString> header)
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
@@ -164,12 +164,12 @@ void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& n
 		ofs << std::endl;
 	};
 
-	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_STR_TO_FPSTR(".txt")) : std::wofstream(SIG_STR_TO_FPSTR(""));
+	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : std::wofstream(SIG_TO_FPSTR(""));
 
 	// 各クラス(ex.ドキュメント)のトピック分布を出力
 	sig::for_each([&](int i, VectorK<double> const& tscore)
 	{
-		auto header = names.empty() ? L"id:" + std::to_wstring(i) : names[i - 1];
+		auto header = L"id:" + (names.empty() ? std::to_wstring(i) : names[i - 1]);
 		if (save_pass){
 			Output(ofs, tscore, header);
 		}

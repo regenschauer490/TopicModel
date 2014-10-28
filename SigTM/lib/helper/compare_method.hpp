@@ -50,7 +50,7 @@ class CmpD{	\
 public:	\
 	CmpD(uint d1, uint d2, FUNC vector_producer, bool valid = true) : d1_(d1), d2_(d2), vp_(vector_producer), valid_(valid){}	\
 \
-	maybe<double> method(CompareMethodD method){\
+	Maybe<double> method(CompareMethodD method){\
 		return !valid_	\
 			? nothing	\
 			: method == CompareMethodD::KL_DIV	\
@@ -69,7 +69,7 @@ class CmpV{	\
 public:	\
 	CmpV(uint d1, uint d2, FUNC vector_producer, bool error = false) : d1_(d1), d2_(d2), vp_(vector_producer), valid_(valid){}	\
 \
-	maybe<double> method(CompareMethodV method){\
+	Maybe<double> method(CompareMethodV method){\
 		return !valid_	\
 			? nothing	\
 			: method == CompareMethodV::COS	\

@@ -10,9 +10,9 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-const auto resume_info_fname = SIG_STR_TO_FPSTR("ldagb_info");
-const auto resume_alpha_fname = SIG_STR_TO_FPSTR("ldagb_alpha");
-const auto resume_token_z_fname = SIG_STR_TO_FPSTR("ldagb_token_z");
+const auto resume_info_fname = SIG_TO_FPSTR("ldagb_info");
+const auto resume_alpha_fname = SIG_TO_FPSTR("ldagb_alpha");
+const auto resume_token_z_fname = SIG_TO_FPSTR("ldagb_token_z");
 
 void LDA_Gibbs::init(bool resume)
 {
@@ -20,17 +20,17 @@ void LDA_Gibbs::init(bool resume)
 	if (resume){
 		auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
 	
-		auto load_info = sig::read_line<std::string>(base_pass + resume_info_fname);
-		if (sig::is_container_valid(load_info)){
+		auto load_info = sig::load_line(base_pass + resume_info_fname);
+		if (sig::isJust(load_info)){
 			auto info = sig::fromJust(load_info);
 			total_iter_ct_ = std::stoul(info[0]);
 		}
 
 		// resume alpha
-		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname);
+		auto load_alpha = sig::load_num<double, VectorK<double>>(base_pass + resume_alpha_fname);
 		auto tmp_alpha = std::move(alpha_);
 	
-		if (sig::is_container_valid(load_alpha)){
+		if (sig::isJust(load_alpha)){
 			alpha_ = std::move(sig::fromJust(load_alpha));
 			std::cout << "resume alpha" << std::endl;
 		}
@@ -40,9 +40,9 @@ void LDA_Gibbs::init(bool resume)
 		}
 	
 		// resume z
-		auto load_token_z = sig::read_line<std::string>(base_pass + resume_token_z_fname);
+		auto load_token_z = sig::load_line(base_pass + resume_token_z_fname);
 	
-		if (sig::is_container_valid(load_token_z)){
+		if (sig::isJust(load_token_z)){
 			auto zs = sig::fromJust(load_token_z);
 			for(auto const& z : zs){
 				auto id_z = sig::split(z, " ");
@@ -156,13 +156,13 @@ void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detai
 
 	switch(target){
 	case Distribution::DOCUMENT :
-		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_gibbs"));
+		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("document_gibbs"));
 		break;
 	case Distribution::TOPIC :
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_gibbs"));
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_gibbs"));
 		break;
 	case Distribution::TERM_SCORE :
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_gibbs"));
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_gibbs"));
 		break;
 	default :
 		std::cout << "LDA_Gibbs::save error" << std::endl;
@@ -177,7 +177,7 @@ auto LDA_Gibbs::getTheta(DocumentId d_id) const->VectorK<double>
 	for(TopicId k=0; k < K_; ++k){
 		theta[k] = alpha_[k] + doc_ct_[d_id][k];
 	}
-	sig::normalize(theta);
+	sig::normalize_dist(theta);
 
 	return theta;
 }
@@ -189,7 +189,7 @@ auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 	for(WordId v=0; v < V_; ++v){
 		phi[v] = beta_[v] + word_ct_[v][k_id];
 	}
-	sig::normalize(phi);
+	sig::normalize_dist(phi);
 
 	return std::move(phi);
 }

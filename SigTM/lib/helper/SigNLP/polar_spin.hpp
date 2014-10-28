@@ -200,7 +200,7 @@ public:
 		}
 	}
 
-	auto getScore(std::wstring word) const->sig::maybe<double>
+	auto getScore(std::wstring word) const->sig::Maybe<double>
 	{
 		auto nodes = boost::vertices(graph_);
 

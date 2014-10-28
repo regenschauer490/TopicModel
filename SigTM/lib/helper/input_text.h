@@ -105,10 +105,10 @@ public:
 		FilepassString const& src_folder_pass,		// 生のテキストデータが保存されているフォルダ
 		FilterSetting const& filter,				// テキストへのフィルタ処理
 		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
-		maybe<std::vector<FilepassString>> doc_names = nothing	// 各documentの識別名(デフォルトはファイル名)
+		Maybe<std::vector<FilepassString>> doc_names = nothing	// 各documentの識別名(デフォルトはファイル名)
 	){
 		auto doc_passes = sig::get_file_names(src_folder_pass, false);
-		if (!sig::is_container_valid(doc_passes)){
+		if (!sig::isJust(doc_passes)){
 			sig::FileOpenErrorPrint(src_folder_pass);
 			assert(false);
 		}
@@ -116,7 +116,7 @@ public:
 		return InputDataPtr(new InputDataFromText(
 			DocumentType::Defaut,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
+				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
 				}, sig::fromJust(doc_passes)
 			), filter, save_folder_pass, doc_names ? sig::fromJust(doc_names) : sig::fromJust(doc_passes))
 		);
@@ -137,10 +137,10 @@ public:
 		FilepassString const& src_folder_pass,		// 生のテキストデータが保存されているフォルダ
 		FilterSetting const& filter,				// テキストへのフィルタ処理
 		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
-		maybe<std::vector<FilepassString>> user_names = nothing	// 各ユーザの識別名(デフォルトはファイル名)
+		Maybe<std::vector<FilepassString>> user_names = nothing	// 各ユーザの識別名(デフォルトはファイル名)
 	){
 		auto doc_passes = sig::get_file_names(src_folder_pass, false);
-		if (!sig::is_container_valid(doc_passes)){
+		if (!sig::isJust(doc_passes)){
 			sig::FileOpenErrorPrint(src_folder_pass);
 			assert(false);
 		}
@@ -148,7 +148,7 @@ public:
 		return InputDataPtr(new InputDataFromText(
 			DocumentType::Tweet,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::read_line<std::string>(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
+				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
 			}, sig::fromJust(doc_passes)
 			), filter, save_folder_pass, user_names ? sig::fromJust(user_names) : sig::fromJust(doc_passes))
 		);

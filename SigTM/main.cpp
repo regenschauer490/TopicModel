@@ -1,7 +1,7 @@
 ﻿#include "lib/helper/input_text.h"
 #include "SigUtil/lib/file.hpp"
 
-const int TopicNum = 20;
+const int TopicNum = 30;
 const int IterationNum = 100;
 
 // 入力テキストの種類 (Webページやレビュー文などの各記事はDocument, マイクロブログでの各ユーザの投稿はTweet)
@@ -101,7 +101,8 @@ void sample1(InputTextType tt, std::wstring src_folder, std::wstring out_folder,
 
 	resume = resume && (!make_new);
 	
-	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_gibbs.txt";
+	out_folder = sig::modify_dirpass_tail(out_folder, true);
+	const std::wstring perp_pass = out_folder + L"perplexity_gibbs.txt";
 	if(!resume) sig::clear_file(perp_pass);
 	
 	auto savePerplexity = [&](sigtm::LDA const* lda)
@@ -118,14 +119,18 @@ void sample1(InputTextType tt, std::wstring src_folder, std::wstring out_folder,
 	cout << "model calculate" << endl;
 
 	// 学習開始
-	lda->train(IterationNum, savePerplexity);
+	lda->train(100, savePerplexity);
 
 	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
 	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);
 	lda->save(sigtm::LDA::Distribution::TERM_SCORE, out_folder);
 
 	auto theta = lda->getTheta();
-	auto theta1 = lda->getTheta(1);
+	
+	auto phi = lda->getPhi();
+	for (uint i=0; i<phi.size(); ++i){
+		sig::save_num(phi[i], out_folder + L"tphi/phi" + std::to_wstring(i), "\n");
+	}
 
 	// document間の類似度測定
 	vector< vector<double> > similarity(doc_num, vector<double>(doc_num, 0));
@@ -233,7 +238,8 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 	resume = resume && (!make_new);
 
-	const std::wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_twlda.txt";
+	out_folder = sig::modify_dirpass_tail(out_folder, true);
+	const std::wstring perp_pass = out_folder + L"perplexity_twlda.txt";
 	if (!resume) sig::clear_file(perp_pass);
 
 	auto savePerplexity = [&](sigtm::TwitterLDA const* lda)
@@ -243,18 +249,63 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
 	};
 
-	auto lda = sigtm::TwitterLDA::makeInstance(resume, TopicNum, inputdata);
+	auto lda = sigtm::TwitterLDA::makeInstance(resume, 30, inputdata);
 
 	cout << "model calculate" << endl;
 
 	// 学習開始
-	lda->train(IterationNum, savePerplexity);
+	lda->train(70, savePerplexity);
 
 	lda->save(sigtm::TwitterLDA::Distribution::USER, out_folder);
 	lda->save(sigtm::TwitterLDA::Distribution::TOPIC, out_folder);
 	lda->save(sigtm::TwitterLDA::Distribution::TERM_SCORE, out_folder);
 
+	auto theta = lda->getTheta();
+	auto phi = lda->getPhi();
+	auto phib = lda->getPhiBackground();
+
+	sig::save_num(theta, out_folder + L"theta", ",");
+	sig::save_num(phi, out_folder + L"phi", ",");
+	sig::save_num(phib, out_folder + L"phib", ",");
+
 	getchar();
+}
+
+void mecab_wakati()
+{
+	using namespace std;
+
+	// 形態素解析前のフィルタ処理
+	auto pf = [](wstring& str){
+		static auto& replace = sig::ZenHanReplace::GetInstance();
+		static sig::TagDealer<std::wstring> tag_dealer(L"<", L">");
+
+		auto tmp = tag_dealer.decode(str, L"TEXT");
+		str = tmp ? sig::fromJust(tmp) : str;
+		str = regex_replace(str, url_reg, wstring(L""));
+		str = regex_replace(str, htag_reg, wstring(L""));
+		str = regex_replace(str, res_reg, wstring(L""));
+	};
+
+	// 形態素解析後にフィルタ処理
+	auto af = [](wstring& str){
+		str = regex_replace(str, noise_reg, wstring(L""));
+		str = regex_replace(str, a_hira_kata_reg, wstring(L""));
+	};
+
+	auto& mecab = signlp::MecabWrapper::getInstance();
+
+	auto data = sig::load_line(L"Z:/Nishimura/IVRC/data/dpl.txt");
+
+	for (auto& e : *data){
+		auto we = sig::str_to_wstr(e);
+		pf(we);
+		auto parsed = mecab.parseGenkeiThroughFilter(we, [](signlp::WordClass wc){ return wc == signlp::WordClass::名詞 || wc == signlp::WordClass::形容詞 || wc == signlp::WordClass::動詞; });
+		for (auto p : parsed) af(p);
+		sig::remove_all(parsed, L"");
+
+		sig::save_line(sig::cat_str(parsed, L" "), L"Z:/Nishimura/IVRC/data/master.txt" , sig::WriteMode::append);
+	}
 }
 
 
@@ -265,8 +316,8 @@ void polar_train()
 	using Spin = signlp::SpinModel;
 	using signlp::WordClass;
 	auto& mecab = signlp::MecabWrapper::getInstance();
-	auto texts = sig::read_line<std::string>(L"Z:/Nishimura/IVRC/data/streaming/test.txt");
-	auto label_texts = sig::read_line<std::string>(L"Z:/Nishimura/IVRC/evaluation_lib/polar.csv");
+	auto texts = sig::load_line(L"Z:/Nishimura/IVRC/data/streaming/test.txt");
+	auto label_texts = sig::load_line(L"Z:/Nishimura/IVRC/evaluation_lib/polar.csv");
 
 	Spin::Graph graph;
 	std::unordered_map<std::wstring, Spin::pNode> wmap;
@@ -354,13 +405,14 @@ int main()
 	
 	std::wstring data_folder_pass = L"../SigTM/test data";
 	std::wstring input_text_pass = data_folder_pass + L"/dataset/query";
-	std::wstring input_tw_pass = data_folder_pass + L"/dataset/user/timeline/tmp";
+	std::wstring input_tw_pass = /*data_folder_pass +*/ L"Z:/Nishimura/IVRC/data/user/lda2";
 
 	setlocale(LC_ALL, "Japanese");
 
+	//mecab_wakati();
 	//polar_train();
-	//sample3(InputTextType::Document, input_text_pass, data_folder_pass, true, false);
-	sample4(input_tw_pass, data_folder_pass, true, true);
+	sample1(InputTextType::Tweet, input_tw_pass, data_folder_pass,false, false);
+	//sample4(input_tw_pass, data_folder_pass, false, false);
 
 	return 0;
 }

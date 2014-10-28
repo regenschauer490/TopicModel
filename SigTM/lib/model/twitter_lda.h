@@ -85,7 +85,7 @@ private:
 	TwitterLDA() = delete;
 	TwitterLDA(TwitterLDA const&) = delete;
 
-	TwitterLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta, maybe<VectorB<double>> gamma) :
+	TwitterLDA(bool resume, uint topic_num, InputDataPtr input_data, Maybe<VectorK<double>> alpha, Maybe<VectorV<double>> beta, Maybe<VectorB<double>> gamma) :
 		input_data_(input_data), tokens_(input_data->tokens_), U_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta)), gamma_(gamma ? sig::fromJust(gamma) : VectorB<double>{0.5, 0.5}),
 		user_ct_(SIG_INIT_MATRIX(uint, U, K, 0)), word_ct_(SIG_INIT_MATRIX_R(uint, V, V_, K, K_+1, 0)), topic_ct_(SIG_INIT_VECTOR(uint, K, 0)),
@@ -109,7 +109,7 @@ public:
 			: nullptr;
 	}
 	// alpha, beta をsymmetricに設定する場合
-	static TwitterLDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> gamma = nothing, maybe<double> beta = nothing){
+	static TwitterLDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, Maybe<double> gamma = nothing, Maybe<double> beta = nothing){
 		return TwitterLDAPtr(new TwitterLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha),
 			beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing,
 			gamma ? sig::Just<VectorB<double>>(VectorB<double>{sig::fromJust(gamma), 1 - sig::fromJust(gamma)}) : nothing)
@@ -117,7 +117,7 @@ public:
 	}
 	// alpha, beta を多次元で設定する場合
 	template <class SamplingMethod = CollapsedGibbsSampling>
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing){
 		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, alpha, beta));
 	}
 

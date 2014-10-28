@@ -15,7 +15,7 @@ http://opensource.org/licenses/mit-license.php
 #include "../helper/input_text.h"
 #endif
 
-#include "SigUtil/lib/tool.hpp"
+//#include "SigUtil/lib/tools.hpp"
 
 namespace sigtm
 {
@@ -77,7 +77,7 @@ private:
 	LDA_Gibbs(LDA_Gibbs const&) = delete;
 
 	template <class SamplingMethod>
-	LDA_Gibbs(SamplingMethod sm,bool resume,  uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
+	LDA_Gibbs(SamplingMethod sm,bool resume,  uint topic_num, InputDataPtr input_data, Maybe<VectorK<double>> alpha, Maybe<VectorV<double>> beta) :
 		input_data_(input_data), tokens_(input_data->tokens_), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta)),
 		word_ct_(SIG_INIT_MATRIX(uint, V, K, 0)), doc_ct_(SIG_INIT_MATRIX(uint, D, K, 0)), topic_ct_(SIG_INIT_VECTOR(uint, K, 0)),
@@ -104,12 +104,12 @@ public:
 	}
 	// alpha, beta をsymmetricに設定する場合
 	template <class SamplingMethod = CollapsedGibbsSampling>
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, Maybe<double> beta = nothing){
 		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing));
 	}
 	// alpha, beta を多次元で設定する場合
 	template <class SamplingMethod = CollapsedGibbsSampling>
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing){
 		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, alpha, beta));
 	}
 	

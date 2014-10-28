@@ -84,9 +84,9 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 	std::string line;
 	std::wstring wstr;
 
-	auto read1 = sig::read_line<std::string>(evaluation_word_filepass);
+	auto read1 = sig::load_line(evaluation_word_filepass);
 
-	if (!sig::is_container_valid(read1)){
+	if (!sig::isJust(read1)){
 		std::wcerr << L"Cannot open : " << evaluation_word_filepass << std::endl;
 	}
 	else{
@@ -108,9 +108,9 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 		}
 	}
 
-	auto read2 = sig::read_line<std::string>(evaluation_noun_filepass);
+	auto read2 = sig::load_line(evaluation_noun_filepass);
 
-	if (!sig::is_container_valid(read2)){
+	if (!sig::isJust(read2)){
 		std::wcerr << L"Cannot open : " << evaluation_noun_filepass << std::endl;
 	}
 	else{
@@ -121,9 +121,9 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 		}
 	}
 
-	auto read3 = sig::read_line<std::string>(evaluation_declinable_filepass);
+	auto read3 = sig::load_line(evaluation_declinable_filepass);
 
-	if (!sig::is_container_valid(read3)){
+	if (!sig::isJust(read3)){
 		std::wcerr << L"Cannot open : " << evaluation_declinable_filepass << std::endl;
 	}
 	else{

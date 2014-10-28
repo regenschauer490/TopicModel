@@ -12,8 +12,8 @@ http://opensource.org/licenses/mit-license.php
 #include "SigUtil/lib/calculation.hpp"
 #include "SigUtil/lib/iteration.hpp"
 #include "SigUtil/lib/distance/norm.hpp"
-#include "SigUtil/lib/error_convergence.hpp"
-#include "SigUtil/lib/blas.hpp"
+#include "SigUtil/lib/tools/convergence.hpp"
+#include "SigUtil/lib/calculation/ublas.hpp"
 #include "SigUtil/lib/file.hpp"
 #include <boost/numeric/ublas/io.hpp>
 
@@ -24,10 +24,10 @@ const double MrLDA::global_convergence_threshold = 0.0001;
 const double alpha_convergence_threshold = 0.001;
 const uint max_alpha_update_iteration = 100;
 
-const auto resume_info_fname = SIG_STR_TO_FPSTR("mrlda_info");
-const auto resume_alpha_fname = SIG_STR_TO_FPSTR("mrlda_alpha");
-const auto resume_gamma_fname = SIG_STR_TO_FPSTR("mrlda_gamma");
-const auto resume_phi_fname = SIG_STR_TO_FPSTR("mrlda_phi");
+const auto resume_info_fname = SIG_TO_FPSTR("mrlda_info");
+const auto resume_alpha_fname = SIG_TO_FPSTR("mrlda_alpha");
+const auto resume_gamma_fname = SIG_TO_FPSTR("mrlda_gamma");
+const auto resume_phi_fname = SIG_TO_FPSTR("mrlda_phi");
 
 void MrLDA::MapTask::process(value_type const& value, VectorK<double>& gamma, MatrixVK<double>& omega) const
 {
@@ -70,15 +70,15 @@ void MrLDA::init(bool resume)
 	auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
 
 	if (resume){
-		auto load_info = sig::read_line<std::string>(base_pass + resume_info_fname);
-		if (sig::is_container_valid(load_info)){
+		auto load_info = sig::load_line(base_pass + resume_info_fname);
+		if (sig::isJust(load_info)){
 			auto info = sig::fromJust(load_info);
 			total_iter_ct_ = std::stoul(info[0]);
 		}
 
 		auto tmp_alpha = std::move(alpha_);
-		auto load_alpha = sig::read_num<VectorK<double>>(base_pass + resume_alpha_fname, " ");
-		if (sig::is_container_valid(load_alpha)){
+		auto load_alpha = sig::load_num<double, VectorK<double>>(base_pass + resume_alpha_fname, " ");
+		if (sig::isJust(load_alpha)){
 			alpha_ = std::move(sig::fromJust(load_alpha));
 			std::cout << "resume alpha" << std::endl;
 		}
@@ -88,8 +88,8 @@ void MrLDA::init(bool resume)
 		}
 	}
 
-	auto load_gamma = resume ? sig::read_num<MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : nothing;
-	if (sig::is_container_valid(load_gamma)){
+	auto load_gamma = resume ? sig::load_num<double, MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : nothing;
+	if (sig::isJust(load_gamma)){
 		gamma_ = std::move(sig::fromJust(load_gamma));
 		std::cout << "resume gamma" << std::endl;
 	}
@@ -104,8 +104,8 @@ void MrLDA::init(bool resume)
 		if (resume) std::cout << "resume gamma error : gamma is set by random" << std::endl;
 	}
 
-	auto load_beta = resume ? sig::read_num<MatrixKV<double>>(base_pass + resume_phi_fname, " ") : nothing;
-	if (sig::is_container_valid(load_beta)){
+	auto load_beta = resume ? sig::load_num<double, MatrixKV<double>>(base_pass + resume_phi_fname, " ") : nothing;
+	if (sig::isJust(load_beta)){
 		phi_ = std::move(sig::fromJust(load_beta));
 		std::cout << "resume phi" << std::endl;
 	}
@@ -332,13 +332,13 @@ void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) c
 
 	switch (target){
 	case Distribution::DOCUMENT:
-		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_mrlda"));
+		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("document_mrlda"));
 		break;
 	case Distribution::TOPIC:
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_mrlda"));
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_mrlda"));
 		break;
 	case Distribution::TERM_SCORE:
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_mrlda"));
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_mrlda"));
 		break;
 	default:
 		std::cout << "MrLDA::save error" << std::endl;

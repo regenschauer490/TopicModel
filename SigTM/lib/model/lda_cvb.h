@@ -46,7 +46,7 @@ namespace sigtm
 		LDA_CVB0() = delete;
 		LDA_CVB0(LDA_CVB0 const&) = delete;
 
-		LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta) :
+		LDA_CVB0(bool resume, uint topic_num, InputDataPtr input_data, Maybe<VectorK<double>> alpha, Maybe<VectorV<double>> beta) :
 			input_data_(input_data), tokens_(input_data->tokens_), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 			alpha_(alpha ? sig::fromJust(alpha) : VectorK<double>(K_, default_alpha_base / K_)), beta_(beta ? sig::fromJust(beta) : VectorV<double>(V_, default_beta)),
 			gamma_(D_, VectorK<double>(K_, 0)), lambda_(V_, VectorK<double>(K_, 0)), topic_sum_(K_, 0), omega_(tokens_.size(), VectorK<double>(K_, 0)),
@@ -72,11 +72,11 @@ namespace sigtm
 			return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, nothing, nothing));
 		}
 		// alpha, beta をsymmetricに設定する場合
-		static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
+		static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, Maybe<double> beta = nothing){
 			return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing));
 		}
 		// alpha, beta を多次元で設定する場合
-		static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
+		static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing){
 			return LDAPtr(new LDA_CVB0(resume, topic_num, input_data, alpha, beta));
 		}
 
@@ -146,7 +146,7 @@ namespace sigtm
 	{
 		C result;
 		for (uint i = 0; i < elem_num; ++i){
-			sig::container_traits<C>::add_element(result, rand_d_());
+			sig::impl::container_traits<C>::add_element(result, rand_d_());
 		}
 		sig::normalize_dist(result);
 

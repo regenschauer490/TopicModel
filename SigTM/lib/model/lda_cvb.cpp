@@ -8,7 +8,7 @@ http://opensource.org/licenses/mit-license.php
 #include "lda_cvb.h"
 #include "SigUtil/lib/calculation.hpp"
 #include "SigUtil/lib/iteration.hpp"
-#include "SigUtil/lib/error_convergence.hpp"
+#include "SigUtil/lib/tools/convergence.hpp"
 #include "SigUtil/lib/file.hpp"
 
 namespace sigtm
@@ -40,7 +40,7 @@ void LDA_CVB0::update(Token const& t)
 			WordId v = t.word_id;
 			omega_[t.self_id][k] = (gamma_[t.doc_id][k] + alpha_[k]) * (lambda_[v][k] + beta_[v]) / (topic_sum_[k] + beta_sum_);
 		}
-		sig::normalize(omega_[t.self_id]);
+		sig::normalize_dist(omega_[t.self_id]);
 	};
 
 	sig::compound_assignment(sig::assign_minus<double>(), lambda_[t.word_id], omega_[t.self_id]);
@@ -76,13 +76,13 @@ void LDA_CVB0::save(Distribution target, FilepassString save_folder, bool detail
 
 	switch (target){
 	case Distribution::DOCUMENT:
-		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_STR_TO_FPSTR("document_cvb0"));
+		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("document_cvb0"));
 		break;
 	case Distribution::TOPIC:
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("topic_cvb0"));
+		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_cvb0"));
 		break;
 	case Distribution::TERM_SCORE:
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::maybe<uint>(20), save_folder + SIG_STR_TO_FPSTR("term-score_cvb0"));
+		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_cvb0"));
 		break;
 	default:
 		std::cout << "LDA_CVB0::save error" << std::endl;

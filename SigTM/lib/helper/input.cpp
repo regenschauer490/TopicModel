@@ -46,15 +46,15 @@ void InputData::reconstruct()
 {
 	/*
 	auto filenames = sig::get_file_names(folder_pass, false);
-	if(sig::is_container_valid(filenames)){
+	if(sig::isJust(filenames)){
 		std::wcout << L"folder not found : " << folder_pass << std::endl;
 		assert(false);
 	}*/
 
 	auto fileopen = [&](FilepassString pass) ->std::vector<std::wstring>
 	{	
-		auto m_text = sig::read_line<std::wstring>(pass);
-		if (!sig::is_container_valid(m_text)){
+		auto m_text = sig::load_line<std::wstring>(pass);
+		if (!sig::isJust(m_text)){
 			sig::FileOpenErrorPrint(pass);
 			assert(false);
 		}

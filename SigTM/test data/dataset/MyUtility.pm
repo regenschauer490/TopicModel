@@ -148,7 +148,7 @@ sub SimpleSaveAddArrayDataFile($$$){
 	close(FH);
 }
 
-sub JsonEncode{	#JSONにエンコード。オプションで保存ができ、通常のデータ保存にはこれを用いるように
+sub JsonEncode{	
 	my $data = shift;
 	my $savename = shift;
 	my $option = shift;
@@ -166,12 +166,11 @@ sub JsonEncode{	#JSONにエンコード。オプションで保存ができ、�
 	return $json;
 }
 
-sub JsonDecode{	#JSONのデコード
+sub JsonDecode{
 	my $data = shift;
 	
 	if(!($data =~ m/^{/ or $data =~ m/^\[/)){
 		print "not json response\n";
-		print $data."\n";
 		return 0;
 	}
 

@@ -143,7 +143,7 @@ private:
 	MrLDA(MrLDA const&) = delete;
 	MrLDA(MrLDA&&) = delete;
 
-	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, maybe<VectorK<double>> alpha, maybe<VectorV<double>> beta, mrlda::Specification spec) :
+	MrLDA(bool resume, uint topic_num, InputDataPtr input_data, Maybe<VectorK<double>> alpha, Maybe<VectorV<double>> beta, mrlda::Specification spec) :
 		input_data_(input_data), D_(input_data->getDocNum()), K_(topic_num), V_(input_data->getWordNum()),
 		alpha_(alpha ? sig::fromJust(alpha) : SIG_INIT_VECTOR(double, K, default_alpha_base / K_)), eta_(MatrixKV<double>(K_, beta ? sig::fromJust(beta) : SIG_INIT_VECTOR(double, V, default_beta))),
 		mapreduce_(nullptr), mr_spec_(spec), total_iter_ct_(0), term3_(sig::sum(eta_, [&](VectorV<double> const& v){ return calcModule0(v); })), rand_d_(0.0, 1.0, FixedRandom)
@@ -181,13 +181,13 @@ public:
 		return obj;
 	}
 	// alpha, beta をsymmetricに設定する場合
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, maybe<double> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, double alpha, Maybe<double> beta = nothing){
 		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing, mrlda::Specification(ThreadNum, ThreadNum)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
 	}
 	// alpha, beta を多次元で設定する場合
-	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, maybe<VectorV<double>> beta = nothing){
+	static LDAPtr makeInstance(bool resume, uint topic_num, InputDataPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing){
 		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(ThreadNum, ThreadNum)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;

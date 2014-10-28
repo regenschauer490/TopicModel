@@ -29,7 +29,7 @@ using sig::StrPtr;
 using sig::C_StrPtr;
 using sig::WStrPtr;
 using sig::C_WStrPtr;
-using sig::maybe;
+using sig::Maybe;
 auto const nothing = boost::none; 
 using sig::FilepassString;
 

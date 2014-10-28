@@ -8,6 +8,7 @@ use MyUtility;
 #
 my $base_pass = "./user/timeline/";
 my $src_pass = $base_pass . "raw" ."/";
+my $racent_num = 200;
 #
 
 binmode(STDOUT, ":utf8");
@@ -16,6 +17,7 @@ my @users = @{&GetFileList($src_pass)};
 
 foreach my $u (@users){
 	my @tweets = @{&SimpleReadDataFile($src_pass . $u, "cp932")};
+	my $ct = 0;
 	
 	foreach my $tw (@tweets){
 		my $tweet;
@@ -27,6 +29,10 @@ foreach my $u (@users){
 		my $text = $tweet->{"text"};
 		
 		$text =~ s/\n/./g;
+		
 		&SimpleSaveAddDataFile($text."\n", $base_pass.encode("cp932",$u), "cp932" );
+		
+		$ct++;
+		if($ct > $racent_num){ last; }
 	}
 }
