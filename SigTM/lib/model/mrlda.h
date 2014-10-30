@@ -13,6 +13,7 @@ http://opensource.org/licenses/mit-license.php
 #include "../../external/mapreduce/include/mapreduce.hpp"
 #include "../../external/boost_sub/math/special_functions/polygamma.hpp"
 #include "boost/math/special_functions/digamma.hpp"
+#include "SigUtil/lib/functional/fold.hpp"
 
 #if USE_SIGNLP
 #include "../helper/input_text.h"

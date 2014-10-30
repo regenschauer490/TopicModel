@@ -10,7 +10,9 @@ http://opensource.org/licenses/mit-license.php
 
 #include "../sigtm.hpp"
 #include "lda_interface.hpp"
-#include "SigUtil/lib/modify.hpp"
+#include "SigUtil/lib/modify/sort.hpp"
+#include "SigUtil/lib/tools/random.hpp"
+#include "SigUtil/lib/calculation/basic_statistics.hpp"
 #include <future>
 
 namespace sigtm
@@ -106,7 +108,7 @@ inline auto LDA_Module::getTermScoreOfDocument(VectorK<double> const& theta, Mat
 		}
 	}
 
-	auto sorted = sig::sort_with_index(tmp); //std::tuple<std::vector<double>, std::vector<uint>>
+	auto sorted = sig::sort_with_index(tmp, std::less<double>()); //std::tuple<std::vector<double>, std::vector<uint>>
 	return sig::zipWith([](WordId w, double d){ return std::make_tuple(w, d); }, std::get<1>(sorted), std::get<0>(sorted)); //sig::zip(std::get<1>(sorted), std::get<0>(sorted));
 }
 

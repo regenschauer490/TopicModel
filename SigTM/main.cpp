@@ -1,5 +1,8 @@
 ﻿#include "lib/helper/input_text.h"
 #include "SigUtil/lib/file.hpp"
+#include "SigUtil/lib/modify/remove.hpp"
+#include "SigUtil/lib/tools/tag_dealer.hpp"
+#include "SigUtil/lib/tools/time_watch.hpp"
 
 const int TopicNum = 30;
 const int IterationNum = 100;
@@ -39,7 +42,7 @@ sigtm::InputDataPtr makeInputData(InputTextType tt, std::wstring src_folder, std
 	
 	// 形態素解析前のフィルタ処理
 	filter.setPreFilter([](wstring& str){
-		static auto& replace = sig::ZenHanReplace::GetInstance();
+		static auto& replace = sig::ZenHanReplace::get_instance();
 		static sig::TagDealer<std::wstring> tag_dealer(L"<", L">");
 
 		auto tmp = tag_dealer.decode(str, L"TEXT");
@@ -109,7 +112,7 @@ void sample1(InputTextType tt, std::wstring src_folder, std::wstring out_folder,
 	{
 		double perp = lda->getPerplexity();
 		auto split = sig::split(std::to_string(perp), ",");
-		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+		sig::save_line(sig::cat(split, ""), perp_pass, sig::WriteMode::append);
 	};
 
 	auto lda = sigtm::LDA_Gibbs::makeInstance(resume, TopicNum, inputdata);
@@ -174,7 +177,7 @@ void sample2(InputTextType tt, std::wstring src_folder, std::wstring out_folder,
 	{
 		double perp = lda->getPerplexity();
 		auto split = sig::split(std::to_string(perp), ",");
-		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+		sig::save_line(sig::cat(split, ""), perp_pass, sig::WriteMode::append);
 	};
 
 	auto lda = sigtm::LDA_CVB0::makeInstance(resume, TopicNum, inputdata);
@@ -217,7 +220,7 @@ void sample3(InputTextType tt, std::wstring src_folder, std::wstring out_folder,
 
 		double perp = lda->getPerplexity();
 		auto split = sig::split(std::to_string(perp), ",");
-		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+		sig::save_line(sig::cat(split, ""), perp_pass, sig::WriteMode::append);
 
 		tw.restart();
 	};
@@ -246,7 +249,7 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	{
 		double perp = lda->getPerplexity();
 		auto split = sig::split(std::to_string(perp), ",");
-		sig::save_line(sig::cat_str(split, ""), perp_pass, sig::WriteMode::append);
+		sig::save_line(sig::cat(split, ""), perp_pass, sig::WriteMode::append);
 	};
 
 	auto lda = sigtm::TwitterLDA::makeInstance(resume, 30, inputdata);
@@ -277,7 +280,7 @@ void mecab_wakati()
 
 	// 形態素解析前のフィルタ処理
 	auto pf = [](wstring& str){
-		static auto& replace = sig::ZenHanReplace::GetInstance();
+		static auto& replace = sig::ZenHanReplace::get_instance();
 		static sig::TagDealer<std::wstring> tag_dealer(L"<", L">");
 
 		auto tmp = tag_dealer.decode(str, L"TEXT");
@@ -304,7 +307,7 @@ void mecab_wakati()
 		for (auto p : parsed) af(p);
 		sig::remove_all(parsed, L"");
 
-		sig::save_line(sig::cat_str(parsed, L" "), L"Z:/Nishimura/IVRC/data/master.txt" , sig::WriteMode::append);
+		sig::save_line(sig::cat(parsed, L" "), L"Z:/Nishimura/IVRC/data/master.txt" , sig::WriteMode::append);
 	}
 }
 
@@ -403,15 +406,13 @@ int main()
 	・総単語数：
 	*/
 	
-	std::wstring data_folder_pass = L"../SigTM/test data";
-	std::wstring input_text_pass = data_folder_pass + L"/dataset/query";
-	std::wstring input_tw_pass = /*data_folder_pass +*/ L"Z:/Nishimura/IVRC/data/user/lda2";
+	std::wstring data_folder_pass = L"../../SigTM/test_data";
+	std::wstring input_text_pass = data_folder_pass + L"/dataset/document";
+	//std::wstring input_tw_pass = data_folder_pass + L"/dataset/tweet";
 
 	setlocale(LC_ALL, "Japanese");
-
-	//mecab_wakati();
-	//polar_train();
-	sample1(InputTextType::Tweet, input_tw_pass, data_folder_pass,false, false);
+	
+	sample1(InputTextType::Tweet, input_text_pass, data_folder_pass, false, false);
 	//sample4(input_tw_pass, data_folder_pass, false, false);
 
 	return 0;

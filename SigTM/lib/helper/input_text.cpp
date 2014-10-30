@@ -6,8 +6,9 @@ http://opensource.org/licenses/mit-license.php
 */
 
 #include "input_text.h"
-#include "SigUtil/lib/modify.hpp"
-#include "SigUtil/lib/calculation.hpp"
+#include "SigUtil/lib/modify/remove.hpp"
+#include "SigUtil/lib/calculation/basic_statistics.hpp"
+#include "SigUtil/lib/tools/time_watch.hpp"
 #include <future>
 
 namespace sigtm

@@ -21,11 +21,8 @@
 *.sdf
 *.filters
 *.filters
-
 *.dll
 *.ilk
 *.lib
 *.yml
 *.bat
-*.txt
-*.txt

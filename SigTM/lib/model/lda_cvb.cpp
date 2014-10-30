@@ -7,7 +7,6 @@ http://opensource.org/licenses/mit-license.php
 
 #include "lda_cvb.h"
 #include "SigUtil/lib/calculation.hpp"
-#include "SigUtil/lib/iteration.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
 #include "SigUtil/lib/file.hpp"
 
@@ -23,10 +22,10 @@ void LDA_CVB0::init(bool resume)
 
 	for (auto const& t : tokens_){
 		auto omega_rand = makeRandomDistribution<VectorK<double>>(K_);
-		sig::compound_assignment(sig::assign_plus<double>(), omega_[t.self_id], omega_rand);
-		sig::compound_assignment(sig::assign_plus<double>(), lambda_[t.word_id], omega_rand);
-		sig::compound_assignment(sig::assign_plus<double>(), gamma_[t.doc_id], omega_rand);
-		sig::compound_assignment(sig::assign_plus<double>(), topic_sum_, omega_rand);
+		sig::compound_assignment(sig::assign_plus(), omega_[t.self_id], omega_rand);
+		sig::compound_assignment(sig::assign_plus(), lambda_[t.word_id], omega_rand);
+		sig::compound_assignment(sig::assign_plus(), gamma_[t.doc_id], omega_rand);
+		sig::compound_assignment(sig::assign_plus(), topic_sum_, omega_rand);
 	}
 }
 
@@ -43,15 +42,15 @@ void LDA_CVB0::update(Token const& t)
 		sig::normalize_dist(omega_[t.self_id]);
 	};
 
-	sig::compound_assignment(sig::assign_minus<double>(), lambda_[t.word_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_minus<double>(), gamma_[t.doc_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_minus<double>(), topic_sum_, omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_minus(), lambda_[t.word_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_minus(), gamma_[t.doc_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_minus(), topic_sum_, omega_[t.self_id]);
 
 	updateTopic(t);
 
-	sig::compound_assignment(sig::assign_plus<double>(), lambda_[t.word_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_plus<double>(), gamma_[t.doc_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_plus<double>(), topic_sum_, omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_plus(), lambda_[t.word_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_plus(), gamma_[t.doc_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_plus(), topic_sum_, omega_[t.self_id]);
 }
 
 void LDA_CVB0::train(uint iteration_num, std::function<void(LDA const*)> callback)
@@ -118,7 +117,7 @@ auto LDA_CVB0::getPhi(TopicId k_id) const->VectorV<double>
 {
 	double sum = sig::sum_col(lambda_, k_id);
 	// computed from the variational distribution
-	return sig::map([&](uint i){ return lambda_[i][k_id] / sum; }, sig::seq(0, 1, V_));
+	return sig::map([&](uint i){ return lambda_[i][k_id] / sum; }, sig::seqn(0, 1, V_));
 }
 
 

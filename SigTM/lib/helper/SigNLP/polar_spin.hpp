@@ -5,8 +5,7 @@
 
 #if USE_SIGNLP
 
-#include "SigUtil/lib/functional.hpp"
-#include "SigUtil/lib/iteration.hpp"
+#include "SigUtil/lib/functional/fold.hpp"
 #include "SigUtil/lib/calculation.hpp"
 #include <boost/graph/adjacency_list.hpp>
 
@@ -125,15 +124,15 @@ private:
 
 	void update(uint k)
 	{
-		const double wx_sum = sig::fold_zipWith(
-			[&](uint n){ return graph_[n].mean_x * boost::get(boost::get(boost::edge_weight, graph_), boost::edge(k, n, graph_).first); },
+		const double wx_sum = sig::dotProduct(
 			std::plus<double>(),
+			[&](uint n){ return graph_[n].mean_x * boost::get(boost::get(boost::edge_weight, graph_), boost::edge(k, n, graph_).first); },
 			0, adj_[k]
 		);
 
 		const auto exp_wx_sum = sig::map([&](int x_i){	return std::exp(beta_ * x_i * wx_sum); }, xs_);
 
-		auto t = sig::fold_zipWith(std::multiplies<double>(), std::plus<double>(), 0, exp_wx_sum, xs_) / sig::sum(exp_wx_sum);
+		auto t = sig::dotProduct(std::plus<double>(), std::multiplies<double>(), 0, exp_wx_sum, xs_) / sig::sum(exp_wx_sum);
 
 		if (!sig::is_number(t)){
 			std::cout << "wxsum:" << wx_sum << std::endl;
@@ -153,15 +152,15 @@ private:
 			std::plus<double>(),
 			0, w_[k], mean_x_
 		);*/
-		const double wx_sum = sig::fold_zipWith(
-			[&](uint n){ return graph_[n].mean_x * boost::get(boost::get(boost::edge_weight, graph_), boost::edge(k, n, graph_).first); },
+		const double wx_sum = sig::dotProduct(
 			std::plus<double>(),
+			[&](uint n){ return graph_[n].mean_x * boost::get(boost::get(boost::edge_weight, graph_), boost::edge(k, n, graph_).first); },
 			0, adj_[k]
 		);
 
 		const auto exp_wx_sum = sig::map([&](int x_i){	return std::exp(beta_ * x_i * wx_sum - alpha_ * std::pow(x_i - graph_[k].label, 2)); }, xs_);
 		
-		auto t = sig::fold_zipWith(std::multiplies<double>(), std::plus<double>(), 0, exp_wx_sum, xs_) / sig::sum(exp_wx_sum);
+		auto t = sig::dotProduct(std::plus<double>(), std::multiplies<double>(), 0, exp_wx_sum, xs_) / sig::sum(exp_wx_sum);
 
 		if (!sig::is_number(t)){
 			std::cout << "wxsum:" << wx_sum << std::endl;

@@ -8,8 +8,8 @@ http://opensource.org/licenses/mit-license.php
 #include <future>
 #include <sstream>
 #include "SigUtil/lib/file.hpp"
-#include "SigUtil/lib/iteration.hpp"
-#include "SigUtil/lib/modify.hpp"
+#include "SigUtil/lib/calculation/for_each.hpp"
+#include "SigUtil/lib/modify/sort.hpp"
 #include "input.h"
 
 namespace sigtm

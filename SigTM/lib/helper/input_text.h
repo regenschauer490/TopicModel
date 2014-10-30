@@ -10,6 +10,7 @@ http://opensource.org/licenses/mit-license.php
 
 #include "input.h"
 #include "SigNLP/signlp.hpp"
+#include "SigUtil/lib/functional/high_order.hpp"
 
 #if USE_SIGNLP
 #include "SigNlp/polar_evaluation.hpp"

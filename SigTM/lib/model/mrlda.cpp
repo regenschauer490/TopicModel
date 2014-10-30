@@ -9,11 +9,11 @@ http://opensource.org/licenses/mit-license.php
 
 #include "mrlda.h"
 #include "../helper/mapreduce_module.h"
-#include "SigUtil/lib/calculation.hpp"
-#include "SigUtil/lib/iteration.hpp"
+#include "SigUtil/lib/calculation/ublas.hpp"
+#include "SigUtil/lib/calculation/for_each.hpp"
+#include "SigUtil/lib/calculation/assign_operation.hpp"
 #include "SigUtil/lib/distance/norm.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
-#include "SigUtil/lib/calculation/ublas.hpp"
 #include "SigUtil/lib/file.hpp"
 #include <boost/numeric/ublas/io.hpp>
 
@@ -88,7 +88,7 @@ void MrLDA::init(bool resume)
 		}
 	}
 
-	auto load_gamma = resume ? sig::load_num<double, MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : nothing;
+	auto load_gamma = resume ? sig::load_num2d<double, MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : nothing;
 	if (sig::isJust(load_gamma)){
 		gamma_ = std::move(sig::fromJust(load_gamma));
 		std::cout << "resume gamma" << std::endl;
@@ -99,12 +99,12 @@ void MrLDA::init(bool resume)
 			for (TopicId k=0; k<K_; ++k){
 				gamma_[d][k] = alpha_[k] + rand_d_();
 			}
-			bool f = sig::normalize_dist(gamma_[d]);
+			bool ck = sig::normalize_dist(gamma_[d]);
 		}
 		if (resume) std::cout << "resume gamma error : gamma is set by random" << std::endl;
 	}
 
-	auto load_beta = resume ? sig::load_num<double, MatrixKV<double>>(base_pass + resume_phi_fname, " ") : nothing;
+	auto load_beta = resume ? sig::load_num2d<double, MatrixKV<double>>(base_pass + resume_phi_fname, " ") : nothing;
 	if (sig::isJust(load_beta)){
 		phi_ = std::move(sig::fromJust(load_beta));
 		std::cout << "resume phi" << std::endl;
@@ -115,7 +115,7 @@ void MrLDA::init(bool resume)
 			for (WordId v = 0; v<V_; ++v){
 				phi_[k][v] = eta_[k][v] + rand_d_();
 			}
-			bool f = sig::normalize_dist(phi_[k]);
+			bool ck = sig::normalize_dist(phi_[k]);
 		}
 		if (resume) std::cout << "resume phi error : phi is set by random" << std::endl;
 	}

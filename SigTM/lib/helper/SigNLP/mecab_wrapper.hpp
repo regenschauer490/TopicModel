@@ -9,15 +9,16 @@
 #include <functional>
 
 #include "signlp.hpp"
+#include "SigUtil/lib/string/manipulate.hpp"
 
 #if USE_SIGNLP
 
 #if defined(_WIN64)
-#include "../external/mecab/x64/mecab.h"
-#pragma comment(lib, "external/mecab/x64/libmecab.lib")
+#include "../../../external/mecab/x64/mecab.h"
+#pragma comment(lib, "../../SigTM/external/mecab/x64/libmecab.lib")
 #elif defined(_WIN32)
-#include "../external/mecab/x86/mecab.h"
-#pragma comment(lib, "external/mecab/x86/libmecab.lib")
+#include "../../../external/mecab/x86/mecab.h"
+#pragma comment(lib, "../../SigTM/external/mecab/x86/libmecab.lib")
 #else
 static_assert(false, "this environment doesn't support.");
 #endif
