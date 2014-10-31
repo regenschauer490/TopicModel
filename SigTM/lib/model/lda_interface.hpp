@@ -19,7 +19,7 @@ class LDA;
 using LDAPtr = std::shared_ptr<LDA>;
 
 
-template<class T> using VectorT = std::vector<T>;	// all token
+template<class T> using VectorT = std::vector<T>;	// token
 template<class T> using VectorD = std::vector<T>;	// document
 template<class T> using VectorK = std::vector<T>;	// topic
 template<class T> using VectorV = std::vector<T>;	// word

@@ -1,5 +1,4 @@
-﻿#include "lib/helper/input_text.h"
-#include "SigUtil/lib/file.hpp"
+﻿#include "SigUtil/lib/file.hpp"
 #include "SigUtil/lib/modify/remove.hpp"
 #include "SigUtil/lib/tools/tag_dealer.hpp"
 #include "SigUtil/lib/tools/time_watch.hpp"
@@ -16,6 +15,15 @@ static const std::wregex res_reg(L"@(\\w)+");
 static const std::wregex noise_reg(L"^[ＴWＷwｗω・･、。*＊:：;；ー－…´`ﾟo｡.,_|│~~\\-\\^\"”'’＂@!！?？#⇒() () ｢」{}\\[\\]\/ 　]+$");
 static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 
+
+#include "lib/sigtm.hpp"
+
+#if USE_SIGNLP
+#include "lib/helper/document_loader_text.hpp"
+#else
+#include "lib/helper/document_loader.hpp"
+#endif
+
 /*
 	[ 入力形式のデータ作成 ]
 
@@ -26,7 +34,7 @@ static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 	・tokenデータ：テキスト中の各トークンに関する情報
 	・vocabデータ：出現単語に関する情報
 */
-sigtm::InputDataPtr makeInputData(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool make_new)
+sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool make_new)
 {
 	using namespace std;
 	using sig::uint;
@@ -60,20 +68,20 @@ sigtm::InputDataPtr makeInputData(InputTextType tt, std::wstring src_folder, std
 #endif
 
 	// 入力データ作成 
-	sigtm::InputDataPtr inputdata;
+	sigtm::DocumentSetPtr inputdata;
 
 	if(make_new){
 #if USE_SIGNLP
 		// 新しくデータセットを作成(外部ファイルから生成)
-		if (InputTextType::Tweet == tt) inputdata = sigtm::InputDataFromText::makeInstanceFromTweet(src_folder, filter, out_folder);
-		else inputdata = sigtm::InputDataFromText::makeInstance(src_folder, filter, out_folder);
+		if (InputTextType::Tweet == tt) inputdata = sigtm::DocumentLoaderFromText::makeInstanceFromTweet(src_folder, filter, out_folder);
+		else inputdata = sigtm::DocumentLoaderFromText::makeInstance(src_folder, filter, out_folder);
 #else
 		assert(false);
 #endif
 	}
 	else{
 		// 過去に作成したデータセットを使用 or 自分で指定形式のデータセットを用意する場合
-		inputdata = sigtm::InputData::makeInstance(out_folder);
+		inputdata = sigtm::DocumentLoader::makeInstance(out_folder);
 	}
 
 	return inputdata;
@@ -270,127 +278,6 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	sig::save_num(theta, out_folder + L"theta", ",");
 	sig::save_num(phi, out_folder + L"phi", ",");
 	sig::save_num(phib, out_folder + L"phib", ",");
-
-	getchar();
-}
-
-void mecab_wakati()
-{
-	using namespace std;
-
-	// 形態素解析前のフィルタ処理
-	auto pf = [](wstring& str){
-		static auto& replace = sig::ZenHanReplace::get_instance();
-		static sig::TagDealer<std::wstring> tag_dealer(L"<", L">");
-
-		auto tmp = tag_dealer.decode(str, L"TEXT");
-		str = tmp ? sig::fromJust(tmp) : str;
-		str = regex_replace(str, url_reg, wstring(L""));
-		str = regex_replace(str, htag_reg, wstring(L""));
-		str = regex_replace(str, res_reg, wstring(L""));
-	};
-
-	// 形態素解析後にフィルタ処理
-	auto af = [](wstring& str){
-		str = regex_replace(str, noise_reg, wstring(L""));
-		str = regex_replace(str, a_hira_kata_reg, wstring(L""));
-	};
-
-	auto& mecab = signlp::MecabWrapper::getInstance();
-
-	auto data = sig::load_line(L"Z:/Nishimura/IVRC/data/dpl.txt");
-
-	for (auto& e : *data){
-		auto we = sig::str_to_wstr(e);
-		pf(we);
-		auto parsed = mecab.parseGenkeiThroughFilter(we, [](signlp::WordClass wc){ return wc == signlp::WordClass::名詞 || wc == signlp::WordClass::形容詞 || wc == signlp::WordClass::動詞; });
-		for (auto p : parsed) af(p);
-		sig::remove_all(parsed, L"");
-
-		sig::save_line(sig::cat(parsed, L" "), L"Z:/Nishimura/IVRC/data/master.txt" , sig::WriteMode::append);
-	}
-}
-
-
-#include "lib/helper/SigNLP/polar_spin.hpp"
-#include "lib/helper/SigNLP/mecab_wrapper.hpp"
-void polar_train()
-{	
-	using Spin = signlp::SpinModel;
-	using signlp::WordClass;
-	auto& mecab = signlp::MecabWrapper::getInstance();
-	auto texts = sig::load_line(L"Z:/Nishimura/IVRC/data/streaming/test.txt");
-	auto label_texts = sig::load_line(L"Z:/Nishimura/IVRC/evaluation_lib/polar.csv");
-
-	Spin::Graph graph;
-	std::unordered_map<std::wstring, Spin::pNode> wmap;
-	const int sigma2 = 9;
-	const double z = std::sqrt(2 * 3.1415 * sigma2);
-
-	for (auto const& line : sig::fromJust(label_texts)){
-		auto sp = sig::split(line, ",");
-		auto w = sig::str_to_wstr(sp[0]);
-		auto sc = std::stod(sp[3]);
-		if (std::abs(sc) < 0.75) continue;
-
-		wmap.emplace(w, Spin::make_node(graph, w, sc));
-	}
-
-	for (auto const& line : sig::fromJust(texts)){
-		auto parsed = sig::str_to_wstr(
-			mecab.parseGenkeiThroughFilter(line, [](WordClass wc){ return WordClass::名詞 == wc || WordClass::形容詞 == wc || WordClass::動詞 == wc; })
-		);
-		
-		// 新規ノード(単語)追加
-		for (auto const& w : parsed){
-			if (!wmap.count(w)){
-				wmap.emplace(w, Spin::make_node(graph, w));
-			}
-		}
-
-		// エッジ追加
-		for (int i=0; i<parsed.size(); ++i){
-			auto v = wmap[parsed[i]];
-			/* 左側の単語
-			for (int l=i-1, dist=0; l>=0; --l, ++dist){
-				double weight = z * std::exp(-0.5 * std::pow((l - i) / sigma2, 2));
-				auto e = boost::edge(v, wmap[parsed[l]], graph);
-
-				if (e.second){
-					boost::get(boost::edge_weight, graph, e.first) += weight;
-				}
-				else{
-					Spin::make_edge(graph, v, wmap[parsed[l]], weight);
-				}
-			}*/
-			// 右側の単語
-			for (int r = i + 1, dist = 0; r<parsed.size(); ++r, ++dist){
-				auto v2 = wmap[parsed[r]];
-				auto weight = 1 * std::exp(-std::pow((r - i), 2) / (2*sigma2));
-				auto e = boost::edge(v, v2, graph);
-
-				if (e.second){
-					boost::get(boost::edge_weight, graph, e.first) += weight;
-				}
-				else{
-					Spin::make_edge(graph, v, v2, weight);
-				}				
-			}
-		}
-	}
-	
-	for (int i=1; i<21; ++i){
-		signlp::SpinModel spin(graph, 10, 0.1 * i);
-
-		auto callback = [&](signlp::SpinModel const* obj){
-			sig::save_line(obj->getErrorRate(), L"./test data/spinmodel/error" + std::to_wstring(i) + L".txt", sig::WriteMode::append);
-			sig::save_line(obj->getMeanPolar(), L"./test data/spinmodel/mp" + std::to_wstring(i) + L".txt", sig::WriteMode::append);
-		};
-
-		spin.train(50, callback);
-		auto score = spin.getScore();
-		for (auto e : score) sig::save_line(e.first + L"," + std::to_wstring(e.second), L"./test data/spinmodel/score" + std::to_wstring(i) + L".txt", sig::WriteMode::append);
-	}
 
 	getchar();
 }

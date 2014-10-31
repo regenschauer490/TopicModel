@@ -2,9 +2,6 @@
 #define SIG_POLAR_SPIN_HPP
 
 #include "signlp.hpp"
-
-#if USE_SIGNLP
-
 #include "SigUtil/lib/functional/fold.hpp"
 #include "SigUtil/lib/calculation.hpp"
 #include <boost/graph/adjacency_list.hpp>
@@ -261,5 +258,4 @@ public:
 };
 
 }
-#endif
 #endif

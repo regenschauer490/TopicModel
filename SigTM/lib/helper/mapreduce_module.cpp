@@ -8,6 +8,8 @@ http://opensource.org/licenses/mit-license.php
 #include "mapreduce_module.h"
 #include "../model/mrlda.h"
 
+// memo: このcppファイルは、ヘッダファイルの循環参照問題のため必要
+
 namespace sigtm
 {
 namespace mrlda{

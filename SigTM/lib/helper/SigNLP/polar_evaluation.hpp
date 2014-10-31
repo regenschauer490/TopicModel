@@ -5,7 +5,6 @@
 #include "mecab_wrapper.hpp"
 #include "signlp.hpp"
 
-#if USE_SIGNLP
 
 namespace signlp
 {
@@ -275,5 +274,4 @@ inline PNStandard EvaluationLibrary::getPNStandard(std::wstring const& word) con
 }
 
 }
-#endif
 #endif

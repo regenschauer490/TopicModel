@@ -11,8 +11,6 @@
 #include "signlp.hpp"
 #include "SigUtil/lib/string/manipulate.hpp"
 
-#if USE_SIGNLP
-
 #if defined(_WIN64)
 #include "../../../external/mecab/x64/mecab.h"
 #pragma comment(lib, "../../SigTM/external/mecab/x64/libmecab.lib")
@@ -237,6 +235,5 @@ inline auto MecabWrapper::parseGenkeiThroughFilter(std::wstring const& sentence,
 
 
 }
-#endif
 #endif
 

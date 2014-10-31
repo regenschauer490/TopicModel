@@ -6,7 +6,6 @@
 
 namespace signlp{
 
-#define USE_SIGNLP 1				// 文字列解析を行うためにSigNLPを使用するか
 
 const bool enable_warning = false;
 

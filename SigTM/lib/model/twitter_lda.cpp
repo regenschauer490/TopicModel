@@ -21,7 +21,7 @@ void TwitterLDA::init(bool resume)
 {
 	// analyze token structure
 	if (!input_data_->is_token_sorted_){
-		std::const_pointer_cast<InputData>(input_data_)->sortToken();	// user, tweetがソートされていることが必要条件
+		std::const_pointer_cast<DocumentSet>(input_data_)->sortToken();	// user, tweetがソートされていることが必要条件
 		input_data_->save();
 	}
 
