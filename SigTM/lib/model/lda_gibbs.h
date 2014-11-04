@@ -51,7 +51,7 @@ public:
 			double const& alpha = obj->alpha_[k];
 			double const& beta = obj->beta_[v];
 			
-			if(k != pre_k) dk_sum = sig::sum(obj->doc_ct_[d]);
+			if(k != pre_k) dk_sum = static_cast<double>(sig::sum(obj->doc_ct_[d]));
 			pre_k = k;
 			return ((obj->doc_ct_[d][k] + alpha) / (dk_sum + obj->alpha_sum_)) * ((obj->word_ct_[v][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_));
 		}

@@ -80,8 +80,6 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 		return PNStandard::NA;
 	};
 
-	std::string line;
-	std::wstring wstr;
 
 	auto read1 = sig::load_line(evaluation_word_filepass);
 
@@ -129,7 +127,7 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 		for (auto const& line : sig::fromJust(read3)){
 			const auto linevec = sig::split(line, ",");
 
-			wstr = sig::str_to_wstr(linevec[2]);
+			auto wstr = sig::str_to_wstr(linevec[2]);
 			std::wregex reg(L"\\s");
 			wstr = std::regex_replace(wstr, reg, L"");
 			declinable_ev_[sig::wstr_to_str(wstr)] = std::make_tuple(PNE(linevec[0]), PNS(linevec[1]));

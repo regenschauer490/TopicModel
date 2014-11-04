@@ -31,7 +31,7 @@ class FilterSetting
 
 	bool base_form_;
 	std::unordered_set<WordClass> selected_word_class_;
-	std::unordered_map< int, std::unordered_set<std::wstring> > excepted_words_;
+	std::unordered_map< uint, std::unordered_set<std::wstring> > excepted_words_;
 	std::function< void(std::wstring&) > pre_filter_;
 	std::function< void(std::wstring&) > aft_filter_;
 
@@ -46,7 +46,7 @@ public:
 
 	//オブジェクトの生成
 	//use_base_form：形態素解析後に単語を原型に修正するか (false:元表現, true:原形) 
-	FilterSetting(bool use_base_form) : base_form_(use_base_form), selected_word_class_(), pre_filter_(df), aft_filter_(df){};
+	FilterSetting(bool use_base_form) : base_form_(use_base_form), selected_word_class_(), pre_filter_([](std::wstring& s){}), aft_filter_([](std::wstring& s){}){};
 
 
 	/* トークンリストに追加する単語に関する設定 */

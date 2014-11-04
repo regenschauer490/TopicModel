@@ -15,13 +15,18 @@
   #include <limits>
   #include <boost/cstdint.hpp>
   #include <boost/math/policies/policy.hpp>
-  #include "../bernoulli.hpp"
   #include <boost/math/special_functions/trunc.hpp>
   #include <boost/math/special_functions/zeta.hpp>
   #include <boost/mpl/if.hpp>
   #include <boost/mpl/int.hpp>
   #include <boost/static_assert.hpp>
   #include <boost/type_traits/is_convertible.hpp>
+  
+#if (BOOST_VERSION / 100) <= 1055
+ #include "../bernoulli.hpp"
+#else
+ #include <boost/math/special_functions/bernoulli.hpp>
+#endif
 
   namespace boost { namespace math { namespace detail {
 

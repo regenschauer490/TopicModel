@@ -14,9 +14,6 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-
-const std::function< void(std::wstring&) > df = [](std::wstring& s){};
-
 class DocumentSet;
 using DocumentSetPtr = std::shared_ptr<DocumentSet const>;
 
