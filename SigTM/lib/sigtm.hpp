@@ -10,6 +10,7 @@ http://opensource.org/licenses/mit-license.php
 
 #include "SigUtil/lib/sigutil.hpp"
 #include "helper/SigNLP/signlp.hpp"
+#include "SigUtil/lib/helper/container_traits.hpp"
 
 namespace sigtm
 {
@@ -45,6 +46,11 @@ using UserId = uint;
 using TokenId = uint;
 using Id = uint;
 
+template<class T> using VectorT = std::vector<T>;	// token
+template<class T> using VectorD = std::vector<T>;	// document
+template<class T> using VectorK = std::vector<T>;	// topic
+template<class T> using VectorV = std::vector<T>;	// word
+
 const uint zero = 0;
 const double log_lower_limit = -100000;
 }
@@ -59,4 +65,5 @@ template <> struct hash<sig::C_WStrPtr>
 	}
 };
 }	//std
+
 #endif

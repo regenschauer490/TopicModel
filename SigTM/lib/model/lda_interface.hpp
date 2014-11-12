@@ -19,10 +19,6 @@ class LDA;
 using LDAPtr = std::shared_ptr<LDA>;
 
 
-template<class T> using VectorT = std::vector<T>;	// token
-template<class T> using VectorD = std::vector<T>;	// document
-template<class T> using VectorK = std::vector<T>;	// topic
-template<class T> using VectorV = std::vector<T>;	// word
 template<class T> using MatrixTK = VectorT<VectorK<T>>;	// token - topic
 template<class T> using MatrixDK = VectorD<VectorK<T>>;	// document - topic
 template<class T> using MatrixVK = VectorV<VectorK<T>>;	// word - topic

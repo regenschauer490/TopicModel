@@ -11,6 +11,7 @@ http://opensource.org/licenses/mit-license.php
 #include "data_format.hpp"
 #include "SigUtil/lib/file/save.hpp"
 #include "SigUtil/lib/modify/sort.hpp"
+#include "SigUtil/lib/calculation/for_each.hpp"
 
 namespace sigtm
 {
@@ -21,15 +22,16 @@ using DocumentSetPtr = std::shared_ptr<DocumentSet const>;
 enum class DocumentType{ Defaut = 0, Tweet = 1 };
 
 
-struct DocumentSet
+class DocumentSet
 {
-/*	friend class LDA_Gibbs;
-	friend class MrLDA;
-	friend class LDA_CVB0;
-	friend class TwitterLDA;
 	friend class MRInputIterator;
-*/
+	friend class LDA_Gibbs;
+	friend class LDA_CVB0;
+	friend class MrLDA;
+	friend class TwitterLDA;
+	friend class CTR;
 
+protected:
 	DocumentType doc_type_;
 	bool is_token_sorted_;	 // priority1: user_id, priority2: doc_id
 
@@ -54,10 +56,13 @@ public:
 
 	void sortToken();
 
-	auto getInputFileNames() const->std::vector<FilepassString>{ return doc_names_; }
+	auto getDevidedDocument() const->VectorD<std::vector<DocumentId>>;
+
+	auto getInputFileNames() const ->std::vector<FilepassString>{ return doc_names_; }
 
 	uint getDocNum() const{ return doc_num_; }
 	uint getWordNum() const{ return words_.size(); }
+	uint getTokenNum() const{ return tokens_.size(); }
 };
 
 
@@ -69,6 +74,37 @@ inline void DocumentSet::sortToken()
 	is_token_sorted_ = true;
 }
 
+inline auto DocumentSet::getDevidedDocument() const->VectorD<std::vector<DocumentId>>
+{
+	VectorD<std::vector<DocumentId>> result(doc_num_);
+	
+	sig::for_each([&](uint i, Token const& t){
+		result[t.doc_id].push_back(i);
+	},
+	0, tokens_
+	);
+
+	return result;
+}
+
+/*
+inline auto DocumentSet::getDevidedDocument() ->VectorD<std::pair<TokenIter, TokenIter>>
+{
+VectorD<std::pair<TokenIter, TokenIter>> result(doc_num_);
+
+if (!is_token_sorted_) sortToken();
+
+DocumentId d = 0;
+TokenIter begin = tokens_.begin(), end;
+
+for (auto const& t : tokens_){
+if (d > t.doc_id){
+result[d] = std::make_pair(begin, );
+}
+result[t.doc_id].push_back();
+}
+}
+*/
 
 inline void DocumentSet::save() const
 {

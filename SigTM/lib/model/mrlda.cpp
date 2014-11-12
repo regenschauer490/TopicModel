@@ -162,7 +162,7 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 	{
 		while (true){
 			bool f = true;
-			auto corr_delta = sig::multiplies(std::pow(0.8, decay), delta);
+			auto corr_delta = sig::mult(std::pow(0.8, decay), delta);
 
 			std::cout << "delta:";
 			for (uint i=0; i<K; ++i){

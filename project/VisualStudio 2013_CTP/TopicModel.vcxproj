@@ -152,7 +152,7 @@
     <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\polar_evaluation.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\polar_spin.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\signlp.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\model\ctr.hpp">
+    <ClInclude Include="..\..\SigTM\lib\model\ctr.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClInclude>

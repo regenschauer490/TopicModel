@@ -22,10 +22,10 @@ void LDA_CVB0::init(bool resume)
 
 	for (auto const& t : tokens_){
 		auto omega_rand = makeRandomDistribution<VectorK<double>>(K_);
-		sig::compound_assignment(sig::assign_plus(), omega_[t.self_id], omega_rand);
-		sig::compound_assignment(sig::assign_plus(), lambda_[t.word_id], omega_rand);
-		sig::compound_assignment(sig::assign_plus(), gamma_[t.doc_id], omega_rand);
-		sig::compound_assignment(sig::assign_plus(), topic_sum_, omega_rand);
+		sig::compound_assignment(sig::assign_plus_t(), omega_[t.self_id], omega_rand);
+		sig::compound_assignment(sig::assign_plus_t(), lambda_[t.word_id], omega_rand);
+		sig::compound_assignment(sig::assign_plus_t(), gamma_[t.doc_id], omega_rand);
+		sig::compound_assignment(sig::assign_plus_t(), topic_sum_, omega_rand);
 	}
 }
 
@@ -42,15 +42,15 @@ void LDA_CVB0::update(Token const& t)
 		sig::normalize_dist(omega_[t.self_id]);
 	};
 
-	sig::compound_assignment(sig::assign_minus(), lambda_[t.word_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_minus(), gamma_[t.doc_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_minus(), topic_sum_, omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_minus_t(), lambda_[t.word_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_minus_t(), gamma_[t.doc_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_minus_t(), topic_sum_, omega_[t.self_id]);
 
 	updateTopic(t);
 
-	sig::compound_assignment(sig::assign_plus(), lambda_[t.word_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_plus(), gamma_[t.doc_id], omega_[t.self_id]);
-	sig::compound_assignment(sig::assign_plus(), topic_sum_, omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_plus_t(), lambda_[t.word_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_plus_t(), gamma_[t.doc_id], omega_[t.self_id]);
+	sig::compound_assignment(sig::assign_plus_t(), topic_sum_, omega_[t.self_id]);
 }
 
 void LDA_CVB0::train(uint iteration_num, std::function<void(LDA const*)> callback)
