@@ -67,7 +67,7 @@ void MrLDA::init(bool resume)
 
 	term_score_ = SIG_INIT_MATRIX(double, K, V, 0);
 
-	auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
+	auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
 
 	if (resume){
 		auto load_info = sig::load_line(base_pass + resume_info_fname);
@@ -125,7 +125,7 @@ void MrLDA::saveResumeData() const
 {
 	std::cout << "save resume data... ";
 
-	auto base_pass = input_data_->working_directory_;
+	auto base_pass = input_data_->getWorkingDirectory();
 
 	sig::save_num(alpha_, base_pass + resume_alpha_fname, " ");
 	sig::save_num(gamma_, base_pass + resume_gamma_fname, " ");
@@ -332,7 +332,7 @@ void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) c
 
 	switch (target){
 	case Distribution::DOCUMENT:
-		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("document_mrlda"));
+		printTopic(getTheta(), input_data_->getInputFileNames(), save_folder + SIG_TO_FPSTR("document_mrlda"));
 		break;
 	case Distribution::TOPIC:
 		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_mrlda"));

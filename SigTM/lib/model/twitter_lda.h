@@ -15,7 +15,6 @@ namespace sigtm
 {
 
 template<class T> using VectorB = sig::array<T, 2>;	// for bernoulli parameter
-template<class T> using VectorU = std::vector<T>;	// all users
 template<class T> using MatrixUD = VectorU<VectorD<T>>;	// user - tweet
 template<class T> using MatrixUK = VectorU<VectorK<T>>;	// user - topic
 template<class T> using MatrixUB = VectorU<VectorB<T>>;	// user - choice(topic or background)
@@ -98,7 +97,7 @@ public:
 	/* DocumentSetのデータからコンストラクト */
 	// デフォルト設定で使用する場合
 	static TwitterLDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data){
-		return DocumentType::Tweet == input_data->doc_type_
+		return DocumentType::Tweet == input_data->getDocumentType()
 			? TwitterLDAPtr(new TwitterLDA(resume, topic_num, input_data, nothing, nothing, nothing))
 			: nullptr;
 	}

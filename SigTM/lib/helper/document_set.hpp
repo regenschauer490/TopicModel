@@ -22,6 +22,16 @@ using DocumentSetPtr = std::shared_ptr<DocumentSet const>;
 enum class DocumentType{ Defaut = 0, Tweet = 1 };
 
 
+struct DocumentLoaderSetInfo
+{
+	DocumentType doc_type_;			// 入力documentの種類
+	bool is_token_sorted_;			// token列のソートの有無．priority1: user_id, priority2: doc_id
+	uint doc_num_;					// 入力ファイル数(document数)
+
+	std::vector<FilepassString> doc_names_;	// 入力ファイル名(document名)
+	FilepassString working_directory_;		// 入出力先フォルダ
+};
+
 class DocumentSet
 {
 	friend class MRInputIterator;
@@ -31,24 +41,24 @@ class DocumentSet
 	friend class TwitterLDA;
 	friend class CTR;
 
-protected:
-	DocumentType doc_type_;
-	bool is_token_sorted_;	 // priority1: user_id, priority2: doc_id
-
-	uint doc_num_;
+protected:	
 	TokenList tokens_;		// 単語トークン列
 	WordSet words_;			// 単語集合
 
-	std::vector<FilepassString> doc_names_;	// 入力ファイル名
-	FilepassString working_directory_;
+	DocumentLoaderSetInfo info_;
 	
+	DocumentSet() = default;
 public:
-	DocumentSet() = delete;
 	DocumentSet(DocumentSet const& src) = delete;
-	DocumentSet(FilepassString folder_pass)
-		: working_directory_(sig::modify_dirpass_tail(folder_pass, true)){}
-	DocumentSet(DocumentType type, uint doc_num, FilepassString working_directory)
-		: doc_type_(type), is_token_sorted_(false), doc_num_(doc_num), working_directory_(sig::modify_dirpass_tail(working_directory, true)){};
+	DocumentSet(FilepassString folder_pass){
+		info_.working_directory_ = sig::modify_dirpass_tail(folder_pass, true);
+	}
+	DocumentSet(DocumentType type, uint doc_num, FilepassString working_directory){
+		info_.doc_type_ = type;
+		info_.is_token_sorted_ = false;
+		info_.doc_num_ = doc_num;
+		info_.working_directory_ = sig::modify_dirpass_tail(working_directory, true);
+	}
 
 	virtual ~DocumentSet(){}
 
@@ -58,11 +68,13 @@ public:
 
 	auto getDevidedDocument() const->VectorD<std::vector<DocumentId>>;
 
-	auto getInputFileNames() const ->std::vector<FilepassString>{ return doc_names_; }
-
-	uint getDocNum() const{ return doc_num_; }
+	auto getInputFileNames() const ->std::vector<FilepassString> const&{ return info_.doc_names_; }
+	auto getWorkingDirectory() const->FilepassString{ return info_.working_directory_; }
+	auto getDocumentType() const ->DocumentType{ return info_.doc_type_; }
+	uint getDocNum() const{ return info_.doc_num_; }
 	uint getWordNum() const{ return words_.size(); }
 	uint getTokenNum() const{ return tokens_.size(); }
+	bool IsTokenSorted() const{ return info_.is_token_sorted_; }
 };
 
 
@@ -70,13 +82,17 @@ public:
 inline void DocumentSet::sortToken()
 {
 	sig::sort(tokens_, [](Token const& a, Token const& b){ return a.doc_id < b.doc_id; });
-	sig::sort(tokens_, [](Token const& a, Token const& b){ return a.user_id < b.user_id; });
-	is_token_sorted_ = true;
+	
+	if(info_.doc_type_ == DocumentType::Tweet){
+		sig::sort(tokens_, [](Token const& a, Token const& b){ return a.user_id < b.user_id; });
+	}
+	
+	info_.is_token_sorted_ = true;
 }
 
 inline auto DocumentSet::getDevidedDocument() const->VectorD<std::vector<DocumentId>>
 {
-	VectorD<std::vector<DocumentId>> result(doc_num_);
+	VectorD<std::vector<DocumentId>> result(info_.doc_num_);
 	
 	sig::for_each([&](uint i, Token const& t){
 		result[t.doc_id].push_back(i);
@@ -108,7 +124,7 @@ result[t.doc_id].push_back();
 
 inline void DocumentSet::save() const
 {
-	auto base_pass = sig::modify_dirpass_tail(working_directory_, true);
+	auto base_pass = sig::modify_dirpass_tail(info_.working_directory_, true);
 
 	auto vocab_pass = base_pass + VOCAB_FILENAME;
 	auto token_pass = base_pass + TOKEN_FILENAME;
@@ -128,29 +144,29 @@ inline void DocumentSet::save() const
 
 	// save tokens
 	std::ofstream ofs(token_pass);
-	ofs << static_cast<int>(doc_type_) << std::endl;
-	ofs << static_cast<int>(is_token_sorted_) << std::endl;
-	ofs << doc_num_ << std::endl;
+	ofs << static_cast<int>(info_.doc_type_) << std::endl;
+	ofs << static_cast<int>(info_.is_token_sorted_) << std::endl;
+	ofs << info_.doc_num_ << std::endl;
 	ofs << words_.size() << std::endl;
 	ofs << tokens_.size() << std::endl;
 
 	std::cout << "word_num: " << words_.size() << std::endl << "token_num: " << tokens_.size() << std::endl << std::endl;
 
-	if (DocumentType::Tweet == doc_type_){
+	if (DocumentType::Tweet == info_.doc_type_){
 		for (auto const& token : tokens_){
 			// user doc(tweet) word
 			ofs << token.user_id + 1 << " " << token.doc_id + 1 << " " << token.word_id + 1 << std::endl;
 		}
 	}
 	else{
-		std::vector< std::unordered_map<uint, uint> > d_w_ct(doc_num_);
+		std::vector< std::unordered_map<uint, uint> > d_w_ct(info_.doc_num_);
 
 		for (auto const& token : tokens_){
 			if (d_w_ct[token.doc_id].count(token.word_id)) ++d_w_ct[token.doc_id][token.word_id];
 			else d_w_ct[token.doc_id].emplace(token.word_id, 1);
 		}
 
-		for (uint d = 0; d < doc_num_; ++d){
+		for (uint d = 0; d < info_.doc_num_; ++d){
 			for (auto const& w2ct : d_w_ct[d]){
 				// doc word count
 				ofs << (d + 1) << " " << (w2ct.first + 1) << " " << w2ct.second << std::endl;
@@ -159,7 +175,7 @@ inline void DocumentSet::save() const
 	}
 
 	// save docnames
-	sig::save_line(doc_names_, base_pass + DOC_FILENAME);
+	sig::save_line(info_.doc_names_, base_pass + DOC_FILENAME);
 }
 
 }

@@ -20,7 +20,7 @@ const auto resume_tweet_z_fname = SIG_TO_FPSTR("twlda_tweet_z");
 void TwitterLDA::init(bool resume)
 {
 	// analyze token structure
-	if (!input_data_->is_token_sorted_){
+	if (!input_data_->IsTokenSorted()){
 		std::const_pointer_cast<DocumentSet>(input_data_)->sortToken();	// user, tweetがソートされていることが必要条件
 		input_data_->save();
 	}
@@ -161,7 +161,7 @@ void TwitterLDA::init(bool resume)
 	std::unordered_map<TokenId, bool> id_y_map;
 	std::unordered_map<std::tuple<UserId, DocumentId>, TopicId> id_z_map;
 	if (resume){
-		auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
+		auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
 	
 		auto load_info = sig::load_line(base_pass + resume_info_fname);
 		if (sig::isJust(load_info)){
@@ -294,7 +294,7 @@ void TwitterLDA::saveResumeData() const
 {
 	std::cout << "save resume data... ";
 
-	auto base_pass = input_data_->working_directory_;
+	auto base_pass = input_data_->getWorkingDirectory();
 
 	sig::save_num(alpha_, base_pass + resume_alpha_fname, "\n");
 	
@@ -455,10 +455,10 @@ void TwitterLDA::save(Distribution target, FilepassString save_folder, bool deta
 
 	switch (target){
 	case Distribution::USER:
-		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("user_twlda"));
+		printTopic(getTheta(), input_data_->getInputFileNames(), save_folder + SIG_TO_FPSTR("user_twlda"));
 		break;
 	case Distribution::TWEET:
-		//printTopic(getTopicOfTweet(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("tweet_twlda"));
+		//printTopic(getTopicOfTweet(), input_data_->getDocumentType(), save_folder + SIG_TO_FPSTR("tweet_twlda"));
 		break;
 	case Distribution::TOPIC:
 		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_twlda"));

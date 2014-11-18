@@ -50,6 +50,7 @@ template<class T> using VectorT = std::vector<T>;	// token
 template<class T> using VectorD = std::vector<T>;	// document
 template<class T> using VectorK = std::vector<T>;	// topic
 template<class T> using VectorV = std::vector<T>;	// word
+template<class T> using VectorU = std::vector<T>;	// user
 
 const uint zero = 0;
 const double log_lower_limit = -100000;

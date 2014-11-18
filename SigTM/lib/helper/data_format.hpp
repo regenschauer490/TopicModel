@@ -83,6 +83,7 @@ public:
 
 #if SIG_ENABLE_BOOST
 	void emplace(WordId id, C_WStrPtr word){ id_word_.insert(bimap::value_type(id, word)); }
+	void emplace(WordId id, std::wstring word){	id_word_.insert(bimap::value_type(id, std::make_shared<std::wstring>(word))); }
 	
 	//C_WStrPtr getWord(WordId id){ return id_word_.left[id]; }
 	C_WStrPtr getWord(WordId id) const{ return id_word_.left.at(id); }
@@ -100,6 +101,11 @@ public:
 	void emplace(WordId id, C_WStrPtr word){
 		id_word_.push_back(word);
 		word_id_.emplace(word, id);
+	}
+	void emplace(WordId id, std::wstring word){
+		auto wp = std::make_shared<std::wstring>(word);
+		id_word_.push_back(wp);
+		word_id_.emplace(wp, id);
 	}
 
 	C_WStrPtr getWord(WordId id) const{ return id_word_[id]; }

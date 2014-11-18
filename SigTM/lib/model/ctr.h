@@ -2,17 +2,19 @@
 #ifndef SIGTM_CTR_HPP
 #define SIGTM_CTR_HPP
 
+#define _SCL_SECURE_NO_WARNINGS
+
 #include "../sigtm.hpp"
 #include "../helper/data_format.hpp"
 #include "lda_common_module.hpp"
 #include "SigUtil/lib/calculation/ublas.hpp"
+//#include <boost/numeric/ublas/matrix_sparse.hpp>
 
 namespace sigtm
 {
 
 using ItemId = uint;
 template<class T> using VectorI = VectorD<T>;			// item
-template<class T> using VectorU = std::vector<T>;		// user
 template<class T> using VectorK_ = sig::vector_u<T>;	// topic
 template<class T> using MatrixIK = VectorI<VectorK<T>>;	// item - topic(factor)
 
@@ -41,8 +43,8 @@ struct CtrHyperparameter
 		lambda_u_ = 0.01;
 		lambda_v_ = 100;
 		learning_rate_ = -1;
-		alpha_smooth_ = alpha_smooth_;
-		beta_smooth_ = beta_smooth_;
+		alpha_smooth_ = 1.0;
+		beta_smooth_ =default_beta;
 		theta_opt_ = optimize_theta;
 		lda_regression_ = run_lda_regression;
 	}
@@ -61,6 +63,67 @@ struct CtrHyperparameter
 };
 
 
+struct Rating : boost::noncopyable
+{
+	//int value_;
+	uint user_id_;
+	uint item_id_;
+
+	Rating(uint user_id, uint item_id) : user_id_(user_id), item_id_(item_id){}
+};
+
+using RatingPtr = std::shared_ptr<Rating>;
+
+class BooleanMatrix : boost::noncopyable
+{
+	VectorU<std::vector<RatingPtr>> user_;
+	VectorI<std::vector<RatingPtr>> item_;
+
+public:
+	BooleanMatrix(std::vector<std::vector<Id>> const& ratings, bool is_user_ratings)
+	{
+		std::unordered_map<Id, std::vector<RatingPtr>> id_rating_map;
+		uint row_id = 0;
+
+		if (is_user_ratings) user_.resize(ratings.size());
+		else item_.resize(ratings.size());
+
+		for (auto const& row : ratings){
+			for (Id id : row){
+				if (is_user_ratings){
+					auto rating = std::make_shared<Rating>(row_id, id);
+					user_[row_id].push_back(rating);
+					id_rating_map[id].push_back(rating);
+				}
+				else{
+					auto rating = std::make_shared<Rating>(id, row_id);
+					item_[row_id].push_back(rating);
+					id_rating_map[id].push_back(rating);
+				}
+			}
+			++row_id;
+		}
+
+		const uint col_size = id_rating_map.size();
+
+		if (is_user_ratings) item_.resize(col_size);
+		else user_.resize(col_size);
+
+		for (Id id = 0; id < col_size; ++id){
+			if (is_user_ratings){
+				item_[id] = std::move(id_rating_map[id]);
+			}
+			else{
+				user_[id] = std::move(id_rating_map[id]);
+			}
+		}
+	}
+
+	auto getUsers() const->VectorU<std::vector<RatingPtr>> const&{ return user_; }
+	auto getItems() const->VectorI<std::vector<RatingPtr>> const&{ return item_; }
+};
+
+
 class CTR
 {
 	const CtrHyperparameter hparam_;
@@ -69,8 +132,8 @@ class CTR
 
 	const VectorI<std::vector<TokenId>> item_token_;	// tokens in each item(document)
 
-	const VectorU<std::vector<ItemId>>& user_rating_;
-	const VectorI<std::vector<UserId>>& item_rating_;
+	const VectorU<std::vector<RatingPtr>>& user_rating_;
+	const VectorI<std::vector<RatingPtr>>& item_rating_;
 
 	const uint T_;		// number of tokens
 	const uint K_;		// number of topics(factor)
@@ -78,8 +141,8 @@ class CTR
 	const uint U_;		// number of users
 	const uint I_;		// number of items
 
-	MatrixKV<double> beta_;	// word distribution of topic
-	MatrixIK<double> theta_;
+	MatrixKV_<double> beta_;	// word distribution of topic
+	MatrixIK_<double> theta_;
 	MatrixUK_<double> user_factor_;
 	MatrixIK_<double> item_factor_;
 
@@ -89,8 +152,8 @@ class CTR
 	// temporary
 	VectorK_<double> gamma_;
 	MatrixKV_<double> log_beta_;
-	MatrixKV<double> word_ss_;
-	MatrixTK<double> phi_;
+	MatrixKV_<double> word_ss_;
+	MatrixTK_<double> phi_;
 
 private:
 	void init();
@@ -105,16 +168,17 @@ private:
 	void updateV();
 	void updateBeta();
 
-	void update();
-
 public:
-	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, VectorU<std::vector<ItemId>> const& user_ratings, VectorI<std::vector<UserId>> const& item_ratings) :
+	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, BooleanMatrix const& ratings) :
 		hparam_(hparam), input_data_(docs), tokens_(docs->tokens_), item_token_(docs->getDevidedDocument()),
-		user_rating_(user_ratings), item_rating_(item_ratings), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
-		U_(user_ratings.size()), I_(item_ratings.size()), likelihood_(-std::exp(50))
+		user_rating_(ratings.getUsers()), item_rating_(ratings.getItems()), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
+		U_(user_rating_.size()), I_(item_rating_.size()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
+		gamma_(K_), log_beta_(K_, V_), word_ss_(K_, V_), phi_(T_, K_)
 	{
 		init();
 	}
+
+	void train(uint max_iter, uint min_iter, uint save_lag);
 };
 
 }

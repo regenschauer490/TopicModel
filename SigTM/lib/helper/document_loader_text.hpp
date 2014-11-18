@@ -79,10 +79,10 @@ private:
 	DocumentLoaderFromText(DocumentType type, Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
 		: DocumentLoader(type, raw_texts.size(), save_folder_pass), filter_(filter)
 	{
-		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) doc_names_.push_back(sig::to_fpstring(i));
+		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) info_.doc_names_.push_back(sig::to_fpstring(i));
 		else{
 			assert(raw_texts.size() == doc_names.size());
-			for (auto e : doc_names) doc_names_.push_back(sig::split(e, L".")[0]);
+			for (auto e : doc_names) info_.doc_names_.push_back(sig::split(e, L".")[0]);
 		}
 
 		makeData(type, raw_texts);
@@ -202,7 +202,9 @@ inline void DocumentLoaderFromText::makeData(DocumentType type, Documents const&
 	for (auto& result : results){
 		doc_line_words.push_back(result.get());
 	}
-	for (uint i = 0; i<doc_line_words.size(); ++i) std::wcout << doc_names_[i] << L" parsed. word-num: " << sig::sum(doc_line_words[i], [](std::vector<std::wstring> const& e){ return e.size(); }) << std::endl;
+	for (uint i = 0; i<doc_line_words.size(); ++i){
+		std::wcout << info_.doc_names_[i] << L" parsed. word-num: " << sig::sum(doc_line_words[i], [](std::vector<std::wstring> const& e){ return e.size(); }) << std::endl;
+	}
 	std::cout << std::endl;
 
 	int token_ct = 0;
@@ -231,7 +233,7 @@ inline void DocumentLoaderFromText::makeData(DocumentType type, Documents const&
 		}
 		++doc_id;
 	}
-	is_token_sorted_ = true;
+	info_.is_token_sorted_ = true;
 
 	/*			//指定語彙の除去
 	if(!filter_->excepted_words_.empty()){

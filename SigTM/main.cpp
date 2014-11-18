@@ -1,5 +1,6 @@
 ﻿#include "SigUtil/lib/file.hpp"
 #include "SigUtil/lib/modify/remove.hpp"
+#include "SigUtil/lib/functional/list_deal.hpp"
 #include "SigUtil/lib/tools/tag_dealer.hpp"
 #include "SigUtil/lib/tools/time_watch.hpp"
 
@@ -282,6 +283,78 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	getchar();
 }
 
+
+#include "lib/model/ctr.h"
+
+void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
+{
+	using namespace std;
+	using sig::uint;
+
+	resume = resume && (!make_new);
+
+	out_folder = sig::modify_dirpass_tail(out_folder, true);
+	const std::wstring perp_pass = out_folder + L"perplexity_twlda.txt";
+	if (!resume) sig::clear_file(perp_pass);
+
+	// file load
+
+	sigtm::DocumentLoader::PF corpus_parser = [&](sigtm::TokenList& tokens, sigtm::WordSet& words)
+	{
+		sigtm::DocumentLoaderSetInfo info;
+
+		auto token_file = *sig::load_line(out_folder + L"token");
+		auto vocab_file = *sig::load_line<std::wstring>(out_folder + L"vocab");
+
+		uint total_ct = 0, did = 0;
+		for(auto const& line : token_file){
+			auto parsed = sig::split(line, " ");
+
+			for (uint n = 1, length = std::stoul(parsed[0])+1; n < length; ++n) {
+				auto word_count = sig::split(parsed[n], ":");
+				uint wid = std::stoul(word_count[0]);
+
+				for (uint m = 0, wct = std::stoul(word_count[1]); m < wct; ++m){
+					tokens.push_back(sigtm::Token(total_ct, did, wid));
+					++total_ct;
+				}
+				words.emplace(wid, vocab_file[wid]);
+			}
+			++did;
+			info.doc_names_.push_back(L"doc " + std::to_wstring(did));
+		}
+
+		info.doc_num_ = did;
+		info.doc_type_ = sigtm::DocumentType::Defaut;
+		info.is_token_sorted_ = true;
+		info.working_directory_ = out_folder;
+
+		return info;
+	};
+
+	auto docs = make_new
+		? makeInputData(InputTextType::Document, src_folder, out_folder, make_new)
+		: sigtm::DocumentLoader::makeInstance(corpus_parser);
+
+	auto user_ratings = *sig::load_num2d<uint>(out_folder + L"user", " ");	
+	for (auto& vec : user_ratings) vec = sig::drop(1, std::move(vec));
+	//auto item_ratings = *sig::load_num2d<uint>(out_folder + L"item", " ");
+	//for (auto& vec : item_ratings) sig::drop(1, vec);
+
+	sigtm::BooleanMatrix ratings(user_ratings, true);
+
+	sigtm::CtrHyperparameter hparam(false, false);
+
+	sigtm::CTR ctr(TopicNum, hparam, docs, ratings);
+
+	cout << "model calculate" << endl;
+
+	// 学習開始
+	ctr.train(50, 500, 10);
+
+	getchar();
+}
+
 int main()
 {
 	/*
@@ -299,8 +372,9 @@ int main()
 
 	setlocale(LC_ALL, "Japanese");
 	
-	sample1(InputTextType::Tweet, input_text_pass, data_folder_pass, false, false);
+	//sample1(InputTextType::Tweet, input_text_pass, data_folder_pass, false, false);
 	//sample4(input_tw_pass, data_folder_pass, false, false);
+	sample5(data_folder_pass + L"/ctr", data_folder_pass + L"/ctr", false, false);
 
 	return 0;
 }

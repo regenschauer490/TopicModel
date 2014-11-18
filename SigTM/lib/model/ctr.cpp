@@ -1,5 +1,4 @@
 ﻿#include "ctr.h"
-#include "SigUtil/lib/calculation/assign_operation.hpp"
 #include "SigUtil/lib/calculation/binary_operation.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
 
@@ -7,13 +6,37 @@ namespace sigtm
 {
 using namespace boost::numeric;
 
-auto safe_log = [&](double x)
+const double projection_z = 1.0;
+
+static double safe_log(double x)
 {
 	return x > 0 ? std::log(x) : log_lower_limit;
 };
 
+template <class C>
+static auto row_(C&& src, uint i) ->decltype(src[i])
+{
+	return src[i];
+}
+template <class C, class D = void>
+static auto row_(C&& src, uint i) ->decltype(ublas::row(src, i))
+{
+	return ublas::row(src, i);
+}
 
-bool is_feasible(sig::vector_u<double> const& x)
+template <class C>
+static auto at_(C&& src, uint row, uint col) ->decltype(src[row][col])
+{
+	return src[row][col];
+}
+template <class C, class D = void>
+static auto at_(C&& src, uint row, uint col) ->decltype(src(row, col))
+{
+	return src(row, col);
+}
+
+template <class V>
+bool is_feasible(V const& x)
 {
 	double val;
 	double sum = 0;
@@ -27,9 +50,10 @@ bool is_feasible(sig::vector_u<double> const& x)
 }
 
 // project x on to simplex (using // http://www.cs.berkeley.edu/~jduchi/projects/DuchiShSiCh08.pdf)
+template <class V1, class V2>
 void simplex_projection(
-	sig::vector_u<double> const& x,
-	sig::vector_u<double>& x_proj,
+	V1 const& x,
+	V2& x_proj,
 	double z)
 {
 	x_proj = x;
@@ -49,32 +73,34 @@ void simplex_projection(
 		if (u <= 0) u = 0.0;
 		x_proj[i] = u;
 	}
-	sig::normalize_dist(x_proj); // fix the normaliztion issue due to numerical errors
+	sig::normalize_dist_v(x_proj); // fix the normaliztion issue due to numerical errors
 }
 
+template <class V1, class V2, class V3>
 auto df_simplex(
-	sig::vector_u<double> const&gamma,
-	sig::vector_u<double> const& v,
+	V1 const&gamma,
+	V2 const& v,
 	double lambda,
-	sig::vector_u<double> const& opt_x)
-->sig::vector_u<double>
+	V3 const& opt_x)
 {
 	sig::vector_u<double> g = -lambda * (opt_x - v);
 	sig::vector_u<double> y = gamma;
 
-	sig::compound_assign_all(sig::assign_div_t(), y, opt_x);
+	sig::for_each_v([](double& v1, double v2){ v1 /= v2; }, y, opt_x);
 	g += y;
+	sig::for_each_v([](double& v1){ v1 *= -1; }, g);
 
-	return sig::minus(g, -1);
+	return g;
 }
 
+template <class V1, class V2, class V3>
 double f_simplex(
-	sig::vector_u<double> const& gamma,
-	sig::vector_u<double> const& v,
+	V1 const& gamma,
+	V2 const& v,
 	double lambda,
-	sig::vector_u<double> const& opt_x)
+	V3 const& opt_x)
 {
-	auto y = sig::map([&](double x){ return safe_log(x); }, opt_x);
+	auto y = sig::map_v([&](double x){ return safe_log(x); }, opt_x);
 	auto z = v - opt_x;
 	
 	double f = ublas::inner_prod(y, gamma);
@@ -85,12 +111,12 @@ double f_simplex(
 }
 
 // projection gradient algorithm
-auto optimize_simplex(
-	sig::vector_u<double> const& gamma, 
-	sig::vector_u<double> const& v, 
+template <class V1, class V2, class V3>
+void optimize_simplex(
+	V1 const& gamma, 
+	V2 const& v, 
 	double lambda,
-	VectorK<double>& opt_x)
-->sig::vector_u<double>
+	V3& opt_x)
 {
 	size_t size = sig::min(gamma.size(), v.size());
 	sig::vector_u<double> x_bar(size);
@@ -100,12 +126,13 @@ auto optimize_simplex(
 
 	auto g = df_simplex(gamma, v, lambda, opt_x);
 
-	double ab_sum = sig::sum(g);
-	if (ab_sum > 1.0) g *= (1.0 / ab_sum); // rescale the gradient
+	sig::normalize_dist_v(g);
+	//double ab_sum = sig::sum(g);
+	//if (ab_sum > 1.0) g *= (1.0 / ab_sum); // rescale the gradient
 
 	opt_x -= g;
 
-	simplex_projection(opt_x, x_bar);
+	simplex_projection(opt_x, x_bar, projection_z);
 
 	x_bar -= opt_x_old;
 	
@@ -131,22 +158,24 @@ void CTR::init()
 {
 	sig::SimpleRandom<double> randf(0, 1, FixedRandom);
 
-	beta_ = SIG_INIT_MATRIX(double, K, V, 0);
+	beta_ = MatrixKV_<double>(K_, V_); //SIG_INIT_MATRIX(double, K, V, 0);
 
 	for(TopicId k = 0; k < K_; ++k){
-		sig::compound_assignment([&](double& v, int){ v = randf() + hparam_.beta_smooth_; }, beta_[k], 0);
-		sig::normalize_dist(beta_[k]);
+		auto& beta_v = row_(beta_, k);
+		for (auto& e : beta_v) e = randf() + hparam_.beta_smooth_;
+		sig::normalize_dist_v(beta_v);
 	}
 
 
-	theta_ = SIG_INIT_MATRIX(double, I, K, 0);
+	theta_ = MatrixIK_<double>(I_, K_); // SIG_INIT_MATRIX(double, I, K, 0);
 
 	for (ItemId i = 0; i < I_; ++i){
-		sig::compound_assignment([&](double& v, int){ v = randf() + hparam_.alpha_smooth_; }, theta_[i], 0);
-		sig::normalize_dist(theta_[i]);
+		auto& theta_v = row_(theta_, i);
+		for (auto& e :theta_v) e = randf() + hparam_.alpha_smooth_;
+		sig::normalize_dist_v(theta_v);
 	}
 
-	item_factor_ = sig::to_matrix_ublas(theta_);
+	item_factor_ = theta_;
 	user_factor_ = MatrixUK_<double>(U_, K_);
 }
 
@@ -190,19 +219,20 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 {
 	double pseudo_count = 1.0;
 	double likelihood = 0;
-	auto const& theta_v = theta_[id];
-	VectorK<double> log_theta_v = sig::map([&](double x){ return safe_log(x); }, theta_v);
+	auto const& theta_v = row_(theta_, id);
+	auto log_theta_v = sig::map_v([&](double x){ return safe_log(x); }, theta_v);
 	
 	for (auto tid : item_token_[id]){
 		WordId w = tokens_[tid].word_id;
+		auto& phi_v = row_(phi_, tid);
 
 		for (TopicId k = 0; k < K_; ++k){
-			phi_[tid][k] = theta_v[k] * beta_[k][w];
+			phi_v[k] = theta_v[k] * at_(beta_, k, w);
 		}
-		sig::normalize_dist(phi_[tid]);
+		sig::normalize_dist_v(phi_v);
 
 		for (TopicId k = 0; k < K_; ++k){
-			double const& p = phi_[tid][k];
+			double const& p = phi_v[k];
 			if (p > 0){
 				likelihood += p * (log_theta_v[k] + log_beta_(k, w) - std::log(p));
 			}
@@ -210,20 +240,20 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 	}
 
 	if (pseudo_count > 0) {
-		likelihood += pseudo_count * sig::sum(log_theta_v);
+		likelihood += pseudo_count * std::accumulate(std::begin(log_theta_v), std::end(log_theta_v), 0.0);
 	}
 
 	// smoothing with small pseudo counts
-	sig::compound_assign_all([](double& v, double x){ v = x; }, gamma_, pseudo_count);
+	sig::for_each_v([&](double& v){ v = pseudo_count; }, gamma_);
 	
 	for (auto tid : item_token_[id]){
 		for (TopicId k = 0; k < K_; ++k) {
 			//double x = doc->m_counts[tid] * phi_(tid, k);	// doc_word_ct only
-			double const& x = phi_[tid][k];
+			double const& x = at_(phi_, tid, k);
 			gamma_[k] += x;
 			
 			if (update_word_ss){
-				word_ss_[k][tokens_[tid].word_id] -= x;
+				at_(word_ss_, k, tokens_[tid].word_id) -= x;
 			}
 		}
 	}
@@ -238,7 +268,7 @@ void CTR::updateU()
 
 	for (uint i = 0; i < I_; i ++){
 		if (!item_rating_[i].empty()){
-			auto const& vec_v = row(item_factor_, i);
+			auto const& vec_v = row_(item_factor_, i);
 
 			XX += outer_prod(vec_v, vec_v);
 		}
@@ -246,17 +276,17 @@ void CTR::updateU()
 
 	XX *= hparam_.b_;
 
-	sig::compound_assign_diagonal(sig::assign_plus_t(), XX, hparam_.lambda_u_);
+	sig::for_diagonal([&](double& v){ v += hparam_.lambda_u_; }, XX);
 	
 	for (uint j = 0; j < U_; ++j){
-		auto const& item_ids = user_rating_[j];
+		auto const& ratings = user_rating_[j];
 
 		if (!user_rating_[j].empty()){
 			auto A = XX;
 			VectorK_<double> x(K_, 0);
 
-			for (auto item_id : item_ids){
-				auto const& vec_v = row(item_factor_, item_id);
+			for (auto rating : ratings){
+				auto const& vec_v = row_(item_factor_, rating->item_id_);
 
 				A += delta_ab * outer_prod(vec_v, vec_v);
 				x += hparam_.a_ * vec_v;
@@ -291,34 +321,34 @@ void CTR::updateV()
 	XX *= hparam_.b_;
 
 	for (uint i = 0; i < I_; ++i){
-		auto& vec_v = row(item_factor_, i);
-		auto const& theta_v = theta_[i];
-		auto const& user_ids = item_rating_[i];
+		auto& vec_v = row_(item_factor_, i);
+		auto const& theta_v = row_(theta_, i);
+		auto const& ratings = item_rating_[i];
 
-		if (!user_ids.empty()){
+		if (!ratings.empty()){
 			auto A = XX;
 			VectorK_<double> xx(K_, 0);
 
-			for (auto user_id : user_ids){
-				auto const& vec_u = row(user_factor_, user_id);
+			for (auto rating : ratings){
+				auto const& vec_u = row_(user_factor_, rating->user_id_);
 
 				A += delta_ab * outer_prod(vec_u, vec_u);
 				xx += hparam_.a_ * vec_u;
 			}
 
 			//xx += hparam_.lambda_v_ * theta_v;	// adding the topic vector
-			sig::compound_assign_all([&](double& x, double t){ x += hparam_.lambda_v_ * t; }, xx, theta_v);
+			sig::for_each_v([&](double& x, double t){ x += hparam_.lambda_v_ * t; }, xx, theta_v);
 
 			auto B = A;		// save for computing likelihood 
 
-			sig::compound_assign_diagonal(sig::assign_plus_t(), A, hparam_.lambda_v_);
+			sig::for_diagonal([&](double& v){ v += hparam_.lambda_v_; }, A);
 			vec_v = *sig::matrix_vector_solve(A, std::move(xx));	// update vector v
 
 			// update the likelihood for the relevant part
 			likelihood_ += -0.5 * item_rating_[i].size() * hparam_.a_;
 
-			for (auto user_id : user_ids){
-				auto const& vec_u = row(user_factor_, user_id);
+			for (auto rating : ratings){
+				auto const& vec_u = row_(user_factor_, rating->user_id_);
 				auto result = inner_prod(vec_u, vec_v);
 				likelihood_ += hparam_.a_ * result;
 			}
@@ -327,22 +357,22 @@ void CTR::updateV()
 			// likelihood part of theta, even when theta=0, which is a special case
 			sig::vector_u<double> x2 = vec_v;
 			//x2 -= theta_v;
-			sig::compound_assign_all(sig::assign_minus_t(), x2, theta_v);
+			sig::for_each_v([](double& v1, double v2){ v1 -= v2; }, x2, theta_v);
 
 			auto result = inner_prod(x2, x2);
 			likelihood_ += -0.5 * hparam_.lambda_v_ * result;
 
 			if (hparam_.theta_opt_){
 				likelihood_ += docInference(i, true);
-				row(item_factor_, i) = optimize_simplex(gamma_, vec_v, hparam_.lambda_v_, theta_v);
+				optimize_simplex(gamma_, vec_v, hparam_.lambda_v_, row_(theta_, i));
 			}
 		}
 		else{
 			// m=0, this article has never been rated
 			if (hparam_.theta_opt_) {
 				docInference(i, false);
-				sig::normalize_dist(gamma_);
-				row(item_factor_, i) = gamma_;
+				sig::normalize_dist_v(gamma_);
+				row(theta_, i) = gamma_;
 			}
 		}
 	}
@@ -350,54 +380,65 @@ void CTR::updateV()
 
 void CTR::updateBeta()
 {
-	sig::compound_assignment([](double& b, double ws){ b = ws; }, beta_, word_ss_);
+	beta_ = word_ss_;
 
-	for (auto const& dist : beta_){
-		sig::normalize_dist(dist);
+	for (TopicId k = 0; k < K_; ++k){
+		auto& beta_v = row_(beta_, k);
+
+		sig::normalize_dist_v(beta_v);
+		row_(log_beta_, k) = sig::map_v([&](double x){ return safe_log(x); }, beta_v);
 	}
-	log_beta_ = sig::map([&](double x){ return safe_log(x); }, beta_);
 }
 
-void CTR::update(uint max_iter, uint min_iter, uint save_lag)
+void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 {
 	uint iter = 0;
-	double likelihood_old_;
+	double likelihood_old;
 	sig::ManageConvergenceSimple conv(conv_epsilon_);
 	
+	auto info_print = [](uint iter, double likelihood, double converge){
+		std::cout << "iter=" << iter << ", likelihood=" << likelihood << ", converge=" << converge << std::endl;
+		return true;
+	};
+
+	if (max_iter < min_iter) std::swap(max_iter, min_iter);
+
 	if (hparam_.theta_opt_){
 		gamma_ = VectorK_<double>(K_, 0);
-		log_beta_ = sig::map([&](double x){ return safe_log(x); }, beta_);
-		word_ss_ = SIG_INIT_MATRIX(double, K, V, 0);
-		phi_ = SIG_INIT_MATRIX(double, T, K, 0);
+		log_beta_ = sig::map_m([&](double x){ return safe_log(x); }, beta_);
+		word_ss_ = MatrixKV_<double>(K_, V_); // SIG_INIT_MATRIX(double, K, V, 0);
+		phi_ = MatrixKV_<double>(T_, K_);  //SIG_INIT_MATRIX(double, T, K, 0);
 	}
 
-	 do{
-		likelihood_old_ = likelihood_;
+	 while ((!conv.is_convergence() && iter < max_iter) || iter < min_iter)
+	 {
+		likelihood_old = likelihood_;
 		likelihood_ = 0.0;
 
 		updateU();
 
-		if (hparam_.lda_regression_) break; // one iteration is enough for lda-regression
+		//if (hparam_.lda_regression_) break; // one iteration is enough for lda-regression
 
 		updateV();
 		
 		// update beta if needed
 		if (hparam_.theta_opt_) updateBeta();
+
+		if(likelihood_ < likelihood_old) std::cout << "likelihood is decreasing!" << std::endl;
 		
-		if (likelihood < likelihood_old) printf("likelihood is decreasing!\n");
-
-		fprintf(file, "%04d %06d %10.5f %.10f\n", iter, elapsed, likelihood, converge);
-		fflush(file);
-		printf("iter=%04d, time=%06d, likelihood=%.5f, converge=%.10f\n", iter, elapsed, likelihood, converge);
-
 		// save intermediate results
 		if (iter % save_lag == 0) {
 			saveTmp();
-		}	
+		}
+
+		++iter;
+		conv.update( sig::abs_delta(likelihood_, likelihood_old) / likelihood_old);
+
+		info_print(iter, likelihood_, conv.get_value());
 	 }
-	 while (++iter, (!conv.update(sig::abs_delta(likelihood_, likelihood_old_) / likelihood_old_) && iter < max_iter) || iter < min_iter)
 }
 
+/*
 void c_ctr::learn_map_estimate(
 	const c_data* users,
 	const c_data* items,
@@ -426,15 +467,6 @@ void c_ctr::learn_map_estimate(
   FILE* file = fopen(name, "w");
   fprintf(file, "iter time likelihood converge\n");
 
-
-  /* alloc auxiliary variables */
-  gsl_matrix* XX = gsl_matrix_alloc(m_num_factors, m_num_factors);
-  gsl_matrix* A  = gsl_matrix_alloc(m_num_factors, m_num_factors);
-  gsl_matrix* B  = gsl_matrix_alloc(m_num_factors, m_num_factors);
-  gsl_vector* x  = gsl_vector_alloc(m_num_factors);
-
-
-  /* tmp variables for indexes */
   int i, j, m, n, l, k;
   int* item_ids; 
   int* user_ids;
@@ -462,5 +494,6 @@ void c_ctr::learn_map_estimate(
     gsl_vector_free(gamma);
   }
 }
+*/
 
 }	// sigtm

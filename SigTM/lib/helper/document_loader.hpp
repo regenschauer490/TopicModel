@@ -18,12 +18,21 @@ namespace sigtm
 /* 各モデルへの入力データを作成 */
 class DocumentLoader : public DocumentSet
 {
+public:
+	using PF = std::function<DocumentLoaderSetInfo(TokenList& tokens, WordSet& words)>;
+
+private:
 	DocumentLoader(FilepassString folder_pass)
 		: DocumentSet(folder_pass){ reconstruct(); }
 
+	DocumentLoader(PF const& parser){ info_ = reconstruct(parser); }
+
 	bool parseLine(std::wstring const& line);
+
 	void reconstruct();
-	
+	auto reconstruct(PF const& parser)->DocumentLoaderSetInfo
+	{ return parser(tokens_, words_); }
+
 protected:
 	DocumentLoader(DocumentType type, uint doc_num, FilepassString working_directory)
 		: DocumentSet(type, doc_num, working_directory){};
@@ -33,7 +42,13 @@ public:
 
 	// 専用形式の自作データ or 以前の中間出力から読み込む
 	// folder_pass: 上記形式のファイルが保存されているディレクトリ
-	static DocumentSetPtr makeInstance(FilepassString folder_pass){ return DocumentSetPtr(new  DocumentLoader(folder_pass)); }
+	static DocumentSetPtr makeInstance(FilepassString folder_pass){
+		return DocumentSetPtr(new DocumentLoader(folder_pass)); 
+	}
+
+	static DocumentSetPtr makeInstance(PF const& parser){
+		return DocumentSetPtr(new DocumentLoader(parser)); 
+	}
 };
 
 
@@ -50,7 +65,7 @@ inline bool DocumentLoader::parseLine(std::wstring const& line)
 		return false;
 	}
 
-	if (DocumentType::Tweet == doc_type_){
+	if (DocumentType::Tweet == info_.doc_type_){
 		uint tsize = tokens_.size();
 		tokens_.push_back(Token(tsize, elem1 - 1, elem2 - 1, elem3 - 1));
 	}
@@ -76,14 +91,14 @@ inline void DocumentLoader::reconstruct()
 		return sig::fromJust(std::move(m_text));
 	};
 
-	auto base_pass = sig::modify_dirpass_tail(working_directory_, true);
+	auto base_pass = sig::modify_dirpass_tail(info_.working_directory_, true);
 
 	auto token_text = fileopen(base_pass + TOKEN_FILENAME);
 	uint line_iter = 0;
 
 	// get feature size
-	doc_type_ = static_cast<DocumentType>(std::stoi(token_text[line_iter]));
-	is_token_sorted_ = std::stoi(token_text[++line_iter]) > 0 ? true : false;
+	info_.doc_type_ = static_cast<DocumentType>(std::stoi(token_text[line_iter]));
+	info_.is_token_sorted_ = std::stoi(token_text[++line_iter]) > 0 ? true : false;
 	int doc_num = std::stoi(token_text[++line_iter]);
 	int wnum = std::stoi(token_text[++line_iter]);
 	int tnum = std::stoi(token_text[++line_iter]);
@@ -95,7 +110,7 @@ inline void DocumentLoader::reconstruct()
 		assert(false);
 	}
 
-	doc_num_ = static_cast<uint>(doc_num);
+	info_.doc_num_ = static_cast<uint>(doc_num);
 	//words_.reserve(wnum);
 	tokens_.reserve(tnum);
 
@@ -115,7 +130,7 @@ inline void DocumentLoader::reconstruct()
 	, 0, vocab_text);
 
 
-	doc_names_ = fileopen(base_pass + DOC_FILENAME);	
+	info_.doc_names_ = fileopen(base_pass + DOC_FILENAME);	
 }
 
 }

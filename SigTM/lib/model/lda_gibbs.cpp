@@ -18,7 +18,7 @@ void LDA_Gibbs::init(bool resume)
 {
 	std::unordered_map<TokenId, TopicId> id_z_map;
 	if (resume){
-		auto base_pass = sig::modify_dirpass_tail(input_data_->working_directory_, true);
+		auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
 	
 		auto load_info = sig::load_line(base_pass + resume_info_fname);
 		if (sig::isJust(load_info)){
@@ -73,7 +73,7 @@ void LDA_Gibbs::saveResumeData() const
 {
 	std::cout << "save resume data... ";
 
-	auto base_pass = input_data_->working_directory_;
+	auto base_pass = input_data_->getWorkingDirectory();
 
 	sig::save_num(alpha_, base_pass + resume_alpha_fname, "\n");
 
@@ -156,7 +156,7 @@ void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detai
 
 	switch(target){
 	case Distribution::DOCUMENT :
-		printTopic(getTheta(), input_data_->doc_names_, save_folder + SIG_TO_FPSTR("document_gibbs"));
+		printTopic(getTheta(), input_data_->getInputFileNames(), save_folder + SIG_TO_FPSTR("document_gibbs"));
 		break;
 	case Distribution::TOPIC :
 		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_gibbs"));
