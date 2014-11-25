@@ -1,11 +1,17 @@
-﻿
+﻿/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
 #ifndef SIGTM_CTR_HPP
 #define SIGTM_CTR_HPP
 
 #define _SCL_SECURE_NO_WARNINGS
 
-#include "../sigtm.hpp"
 #include "../helper/data_format.hpp"
+#include "../helper/rating_matrix.hpp"
 #include "lda_common_module.hpp"
 #include "SigUtil/lib/calculation/ublas.hpp"
 //#include <boost/numeric/ublas/matrix_sparse.hpp>
@@ -13,8 +19,6 @@
 namespace sigtm
 {
 
-using ItemId = uint;
-template<class T> using VectorI = VectorD<T>;			// item
 template<class T> using VectorK_ = sig::vector_u<T>;	// topic
 template<class T> using MatrixIK = VectorI<VectorK<T>>;	// item - topic(factor)
 
@@ -63,77 +67,19 @@ struct CtrHyperparameter
 };
 
 
-struct Rating : boost::noncopyable
-{
-	//int value_;
-	uint user_id_;
-	uint item_id_;
-
-	Rating(uint user_id, uint item_id) : user_id_(user_id), item_id_(item_id){}
-};
-
-using RatingPtr = std::shared_ptr<Rating>;
-
-class BooleanMatrix : boost::noncopyable
-{
-	VectorU<std::vector<RatingPtr>> user_;
-	VectorI<std::vector<RatingPtr>> item_;
-
-public:
-	BooleanMatrix(std::vector<std::vector<Id>> const& ratings, bool is_user_ratings)
-	{
-		std::unordered_map<Id, std::vector<RatingPtr>> id_rating_map;
-		uint row_id = 0;
-
-		if (is_user_ratings) user_.resize(ratings.size());
-		else item_.resize(ratings.size());
-
-		for (auto const& row : ratings){
-			for (Id id : row){
-				if (is_user_ratings){
-					auto rating = std::make_shared<Rating>(row_id, id);
-					user_[row_id].push_back(rating);
-					id_rating_map[id].push_back(rating);
-				}
-				else{
-					auto rating = std::make_shared<Rating>(id, row_id);
-					item_[row_id].push_back(rating);
-					id_rating_map[id].push_back(rating);
-				}
-			}
-			++row_id;
-		}
-
-		const uint col_size = id_rating_map.size();
-
-		if (is_user_ratings) item_.resize(col_size);
-		else user_.resize(col_size);
-
-		for (Id id = 0; id < col_size; ++id){
-			if (is_user_ratings){
-				item_[id] = std::move(id_rating_map[id]);
-			}
-			else{
-				user_[id] = std::move(id_rating_map[id]);
-			}
-		}
-	}
-
-	auto getUsers() const->VectorU<std::vector<RatingPtr>> const&{ return user_; }
-	auto getItems() const->VectorI<std::vector<RatingPtr>> const&{ return item_; }
-};
-
-
 class CTR
 {
+	using RatingIter = SparseBooleanMatrix::const_iterator;
+	using RatingContainer = SparseBooleanMatrix::const_rating_range;
+	
 	const CtrHyperparameter hparam_;
 	const DocumentSetPtr input_data_;
 	const TokenList& tokens_;
 
-	const VectorI<std::vector<TokenId>> item_token_;	// tokens in each item(document)
+	const VectorI<std::vector<TokenId>> item_tokens_;	// tokens in each item(document)
 
-	const VectorU<std::vector<RatingPtr>>& user_rating_;
-	const VectorI<std::vector<RatingPtr>>& item_rating_;
+	const RatingContainer user_ratings_;
+	const RatingContainer item_ratings_;
 
 	const uint T_;		// number of tokens
 	const uint K_;		// number of topics(factor)
@@ -168,19 +114,102 @@ private:
 	void updateV();
 	void updateBeta();
 
-public:
-	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, BooleanMatrix const& ratings) :
-		hparam_(hparam), input_data_(docs), tokens_(docs->tokens_), item_token_(docs->getDevidedDocument()),
-		user_rating_(ratings.getUsers()), item_rating_(ratings.getItems()), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
-		U_(user_rating_.size()), I_(item_rating_.size()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
+private:
+	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingContainer user_ratings, RatingContainer item_ratings)
+	: hparam_(hparam), input_data_(docs), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
+		user_ratings_(std::move(user_ratings)), item_ratings_(std::move(item_ratings)), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
+		U_(user_ratings_.size()), I_(item_ratings_.size()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
 		gamma_(K_), log_beta_(K_, V_), word_ss_(K_, V_), phi_(T_, K_)
 	{
 		init();
+	}
+	
+public:	
+	static auto makeInstance(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, BooleanMatrixPtr ratings) ->std::shared_ptr<CTR>
+	{
+		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings->getUsers(), ratings->getItems()));
 	}
 
 	void train(uint max_iter, uint min_iter, uint save_lag);
 };
 
-}
+using CTRPtr = std::shared_ptr<CTR>;
+}	// sigtm
 
+
+#include "../helper/metrics.hpp"
+#include "../helper/cross_validation.hpp"
+
+namespace sigtm
+{
+template <>
+struct Precision<CTR> : public PrecisionBase
+{
+	using const_iterator_range =SparseRatingMatrixBase_::const_iterator_range;
+	
+	// precision for user (item recommendation)
+	double operator()(CTRPtr model, const_iterator_range test_set) const
+	{
+	
+	
+		std::unordered_set<UserId> check;
+		
+		for(auto const& e : ){
+			UserId uid = e->user_id_;
+			if(check.count(uid)) continue;
+			
+			check.emplace(uid);
+			auto est = model->estimate(uid);
+			
+		}
+		return impl(model->estimate(), test_set, true, [&](RatingPtr const& r1, RatingPtr const& r2){ return r1->item_id_ < r2->item_id_; });
+	}
+};
+
+template <>
+class CrossValidation<CTR> : public CrossValidationBase
+{
+	uint topic_num_;
+	CtrHyperparameter hparam_;
+	DocumentSetPtr docs_;
+	
+public:
+	CrossValidation(uint n, uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, BooleanMatrixPtr ratings)
+		: topic_num_(topic_num), hparam_(hparam), docs_(docs)
+	{
+		rating_chunks_ = devide_rating_matrix(n, ratings);
+	}
+	
+	// F: R evaluation_func(CTRPtr model, const_iterator test_begin, const_iterator test_end)
+	template <class F>
+	auto run(F&& evaluation_func, uint max_iter, uint min_iter, uint save_lag)
+	{
+		using R = decltype(sig::impl::eval(
+			std::forward<F>(evaluation_func),
+			std::declval<CTR>(), 
+			std::declval<const_iterator>(),
+			std::declval<const_iterator>()
+		));
+	
+		auto validation = [&](uint test_index)
+		{
+			auto model = CTR::makeInstance(topic_num_, hparam_, docs_, BooleanMatrix::makeInstance(join_chunc(rating_chunks_, test_index)));
+			
+			model.tarin(max_iter, min_iter, save_lag);
+			
+			return std::forward<F>(evaluation_func)(model, rating_chunks_[i]);
+		};		
+		
+		std::vector<R> result;
+				
+		for(uint i = 1; i < n; ++i){
+			result.push_back(validation(i));
+		}
+		
+		return result;
+	}
+};
+
+
+}
 #endif

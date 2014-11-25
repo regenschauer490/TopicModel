@@ -285,6 +285,7 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 
 #include "lib/model/ctr.h"
+#include "lib/helper/cross_validation.hpp"
 
 void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
@@ -341,17 +342,23 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	//auto item_ratings = *sig::load_num2d<uint>(out_folder + L"item", " ");
 	//for (auto& vec : item_ratings) sig::drop(1, vec);
 
-	sigtm::BooleanMatrix ratings(user_ratings, true);
+	auto ratings = sigtm::SparseBooleanMatrix::makeInstance(user_ratings, true);
 
 	sigtm::CtrHyperparameter hparam(false, false);
 
-	sigtm::CTR ctr(TopicNum, hparam, docs, ratings);
+	/*
+	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
 
 	cout << "model calculate" << endl;
 
 	// 学習開始
 	ctr.train(50, 500, 10);
-
+	*/
+	
+	sigtm::CrossValidation<sigtm::CTR> validation(5, TopicNum, hparam, docs, ratings);
+		
+	validation.run(sigtm::Precision<sigtm::CTR>(), 50, 500, 10);
+	
 	getchar();
 }
 

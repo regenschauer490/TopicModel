@@ -1,4 +1,11 @@
-﻿#include "ctr.h"
+﻿/*
+Copyright(c) 2014 Akihiro Nishimura
+
+This software is released under the MIT License.
+http://opensource.org/licenses/mit-license.php
+*/
+
+#include "ctr.h"
 #include "SigUtil/lib/calculation/binary_operation.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
 
@@ -267,7 +274,7 @@ void CTR::updateU()
 	MatrixKK_<double> XX(K_, K_, 0);
 
 	for (uint i = 0; i < I_; i ++){
-		if (!item_rating_[i].empty()){
+		if (std::get<0>(item_rating_[i]) != std::get<1>(item_rating[i])){
 			auto const& vec_v = row_(item_factor_, i);
 
 			XX += outer_prod(vec_v, vec_v);

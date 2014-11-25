@@ -32,6 +32,7 @@ struct DocumentLoaderSetInfo
 	FilepassString working_directory_;		// 入出力先フォルダ
 };
 
+
 class DocumentSet
 {
 	friend class MRInputIterator;
