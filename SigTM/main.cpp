@@ -292,6 +292,8 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	using namespace std;
 	using sig::uint;
 
+	bool for_user_recommend = true;
+
 	resume = resume && (!make_new);
 
 	out_folder = sig::modify_dirpass_tail(out_folder, true);
@@ -336,7 +338,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	auto docs = make_new
 		? makeInputData(InputTextType::Document, src_folder, out_folder, make_new)
 		: sigtm::DocumentLoader::makeInstance(corpus_parser);
-
+	
 	auto user_ratings = *sig::load_num2d<uint>(out_folder + L"user", " ");	
 	for (auto& vec : user_ratings) vec = sig::drop(1, std::move(vec));
 	//auto item_ratings = *sig::load_num2d<uint>(out_folder + L"item", " ");
@@ -346,19 +348,32 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 	sigtm::CtrHyperparameter hparam(false, false);
 
-	/*
-	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
+	
+	/*	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
 
 	cout << "model calculate" << endl;
 
 	// 学習開始
-	ctr.train(50, 500, 10);
-	*/
-	
-	sigtm::CrossValidation<sigtm::CTR> validation(5, TopicNum, hparam, docs, ratings);
+	ctr->train(500, 10, 10);
+
+	for(uint u=0; u<ratings->userSize(); ++u){
+		for (uint i=0; i<ratings->itemSize(); ++i) cout << ctr->estimate(u, i) << ", ";
+		cout << endl;
+	}
+	for (uint u = 0; u<ratings->userSize(); ++u){
+		for (uint i = 0; i<ratings->itemSize(); ++i) cout << ratings->getValue(u,i) << ", ";
+		cout << endl;
+	}
+		*/
+
+	sigtm::CrossValidation<sigtm::CTR> validation(4, for_user_recommend, TopicNum, hparam, docs, ratings, 500, 10, 5);
 		
-	validation.run(sigtm::Precision<sigtm::CTR>(), 50, 500, 10);
+	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(), 0.5);
+	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(), 0.5);
 	
+	sig::save_num(precision, L"./precision.txt", "\n");
+	sig::save_num(recall, L"./recall.txt", "\n");
+
 	getchar();
 }
 

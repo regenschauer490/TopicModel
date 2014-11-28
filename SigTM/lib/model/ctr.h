@@ -42,12 +42,12 @@ struct CtrHyperparameter
 
 	CtrHyperparameter(bool optimize_theta, bool run_lda_regression)
 	{
-		a_ = 1;
+		a_ = 2;
 		b_ = 0.01;
 		lambda_u_ = 0.01;
 		lambda_v_ = 100;
 		learning_rate_ = -1;
-		alpha_smooth_ = 1.0;
+		alpha_smooth_ = 0.0;
 		beta_smooth_ =default_beta;
 		theta_opt_ = optimize_theta;
 		lda_regression_ = run_lda_regression;
@@ -66,14 +66,22 @@ struct CtrHyperparameter
 	}*/
 };
 
-
+//template <class RatingValueType>
 class CTR
 {
+public:
+	using RatingValueType = int;
+	using RatingPtr_ = RatingPtr<RatingValueType>;
+	using EstValueType = double;
+	using EstRatingPtr_ = RatingPtr<EstValueType>;
+
+private:
 	using RatingIter = SparseBooleanMatrix::const_iterator;
 	using RatingContainer = SparseBooleanMatrix::const_rating_range;
 	
 	const CtrHyperparameter hparam_;
 	const DocumentSetPtr input_data_;
+	const RatingMatrixPtr<RatingValueType> ratings_;
 	const TokenList& tokens_;
 
 	const VectorI<std::vector<TokenId>> item_tokens_;	// tokens in each item(document)
@@ -104,6 +112,9 @@ class CTR
 private:
 	void init();
 
+	void printUFactor() const;
+	void printIFactor() const;
+
 	void saveTmp() const;
 	void save() const;
 	void load();
@@ -113,24 +124,30 @@ private:
 	void updateU();
 	void updateV();
 	void updateBeta();
-
+	
 private:
-	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingContainer user_ratings, RatingContainer item_ratings)
-	: hparam_(hparam), input_data_(docs), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
-		user_ratings_(std::move(user_ratings)), item_ratings_(std::move(item_ratings)), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
-		U_(user_ratings_.size()), I_(item_ratings_.size()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
+	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
+	: hparam_(hparam), input_data_(docs), ratings_(ratings), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
+		user_ratings_(ratings->getUsers()), item_ratings_(ratings->getItems()), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
+		U_(ratings->userSize()), I_(ratings->itemSize()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
 		gamma_(K_), log_beta_(K_, V_), word_ss_(K_, V_), phi_(T_, K_)
 	{
 		init();
 	}
 	
 public:	
-	static auto makeInstance(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, BooleanMatrixPtr ratings) ->std::shared_ptr<CTR>
+	static auto makeInstance(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings) ->std::shared_ptr<CTR>
 	{
-		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings->getUsers(), ratings->getItems()));
+		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings));
 	}
 
 	void train(uint max_iter, uint min_iter, uint save_lag);
+
+	// return recommended item(for user) or user(for item) ids (descending by estimated rating value)
+	auto recommend(Id id, bool for_user, double threshold) const->std::vector<Id>;
+	auto recommend_detail(Id id, bool for_user, double threshold) const->std::vector<EstRatingPtr_>;
+
+	double estimate(UserId u_id, ItemId i_id) const;
 };
 
 using CTRPtr = std::shared_ptr<CTR>;
@@ -142,68 +159,112 @@ using CTRPtr = std::shared_ptr<CTR>;
 
 namespace sigtm
 {
-template <>
-struct Precision<CTR> : public PrecisionBase
+
+template <class Derived>
+struct CTR_PR_IMPL
 {
-	using const_iterator_range =SparseRatingMatrixBase_::const_iterator_range;
-	
-	// precision for user (item recommendation)
-	double operator()(CTRPtr model, const_iterator_range test_set) const
+	using RatingPtr_ = CTR::RatingPtr_;
+	using RatingContainer_ = RatingContainer<CTR::RatingValueType>;
+
+	auto operator()(CTRPtr model, std::vector<RatingContainer_>& test_set, bool is_user_test, double threshold) const->std::vector<double>
 	{
-	
-	
-		std::unordered_set<UserId> check;
-		
-		for(auto const& e : ){
-			UserId uid = e->user_id_;
-			if(check.count(uid)) continue;
-			
-			check.emplace(uid);
-			auto est = model->estimate(uid);
-			
+		std::vector<double> result;
+
+		if (is_user_test){
+			for (UserId id = 0, size = test_set.size(); id < size; ++id){
+				auto val = static_cast<const Derived*>(this)->impl(
+					model->recommend(id, true, threshold),
+					sig::map([](RatingPtr_ const& e){ return e->item_id_; }, test_set[id]),
+					false,
+					std::less<double>()
+				);
+				if(val) result.push_back(*val);
+			}
 		}
-		return impl(model->estimate(), test_set, true, [&](RatingPtr const& r1, RatingPtr const& r2){ return r1->item_id_ < r2->item_id_; });
+		else{
+			for (ItemId id = 0, size = test_set.size(); id < size; ++id){
+				auto val = static_cast<const Derived*>(this)->impl(
+					model->recommend(id, false, threshold),
+					sig::map([](RatingPtr_ const& e){ return e->user_id_; }, test_set[id]),
+					false,
+					std::less<double>()
+				);
+				if(val) result.push_back(*val);
+			}
+		}
+
+		return result;
 	}
 };
 
+// precision for user (item recommendation)
 template <>
-class CrossValidation<CTR> : public CrossValidationBase
+struct Precision<CTR> : public PrecisionBase, public CTR_PR_IMPL<Precision<CTR>>
+{};
+
+template <>
+struct Recall<CTR> : public RecallBase, public CTR_PR_IMPL<Recall<CTR>>
+{};
+
+
+template <>
+class CrossValidation<CTR> : public CrossValidationBase<CTR::RatingValueType>
 {
+	std::vector<CTRPtr> models_;
+	bool is_user_test_;
 	uint topic_num_;
 	CtrHyperparameter hparam_;
 	DocumentSetPtr docs_;
 	
 public:
-	CrossValidation(uint n, uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, BooleanMatrixPtr ratings)
-		: topic_num_(topic_num), hparam_(hparam), docs_(docs)
+	CrossValidation(uint n, bool is_user_test, uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingMatrixPtr<CTR::RatingValueType> ratings, uint max_iter, uint min_iter, uint save_lag)
+		: CrossValidationBase(n), models_(n), is_user_test_(is_user_test), topic_num_(topic_num), hparam_(hparam), docs_(docs)
 	{
-		rating_chunks_ = devide_rating_matrix(n, ratings);
+		rating_chunks_ = random_devide(n, *ratings, is_user_test_);
+
+		auto seq = sig::seqn(0u, 1u, div_num_);
+
+		for (auto e : seq){
+			std::cout << e << std::endl;
+		}
+
+		auto train_model = [&](uint i)->CTRPtr
+		{
+			auto model = CTR::makeInstance(topic_num_, hparam_, docs_, SparseBooleanMatrix::makeInstance(join_chunc(rating_chunks_, i)));
+			model->train(max_iter, min_iter, save_lag);
+
+			return model;
+		};
+
+		models_ = run_parallel<CTRPtr>(train_model, div_num_, seq.begin());
 	}
 	
 	// F: R evaluation_func(CTRPtr model, const_iterator test_begin, const_iterator test_end)
 	template <class F>
-	auto run(F&& evaluation_func, uint max_iter, uint min_iter, uint save_lag)
+	auto run(F&& evaluation_func, double threshold)
 	{
 		using R = decltype(sig::impl::eval(
 			std::forward<F>(evaluation_func),
-			std::declval<CTR>(), 
-			std::declval<const_iterator>(),
-			std::declval<const_iterator>()
+			std::declval<CTRPtr>(), 
+			rating_chunks_[0],
+			is_user_test_,
+			threshold
 		));
 	
 		auto validation = [&](uint test_index)
 		{
-			auto model = CTR::makeInstance(topic_num_, hparam_, docs_, BooleanMatrix::makeInstance(join_chunc(rating_chunks_, test_index)));
-			
-			model.tarin(max_iter, min_iter, save_lag);
-			
-			return std::forward<F>(evaluation_func)(model, rating_chunks_[i]);
+			return std::forward<F>(evaluation_func)(models_[test_index], rating_chunks_[test_index], is_user_test_, threshold);
 		};		
 		
 		std::vector<R> result;
 				
-		for(uint i = 1; i < n; ++i){
+		//return run_parallel<R>(validation, div_num_, sig::seqn(0, 1, div_num_).begin());
+
+		for(uint i = 1; i < div_num_; ++i){
+			sig::TimeWatch tw;
 			result.push_back(validation(i));
+			tw.save();
+			sig::save_line(std::to_string(tw.get_total_time<std::chrono::seconds>()), L"./time.txt", sig::WriteMode::append);
 		}
 		
 		return result;

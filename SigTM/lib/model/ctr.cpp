@@ -8,6 +8,7 @@ http://opensource.org/licenses/mit-license.php
 #include "ctr.h"
 #include "SigUtil/lib/calculation/binary_operation.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
+#include "SigUtil/lib/functional/filter.hpp"
 
 namespace sigtm
 {
@@ -174,17 +175,50 @@ void CTR::init()
 	}
 
 
-	theta_ = MatrixIK_<double>(I_, K_); // SIG_INIT_MATRIX(double, I, K, 0);
+	theta_ = MatrixIK_<double>(I_, K_, 0); // SIG_INIT_MATRIX(double, I, K, 0);
 
-	for (ItemId i = 0; i < I_; ++i){
-		auto& theta_v = row_(theta_, i);
-		for (auto& e :theta_v) e = randf() + hparam_.alpha_smooth_;
-		sig::normalize_dist_v(theta_v);
+	if (hparam_.lda_regression_){
+		for (ItemId i = 0; i < I_; ++i){
+			auto& theta_v = row_(theta_, i);
+			for (auto& e :theta_v) e = randf() + hparam_.alpha_smooth_;
+			sig::normalize_dist_v(theta_v);
+		}
 	}
 
-	item_factor_ = theta_;
-	user_factor_ = MatrixUK_<double>(U_, K_);
+	user_factor_ = MatrixUK_<double>(U_, K_, 0);
+	item_factor_ = MatrixIK_<double>(I_, K_, 0);
+
+	for (ItemId i = 0; i < I_; ++i){
+		for (auto& e : row_(item_factor_, i)) e = randf();
+	}
 }
+
+
+void CTR::printUFactor() const
+{
+	std::cout << "user_factor" << std::endl;
+	for (uint u = 0; u<U_; ++u){
+		for (uint k = 0; k<K_; ++k) std::cout << user_factor_(u, k) << ", ";
+		std::cout << std::endl;
+	}
+}
+void CTR::printIFactor() const
+{
+	std::cout << "item_factor" << std::endl;
+	for (uint i = 0; i<I_; ++i){
+		for (uint k = 0; k<K_; ++k) std::cout << item_factor_(i, k) << ", ";
+		std::cout << std::endl;
+	}
+}
+
+/*
+	std::cout << "estimate rating" << std::endl;
+	for (uint u = 0; u<ratings_->userSize(); ++u){
+		for (uint i = 0; i<ratings_->itemSize(); ++i) std::cout << estimate(u, i) << ", ";
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
+*/
 
 void CTR::saveTmp() const
 {
@@ -229,7 +263,7 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 	auto const& theta_v = row_(theta_, id);
 	auto log_theta_v = sig::map_v([&](double x){ return safe_log(x); }, theta_v);
 	
-	for (auto tid : item_token_[id]){
+	for (auto tid : item_tokens_[id]){
 		WordId w = tokens_[tid].word_id;
 		auto& phi_v = row_(phi_, tid);
 
@@ -253,7 +287,7 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 	// smoothing with small pseudo counts
 	sig::for_each_v([&](double& v){ v = pseudo_count; }, gamma_);
 	
-	for (auto tid : item_token_[id]){
+	for (auto tid : item_tokens_[id]){
 		for (TopicId k = 0; k < K_; ++k) {
 			//double x = doc->m_counts[tid] * phi_(tid, k);	// doc_word_ct only
 			double const& x = at_(phi_, tid, k);
@@ -273,22 +307,24 @@ void CTR::updateU()
 	double delta_ab = hparam_.a_ - hparam_.b_;
 	MatrixKK_<double> XX(K_, K_, 0);
 
+	// calculate VCV^T in equation(8)
 	for (uint i = 0; i < I_; i ++){
-		if (std::get<0>(item_rating_[i]) != std::get<1>(item_rating[i])){
+		if (std::begin(item_ratings_[i]) != std::end(item_ratings_[i])){
 			auto const& vec_v = row_(item_factor_, i);
 
 			XX += outer_prod(vec_v, vec_v);
 		}
     }
-
+	
+	// negative item weight
 	XX *= hparam_.b_;
 
 	sig::for_diagonal([&](double& v){ v += hparam_.lambda_u_; }, XX);
-	
+		
 	for (uint j = 0; j < U_; ++j){
-		auto const& ratings = user_rating_[j];
+		auto const& ratings = user_ratings_[j];
 
-		if (!user_rating_[j].empty()){
+		if (std::begin(ratings) != std::end(ratings)){
 			auto A = XX;
 			VectorK_<double> x(K_, 0);
 
@@ -320,19 +356,19 @@ void CTR::updateV()
 	MatrixKK_<double> XX(K_, K_, 0);
 	
 	for (uint j = 0; j < U_; ++j){
-		if (!user_rating_[j].empty()){
+		if (std::begin(user_ratings_[j]) != std::end(user_ratings_[j])){
 			auto const& vec_u = row(user_factor_, j);
 			XX += outer_prod(vec_u, vec_u);
 		}
 	}
 	XX *= hparam_.b_;
-
+	
 	for (uint i = 0; i < I_; ++i){
 		auto& vec_v = row_(item_factor_, i);
 		auto const& theta_v = row_(theta_, i);
-		auto const& ratings = item_rating_[i];
+		auto const& ratings = item_ratings_[i];
 
-		if (!ratings.empty()){
+		if (std::begin(ratings) != std::end(ratings)){
 			auto A = XX;
 			VectorK_<double> xx(K_, 0);
 
@@ -343,16 +379,18 @@ void CTR::updateV()
 				xx += hparam_.a_ * vec_u;
 			}
 
-			//xx += hparam_.lambda_v_ * theta_v;	// adding the topic vector
+			// xx += hparam_.lambda_v_ * theta_v;	// adding the topic vector
 			sig::for_each_v([&](double& x, double t){ x += hparam_.lambda_v_ * t; }, xx, theta_v);
 
+		
 			auto B = A;		// save for computing likelihood 
 
 			sig::for_diagonal([&](double& v){ v += hparam_.lambda_v_; }, A);
 			vec_v = *sig::matrix_vector_solve(A, std::move(xx));	// update vector v
 
 			// update the likelihood for the relevant part
-			likelihood_ += -0.5 * item_rating_[i].size() * hparam_.a_;
+			likelihood_ += -0.5 * item_ratings_[i].size() * hparam_.a_;
+
 
 			for (auto rating : ratings){
 				auto const& vec_u = row_(user_factor_, rating->user_id_);
@@ -363,6 +401,7 @@ void CTR::updateV()
 
 			// likelihood part of theta, even when theta=0, which is a special case
 			sig::vector_u<double> x2 = vec_v;
+			
 			//x2 -= theta_v;
 			sig::for_each_v([](double& v1, double v2){ v1 -= v2; }, x2, theta_v);
 
@@ -397,6 +436,7 @@ void CTR::updateBeta()
 	}
 }
 
+
 void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 {
 	uint iter = 0;
@@ -422,8 +462,11 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		likelihood_old = likelihood_;
 		likelihood_ = 0.0;
 
-		updateU();
+		//printUFactor();
+		//printIFactor();
 
+		updateU();
+		
 		//if (hparam_.lda_regression_) break; // one iteration is enough for lda-regression
 
 		updateV();
@@ -443,6 +486,45 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 
 		info_print(iter, likelihood_, conv.get_value());
 	 }
+
+	 std::cout << "train finished" << std::endl;
+}
+
+auto CTR::recommend(Id id, bool for_user, double threshold) const->std::vector<Id>
+{
+	std::vector<Id> result;
+	
+	if (for_user){
+		for (uint i = 0; i < I_; ++i){
+			if(estimate(id, i) > threshold) result.push_back(i);
+		}
+	}
+	else{
+		for (uint u = 0; u < U_; ++u){
+			if (estimate(u, id) > threshold) result.push_back(u);
+		}
+	}
+
+	sig::sort(result, std::less<double>());
+
+	return result;
+}
+
+auto CTR::recommend_detail(Id id, bool for_user, double threshold) const->std::vector<EstRatingPtr_>
+{
+	auto tmp = for_user
+		? sig::map([&](uint i){ return std::make_shared<Rating_<EstValueType>>(id, i, estimate(id, i)); }, sig::seqn(0, 1, I_))
+		: sig::map([&](uint u){ return std::make_shared<Rating_<EstValueType>>(u, id, estimate(u, id)); }, sig::seqn(0, 1, U_));
+
+	auto result = sig::filter([&](EstRatingPtr_ const& e){ return e->value_ > threshold; }, tmp);
+	sig::sort(result, [](EstRatingPtr_ const& v1, EstRatingPtr_ const& v2){ return v1->value_ > v2->value_; });
+
+	return result;
+}
+
+inline double CTR::estimate(UserId u_id, ItemId i_id) const
+{
+	return inner_prod(row_(user_factor_, u_id), row_(item_factor_, i_id));
 }
 
 /*

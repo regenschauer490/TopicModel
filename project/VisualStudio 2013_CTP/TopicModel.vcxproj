@@ -143,11 +143,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\SigTM\lib\helper\compare_method.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\helper\cross_validation.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\data_format.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\document_set.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\document_loader.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\document_loader_text.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\mapreduce_module.h" />
+    <ClInclude Include="..\..\SigTM\lib\helper\metrics.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\helper\rating_matrix.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\mecab_wrapper.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\polar_evaluation.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\polar_spin.hpp" />

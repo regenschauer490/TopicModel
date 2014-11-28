@@ -14,11 +14,11 @@ namespace sigtm
 {
 
 template <class C1, class C2, class F>
-uint set_intersection_num(C1 const& c1, C2 const& c2, bool is_sorted, F&& compare_func)
+uint set_intersection_num(C1&& c1, C2&& c2, bool is_sorted, F&& compare_func)
 {
 	if(!is_sorted){
-		sig::sort(c1);
-		sig::sort(c2);
+		sig::sort(c1, compare_func);
+		sig::sort(c2, compare_func);
 	}
 	
 	uint ct = 0;
@@ -46,16 +46,34 @@ struct PrecisionBase
 	template <class C1, class C2, class F
 		//typename std::enable_if<sig::impl::container_traits<C1>::exist && sig::impl::container_traits<C2>::exist>::type*& = enabler
 	>
-	double impl(C1 const& estimates, C2 const& answers, bool is_sorted, F&& compare_func) const
+	auto impl(C1&& estimates, C2&& answers, bool is_sorted, F&& compare_func) const->sig::Maybe<double>
 	{
-		return static_cast<double>(set_intersection_num(estimates, answers, is_sorted, std::forward<F>(compare_func))) / estimates.size();
+		return impl(estimates.size(), set_intersection_num(std::forward<C1>(estimates), std::forward<C2>(answers), is_sorted, std::forward<F>(compare_func)));
 	}
 	
-	double impl(uint estimate_num, uint intersection_num) const
+	auto impl(uint estimate_num, uint intersection_num) const->sig::Maybe<double>
 	{
-		return static_cast<double>(intersection_num) / estimate_num;
+		return estimate_num > 0 ? sig::Just(static_cast<double>(intersection_num) / estimate_num) : nullptr;
 	}
-}; 
+};
+
+
+template <class MODEL>
+struct Recall;
+
+struct RecallBase
+{
+	template <class C1, class C2, class F>
+	auto impl(C1&& estimates, C2&& answers, bool is_sorted, F&& compare_func) const->sig::Maybe<double>
+	{
+		return impl(answers.size(), set_intersection_num(std::forward<C1>(estimates), std::forward<C2>(answers), is_sorted, std::forward<F>(compare_func)));
+	}
+
+	auto impl(uint answer_num, uint intersection_num) const->sig::Maybe<double>
+	{
+		return answer_num > 0 ? sig::Just(static_cast<double>(intersection_num) / answer_num) : nullptr;
+	}
+};
 
 }
 #endif
