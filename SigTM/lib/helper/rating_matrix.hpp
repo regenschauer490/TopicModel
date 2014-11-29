@@ -69,11 +69,11 @@ protected:
 public:
 	// return pair(begin, end)
 	auto getUsers() const->const_rating_range{
-		return sig::map([&](RatingContainer<T> const& u){ return boost::make_iterator_range(std::begin(u), std::end(u)); }, user_);
+		return sig::map([](RatingContainer<T> const& u){ return boost::make_iterator_range(std::begin(u), std::end(u)); }, user_);
 	}
 
 	auto getItems() const->const_rating_range{
-		return sig::map([&](RatingContainer<T> const& i){ return boost::make_iterator_range(std::begin(i), std::end(i)); }, item_);
+		return sig::map([](RatingContainer<T> const& i){ return boost::make_iterator_range(std::begin(i), std::end(i)); }, item_);
 	}
 	
 	auto getValue(UserId u_id, ItemId i_id) const->sig::Maybe<T>{
@@ -86,8 +86,12 @@ public:
 	bool userEmpty(UserId id) const{ return id < user_.size() ? user_[id].empty() : false; }
 	bool itemEmpty(ItemId id) const{ return id < item_.size() ? item_[id].empty() : false; }
 	
-	uint userSize() const{ return user_.size(); }
-	uint itemSize() const{ return item_.size(); }
+	uint userSize() const{
+		return user_.size();
+	}
+	uint itemSize() const{
+		return item_.size(); 
+	}
 };
 
 template <class T>

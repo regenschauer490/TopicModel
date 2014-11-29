@@ -13,7 +13,7 @@ http://opensource.org/licenses/mit-license.php
 #include "SigUtil/lib/modify/sort.hpp"
 #include "SigUtil/lib/tools/random.hpp"
 #include "SigUtil/lib/calculation/basic_statistics.hpp"
-#include <future>
+//#include <future>
 
 #if USE_SIGNLP
 #include "../helper/document_loader_text.hpp"
@@ -25,6 +25,7 @@ namespace sigtm
 {
 namespace impl
 {
+const uint cpu_core_num = std::thread::hardware_concurrency();
 
 class LDA_Module
 {
@@ -52,7 +53,7 @@ inline void LDA_Module::calcTermScore(MatrixKV<double> const& phi, MatrixKV<doub
 	const uint K = phi.size();
 	const uint V = std::begin(phi)->size();
 
-	const auto Task_div = [&](uint const begin, uint const end){
+	const auto task_div = [&](uint const begin, uint const end){
 		std::vector< std::vector<double> > ts(K);
 
 		for (uint _w = begin, i = 0; _w < end; ++_w, ++i){
@@ -70,12 +71,12 @@ inline void LDA_Module::calcTermScore(MatrixKV<double> const& phi, MatrixKV<doub
 		return std::move(ts);
 	};
 
-	uint const div_size = V / ThreadNum;
+	uint const div_size = V / cpu_core_num; //ThreadNum;
 	std::vector<std::future< std::vector<std::vector<double>> >> task;
 
-	for (uint i = 0, w = 0, we = div_size; i<ThreadNum + 1; ++i, w += div_size, we += div_size){
+	for (uint i = 0, w = 0, we = div_size; i<cpu_core_num + 1; ++i, w += div_size, we += div_size){
 		if (we > V) we = V;
-		task.push_back(std::async(std::launch::async, Task_div, w, we));
+		task.push_back(std::async(std::launch::async, task_div, w, we));
 	}
 
 	WordId w = 0;

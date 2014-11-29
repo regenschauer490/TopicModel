@@ -28,7 +28,7 @@ template<class T> using MatrixKK_ = sig::matrix_u<T>;
 template<class T> using MatrixKV_ = sig::matrix_u<T>;
 template<class T> using MatrixTK_ = sig::matrix_u<T>;
 
-struct CtrHyperparameter
+struct CtrHyperparameter : boost::noncopyable
 {
 	double a_;				// positive item weight
 	double b_;				// negative item weight(b < a)
@@ -40,9 +40,10 @@ struct CtrHyperparameter
 	bool theta_opt_;
 	bool lda_regression_;
 
+private:
 	CtrHyperparameter(bool optimize_theta, bool run_lda_regression)
 	{
-		a_ = 2;
+		a_ = 2.5;
 		b_ = 0.01;
 		lambda_u_ = 0.01;
 		lambda_v_ = 100;
@@ -52,19 +53,14 @@ struct CtrHyperparameter
 		theta_opt_ = optimize_theta;
 		lda_regression_ = run_lda_regression;
 	}
-	/*
-	void set(double a, double b, double lu, double lv, double lr, double as, int to, int lda_r)
-	{
-		a_ = a;
-		b_ = b;
-		lambda_u_ = lu;
-		lambda_v_ = lv;
-		learning_rate_ = lr;
-		alpha_smooth_ = as;
-		theta_opt_ = to;
-		lda_regression_ = lda_r;
-	}*/
+
+public:
+	static auto makeInstance(bool optimize_theta, bool run_lda_regression) ->std::shared_ptr<CtrHyperparameter>{
+		return std::shared_ptr<CtrHyperparameter>(new CtrHyperparameter(optimize_theta, run_lda_regression));
+	}
 };
+
+using CTRHyperParamPtr = std::shared_ptr<CtrHyperparameter>;
 
 //template <class RatingValueType>
 class CTR
@@ -79,7 +75,7 @@ private:
 	using RatingIter = SparseBooleanMatrix::const_iterator;
 	using RatingContainer = SparseBooleanMatrix::const_rating_range;
 	
-	const CtrHyperparameter hparam_;
+	const CTRHyperParamPtr hparam_;
 	const DocumentSetPtr input_data_;
 	const RatingMatrixPtr<RatingValueType> ratings_;
 	const TokenList& tokens_;
@@ -126,7 +122,7 @@ private:
 	void updateBeta();
 	
 private:
-	CTR(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
+	CTR(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
 	: hparam_(hparam), input_data_(docs), ratings_(ratings), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
 		user_ratings_(ratings->getUsers()), item_ratings_(ratings->getItems()), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
 		U_(ratings->userSize()), I_(ratings->itemSize()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
@@ -136,7 +132,7 @@ private:
 	}
 	
 public:	
-	static auto makeInstance(uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings) ->std::shared_ptr<CTR>
+	static auto makeInstance(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings) ->std::shared_ptr<CTR>
 	{
 		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings));
 	}
@@ -166,7 +162,7 @@ struct CTR_PR_IMPL
 	using RatingPtr_ = CTR::RatingPtr_;
 	using RatingContainer_ = RatingContainer<CTR::RatingValueType>;
 
-	auto operator()(CTRPtr model, std::vector<RatingContainer_>& test_set, bool is_user_test, double threshold) const->std::vector<double>
+	auto operator()(CTRPtr model, std::vector<RatingContainer_>& test_set, bool is_user_test, double threshold) const->double
 	{
 		std::vector<double> result;
 
@@ -192,8 +188,7 @@ struct CTR_PR_IMPL
 				if(val) result.push_back(*val);
 			}
 		}
-
-		return result;
+		return sig::average(result);
 	}
 };
 
@@ -213,30 +208,23 @@ class CrossValidation<CTR> : public CrossValidationBase<CTR::RatingValueType>
 	std::vector<CTRPtr> models_;
 	bool is_user_test_;
 	uint topic_num_;
-	CtrHyperparameter hparam_;
+	CTRHyperParamPtr hparam_;
 	DocumentSetPtr docs_;
 	
 public:
-	CrossValidation(uint n, bool is_user_test, uint topic_num, CtrHyperparameter hparam, DocumentSetPtr docs, RatingMatrixPtr<CTR::RatingValueType> ratings, uint max_iter, uint min_iter, uint save_lag)
-		: CrossValidationBase(n), models_(n), is_user_test_(is_user_test), topic_num_(topic_num), hparam_(hparam), docs_(docs)
+	CrossValidation(uint n, bool is_user_test, uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<CTR::RatingValueType> ratings, uint max_iter, uint min_iter, uint save_lag)
+		: CrossValidationBase(n), models_(0), is_user_test_(is_user_test), topic_num_(topic_num), hparam_(hparam), docs_(docs)
 	{
 		rating_chunks_ = random_devide(n, *ratings, is_user_test_);
 
-		auto seq = sig::seqn(0u, 1u, div_num_);
-
-		for (auto e : seq){
-			std::cout << e << std::endl;
-		}
-
-		auto train_model = [&](uint i)->CTRPtr
-		{
+		auto train_model = [=](uint i){
 			auto model = CTR::makeInstance(topic_num_, hparam_, docs_, SparseBooleanMatrix::makeInstance(join_chunc(rating_chunks_, i)));
 			model->train(max_iter, min_iter, save_lag);
 
 			return model;
 		};
 
-		models_ = run_parallel<CTRPtr>(train_model, div_num_, seq.begin());
+		models_ = run_parallel<CTRPtr>(train_model, n, sig::seqn(0u, 1u, div_num_).begin());
 	}
 	
 	// F: R evaluation_func(CTRPtr model, const_iterator test_begin, const_iterator test_end)
@@ -257,17 +245,8 @@ public:
 		};		
 		
 		std::vector<R> result;
-				
-		//return run_parallel<R>(validation, div_num_, sig::seqn(0, 1, div_num_).begin());
 
-		for(uint i = 1; i < div_num_; ++i){
-			sig::TimeWatch tw;
-			result.push_back(validation(i));
-			tw.save();
-			sig::save_line(std::to_string(tw.get_total_time<std::chrono::seconds>()), L"./time.txt", sig::WriteMode::append);
-		}
-		
-		return result;
+		return run_parallel<R>(validation, div_num_, sig::seqn(0u, 1u, div_num_).begin());
 	}
 };
 

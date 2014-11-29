@@ -170,17 +170,17 @@ void CTR::init()
 
 	for(TopicId k = 0; k < K_; ++k){
 		auto& beta_v = row_(beta_, k);
-		for (auto& e : beta_v) e = randf() + hparam_.beta_smooth_;
+		for (auto& e : beta_v) e = randf() + hparam_->beta_smooth_;
 		sig::normalize_dist_v(beta_v);
 	}
 
 
 	theta_ = MatrixIK_<double>(I_, K_, 0); // SIG_INIT_MATRIX(double, I, K, 0);
 
-	if (hparam_.lda_regression_){
+	if (hparam_->lda_regression_){
 		for (ItemId i = 0; i < I_; ++i){
 			auto& theta_v = row_(theta_, i);
-			for (auto& e :theta_v) e = randf() + hparam_.alpha_smooth_;
+			for (auto& e :theta_v) e = randf() + hparam_->alpha_smooth_;
 			sig::normalize_dist_v(theta_v);
 		}
 	}
@@ -233,7 +233,7 @@ void CTR::saveTmp() const
       mtx_fprintf(file_V, item_factor_);
       fclose(file_V);
 
-      if (hparam_.ctr_run) { 
+      if (hparam_->ctr_run) { 
         sprintf(name, "%s/%04d-theta.dat", directory, iter);
         FILE * file_theta = fopen(name, "w");
         mtx_fprintf(file_theta, m_theta);
@@ -304,7 +304,7 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 
 void CTR::updateU()
 { 
-	double delta_ab = hparam_.a_ - hparam_.b_;
+	double delta_ab = hparam_->a_ - hparam_->b_;
 	MatrixKK_<double> XX(K_, K_, 0);
 
 	// calculate VCV^T in equation(8)
@@ -317,9 +317,9 @@ void CTR::updateU()
     }
 	
 	// negative item weight
-	XX *= hparam_.b_;
+	XX *= hparam_->b_;
 
-	sig::for_diagonal([&](double& v){ v += hparam_.lambda_u_; }, XX);
+	sig::for_diagonal([&](double& v){ v += hparam_->lambda_u_; }, XX);
 		
 	for (uint j = 0; j < U_; ++j){
 		auto const& ratings = user_ratings_[j];
@@ -332,7 +332,7 @@ void CTR::updateU()
 				auto const& vec_v = row_(item_factor_, rating->item_id_);
 
 				A += delta_ab * outer_prod(vec_v, vec_v);
-				x += hparam_.a_ * vec_v;
+				x += hparam_->a_ * vec_v;
 			}
 
 			auto& vec_u = row(user_factor_, j);
@@ -340,7 +340,7 @@ void CTR::updateU()
 
 			// update the likelihood
 			auto result = inner_prod(vec_u, vec_u);
-			likelihood_ += -0.5 * hparam_.lambda_u_ * result;
+			likelihood_ += -0.5 * hparam_->lambda_u_ * result;
 		}
 	}
 }
@@ -352,7 +352,7 @@ void CTR::updateV()
 		return inner_prod(v, prod(m, v));
 	};
 
-	double delta_ab = hparam_.a_ - hparam_.b_;
+	double delta_ab = hparam_->a_ - hparam_->b_;
 	MatrixKK_<double> XX(K_, K_, 0);
 	
 	for (uint j = 0; j < U_; ++j){
@@ -361,8 +361,8 @@ void CTR::updateV()
 			XX += outer_prod(vec_u, vec_u);
 		}
 	}
-	XX *= hparam_.b_;
-	
+	XX *= hparam_->b_;
+		
 	for (uint i = 0; i < I_; ++i){
 		auto& vec_v = row_(item_factor_, i);
 		auto const& theta_v = row_(theta_, i);
@@ -376,26 +376,26 @@ void CTR::updateV()
 				auto const& vec_u = row_(user_factor_, rating->user_id_);
 
 				A += delta_ab * outer_prod(vec_u, vec_u);
-				xx += hparam_.a_ * vec_u;
+				xx += hparam_->a_ * vec_u;
 			}
 
-			// xx += hparam_.lambda_v_ * theta_v;	// adding the topic vector
-			sig::for_each_v([&](double& x, double t){ x += hparam_.lambda_v_ * t; }, xx, theta_v);
+			// xx += hparam_->lambda_v_ * theta_v;	// adding the topic vector
+			sig::for_each_v([&](double& x, double t){ x += hparam_->lambda_v_ * t; }, xx, theta_v);
 
 		
 			auto B = A;		// save for computing likelihood 
 
-			sig::for_diagonal([&](double& v){ v += hparam_.lambda_v_; }, A);
+			sig::for_diagonal([&](double& v){ v += hparam_->lambda_v_; }, A);
 			vec_v = *sig::matrix_vector_solve(A, std::move(xx));	// update vector v
 
 			// update the likelihood for the relevant part
-			likelihood_ += -0.5 * item_ratings_[i].size() * hparam_.a_;
+			likelihood_ += -0.5 * item_ratings_[i].size() * hparam_->a_;
 
 
 			for (auto rating : ratings){
 				auto const& vec_u = row_(user_factor_, rating->user_id_);
 				auto result = inner_prod(vec_u, vec_v);
-				likelihood_ += hparam_.a_ * result;
+				likelihood_ += hparam_->a_ * result;
 			}
 			likelihood_ += -0.5 * mahalanobis_prod(B, vec_v);
 
@@ -406,16 +406,16 @@ void CTR::updateV()
 			sig::for_each_v([](double& v1, double v2){ v1 -= v2; }, x2, theta_v);
 
 			auto result = inner_prod(x2, x2);
-			likelihood_ += -0.5 * hparam_.lambda_v_ * result;
+			likelihood_ += -0.5 * hparam_->lambda_v_ * result;
 
-			if (hparam_.theta_opt_){
+			if (hparam_->theta_opt_){
 				likelihood_ += docInference(i, true);
-				optimize_simplex(gamma_, vec_v, hparam_.lambda_v_, row_(theta_, i));
+				optimize_simplex(gamma_, vec_v, hparam_->lambda_v_, row_(theta_, i));
 			}
 		}
 		else{
 			// m=0, this article has never been rated
-			if (hparam_.theta_opt_) {
+			if (hparam_->theta_opt_) {
 				docInference(i, false);
 				sig::normalize_dist_v(gamma_);
 				row(theta_, i) = gamma_;
@@ -450,7 +450,7 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 
 	if (max_iter < min_iter) std::swap(max_iter, min_iter);
 
-	if (hparam_.theta_opt_){
+	if (hparam_->theta_opt_){
 		gamma_ = VectorK_<double>(K_, 0);
 		log_beta_ = sig::map_m([&](double x){ return safe_log(x); }, beta_);
 		word_ss_ = MatrixKV_<double>(K_, V_); // SIG_INIT_MATRIX(double, K, V, 0);
@@ -467,12 +467,12 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 
 		updateU();
 		
-		//if (hparam_.lda_regression_) break; // one iteration is enough for lda-regression
+		//if (hparam_->lda_regression_) break; // one iteration is enough for lda-regression
 
 		updateV();
 		
 		// update beta if needed
-		if (hparam_.theta_opt_) updateBeta();
+		if (hparam_->theta_opt_) updateBeta();
 
 		if(likelihood_ < likelihood_old) std::cout << "likelihood is decreasing!" << std::endl;
 		
@@ -537,7 +537,7 @@ void c_ctr::learn_map_estimate(
 {
   // init model parameters
   printf("\ninitializing the model ...\n");
-  init_model(hparam_.ctr_run);
+  init_model(hparam_->ctr_run);
 
   // filename
   char name[500];
@@ -563,7 +563,7 @@ void c_ctr::learn_map_estimate(
   double result;
 
   /// confidence parameters
-  double a_minus_b = hparam_.a - hparam_.b;
+  double a_minus_b = hparam_->a - hparam_->b;
 
   
   update();  
@@ -576,7 +576,7 @@ void c_ctr::learn_map_estimate(
   gsl_matrix_free(B);
   gsl_vector_free(x);
 
-  if (hparam_.ctr_run && hparam_.theta_opt) {
+  if (hparam_->ctr_run && hparam_->theta_opt) {
     gsl_matrix_free(phi);
     gsl_matrix_free(log_beta);
     gsl_matrix_free(word_ss);

@@ -70,7 +70,7 @@ protected:
 		for (uint i = 0; i < dataset.size(); ++i){
 			if (i != removed_index){
 				for(uint j = 0; j < dataset[i].size(); ++j){
-					for (auto&& e : boost::make_iterator_range(std::begin(dataset[i][j]), std::end(dataset[i][j]))) result[i].push_back(e);
+					for (auto&& e : boost::make_iterator_range(std::begin(dataset[i][j]), std::end(dataset[i][j]))) result[j].push_back(e);
 
 					//jr[i] = boost::join(boost::any_cast<const_joined_range>(jr[j]), std::begin(dataset[i][j]), std::end(dataset[i][j]));
 				}
@@ -85,12 +85,20 @@ protected:
 	auto run_parallel(F&& valid_func, uint n, ITs... iters) ->std::vector<R>
 	{
 		std::vector<R> result;
-		std::vector<std::future<R>> task;
 
-		for (uint i = 0; i < n; ++i) task.push_back(std::async(std::launch::async, valid_func, sig::impl::dereference_iterator(iters)...));
+		const uint cpu_core_num = std::thread::hardware_concurrency();
+		const uint div = std::ceil(static_cast<double>(n) / cpu_core_num);
 
-		for (auto& t : task){
-			result.push_back(std::move(t.get()));
+		for (uint d = 0; d < div; ++d){
+			std::vector<std::future<R>> task;
+
+			for (uint i = d * cpu_core_num, size = d != div-1 ? (d + 1) * cpu_core_num : n; i < size; ++i, sig::impl::increment_iterator(iters...)){
+				task.push_back(std::async(std::launch::async, valid_func, sig::impl::dereference_iterator(iters)...));
+			}
+
+			for (auto& t : task){
+				result.push_back(t.get());
+			}
 		}
 
 		return result;

@@ -346,7 +346,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 	auto ratings = sigtm::SparseBooleanMatrix::makeInstance(user_ratings, true);
 
-	sigtm::CtrHyperparameter hparam(false, false);
+	auto hparam = sigtm::CtrHyperparameter::makeInstance(false, false);
 
 	
 	/*	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
@@ -366,7 +366,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	}
 		*/
 
-	sigtm::CrossValidation<sigtm::CTR> validation(4, for_user_recommend, TopicNum, hparam, docs, ratings, 500, 10, 5);
+	sigtm::CrossValidation<sigtm::CTR> validation(8, for_user_recommend, TopicNum, hparam, docs, ratings, 100, 10, 5);
 		
 	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(), 0.5);
 	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(), 0.5);

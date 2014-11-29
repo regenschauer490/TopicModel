@@ -173,19 +173,19 @@ public:
 	/* DocumentSetのデータからコンストラクト */
 	// デフォルト設定で使用する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data){
-		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, nothing, nothing, mrlda::Specification(ThreadNum, ThreadNum)));
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, nothing, nothing, mrlda::Specification(impl::cpu_core_num, impl::cpu_core_num)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
 	}
 	// alpha, beta をsymmetricに設定する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data, double alpha, Maybe<double> beta = nothing){
-		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing, mrlda::Specification(ThreadNum, ThreadNum)));
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha), beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing, mrlda::Specification(impl::cpu_core_num, impl::cpu_core_num)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
 	}
 	// alpha, beta を多次元で設定する場合
 	static LDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing){
-		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(ThreadNum, ThreadNum)));
+		auto obj = std::shared_ptr<MrLDA>(new MrLDA(resume, topic_num, input_data, alpha, beta, mrlda::Specification(impl::cpu_core_num, impl::cpu_core_num)));
 		obj->mapreduce_ = std::make_unique<mr_job>(mr_input_iterator(obj, obj->mr_spec_), obj->mr_spec_);
 		return obj;
 	}
