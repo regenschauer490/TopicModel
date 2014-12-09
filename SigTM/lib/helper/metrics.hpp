@@ -75,5 +75,23 @@ struct RecallBase
 	}
 };
 
+
+template <class MODEL>
+struct F_Measure;
+
+struct F_MeasureBase
+{
+	double impl(double precision, double recall) const
+	{
+		return (2 * precision * recall) / (precision + recall);
+	}
+
+	double operator()(double precision, double recall) const
+	{
+		return impl(precision, recall);
+	}
+};
+
+
 }
 #endif

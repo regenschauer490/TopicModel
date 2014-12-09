@@ -285,7 +285,7 @@ void sample4(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 
 #include "lib/model/ctr.h"
-#include "lib/helper/cross_validation.hpp"
+#include "lib/helper/ctr_validation.hpp"
 
 void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool make_new)
 {
@@ -339,6 +339,21 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 		? makeInputData(InputTextType::Document, src_folder, out_folder, make_new)
 		: sigtm::DocumentLoader::makeInstance(corpus_parser);
 	
+	/*
+	auto lda = sigtm::LDA_Gibbs::makeInstance(false, 20, docs);
+	auto savePerplexity = [&](sigtm::LDA const* lda)
+	{
+		double perp = lda->getPerplexity();
+		auto split = sig::split(std::to_string(perp), ",");
+		std::cout << sig::cat(split, "") << std::endl;
+	};
+	lda->train(100, savePerplexity);
+	auto theta = lda->getTheta();
+	auto phi = lda->getPhi();
+	sig::save_num(theta, out_folder + L"theta", " ");
+	sig::save_num(phi, out_folder + L"phi", " ");
+	*/
+	
 	auto user_ratings = *sig::load_num2d<uint>(out_folder + L"user", " ");	
 	for (auto& vec : user_ratings) vec = sig::drop(1, std::move(vec));
 	//auto item_ratings = *sig::load_num2d<uint>(out_folder + L"item", " ");
@@ -346,33 +361,68 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 	auto ratings = sigtm::SparseBooleanMatrix::makeInstance(user_ratings, true);
 
-	auto hparam = sigtm::CtrHyperparameter::makeInstance(false, false);
+	auto hparam = sigtm::CtrHyperparameter::makeInstance(true);
 
+	if (auto theta = sig::load_num2d<double>(out_folder + L"theta", " ")){
+		hparam->setTheta(*theta);
+	}
+	if (auto beta = sig::load_num2d<double>(out_folder + L"beta", " ")){
+		hparam->setTheta(*beta);
+	}
 	
-	/*	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
+/*	auto ctr = sigtm::CTR::makeInstance(20, hparam, docs, ratings);
 
 	cout << "model calculate" << endl;
 
 	// 学習開始
 	ctr->train(500, 10, 10);
+*/
 
-	for(uint u=0; u<ratings->userSize(); ++u){
-		for (uint i=0; i<ratings->itemSize(); ++i) cout << ctr->estimate(u, i) << ", ";
-		cout << endl;
-	}
-	for (uint u = 0; u<ratings->userSize(); ++u){
-		for (uint i = 0; i<ratings->itemSize(); ++i) cout << ratings->getValue(u,i) << ", ";
-		cout << endl;
-	}
-		*/
 
-	sigtm::CrossValidation<sigtm::CTR> validation(8, for_user_recommend, TopicNum, hparam, docs, ratings, 100, 10, 5);
+	sigtm::CrossValidation<sigtm::CTR> validation(4, for_user_recommend, 20, hparam, docs, ratings, 100, 10, 5);
 		
-	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(), 0.5);
-	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(), 0.5);
+/*	auto tmp_u = *sig::load_num2d<double>(out_folder + L"final_U.dat", " ");
+	auto tmp_v = *sig::load_num2d<double>(out_folder + L"final_V.dat", " ");
+
+	validation.debug_set_u(tmp_u);
+	validation.debug_set_v(tmp_v);
+*/
+	{
+	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(50, 0.5));
+	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(50, 0.5));
+	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
 	
 	sig::save_num(precision, L"./precision.txt", "\n");
 	sig::save_num(recall, L"./recall.txt", "\n");
+	sig::save_num(fmeasure, L"./f_measure.txt", "\n");
+	}
+	{
+	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(10, sigtm::nothing));
+	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(10, sigtm::nothing));
+	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+	sig::save_num(precision, L"./precision2.txt", "\n");
+	sig::save_num(recall, L"./recall2.txt", "\n");
+	sig::save_num(fmeasure, L"./f_measure2.txt", "\n");
+	}
+	{
+	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(100, sigtm::nothing));
+	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(100, sigtm::nothing));
+	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+	sig::save_num(precision, L"./precision3.txt", "\n");
+	sig::save_num(recall, L"./recall3.txt", "\n");
+	sig::save_num(fmeasure, L"./f_measure3.txt", "\n");
+	}
+	{
+	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(1000, sigtm::nothing));
+	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(1000, sigtm::nothing));
+	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+	sig::save_num(precision, L"./precision4.txt", "\n");
+	sig::save_num(recall, L"./recall4.txt", "\n");
+	sig::save_num(fmeasure, L"./f_measure4.txt", "\n");
+	}
 
 	getchar();
 }

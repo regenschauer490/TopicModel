@@ -22,7 +22,7 @@ using RatingChunk = std::vector<std::vector<RatingContainer<T>>>;
 
 
 template <class T>
-auto random_devide(const uint n, SparseRatingMatrixBase_<T> const& src, bool is_user_test) ->RatingChunk<T>
+auto devide_random(const uint n, SparseRatingMatrixBase_<T> const& src, bool is_user_test) ->RatingChunk<T>
 {
 	auto&& src_vecs = is_user_test ? src.getUsers() : src.getItems();
 	std::vector<RatingPtr<T>> ratings;
@@ -40,6 +40,64 @@ auto random_devide(const uint n, SparseRatingMatrixBase_<T> const& src, bool is_
 			chunks[i][is_user_test ? ratings[j]->user_id_ : ratings[j]->item_id_].push_back(ratings[j]);
 		}
 	}
+
+	return std::move(chunks);
+}
+
+template <class T>
+auto devide_adjusted_random(const uint n, SparseRatingMatrixBase_<T> const& src, bool is_user_test) ->RatingChunk<T>
+{
+	auto&& src_vecs = is_user_test ? src.getUsers() : src.getItems();
+	std::unordered_map<Id, std::vector<RatingPtr<T>>> ratings;
+
+	if (is_user_test){
+		for (auto&& sv : src_vecs){
+			for (auto&& r : sv){
+				if (ratings.count(r->item_id_)) ratings[r->item_id_].push_back(r);
+				else ratings.emplace(r->item_id_, std::vector<RatingPtr<T>>{r});
+			}
+		}
+	}
+	else{
+
+	}
+	
+	RatingChunk<T> chunks(n, std::vector<RatingContainer<T>>(is_user_test ? src.userSize() : src.itemSize()));
+
+	sig::SimpleRandom<uint> random(0, n - 1, FixedRandom);
+	uint ct = 0;
+
+	if (is_user_test){
+		for (auto& e : ratings){
+			std::vector<RatingPtr<T>> rs = e.second;
+
+			sig::shuffle(rs);
+			
+			if (rs.size() < n){
+				sig::SimpleRandom<uint> random2(0, rs.size()-1, FixedRandom);
+
+				for (uint i = 0; i < n; ++i){
+					auto& r = rs[random2()];
+					chunks[i][r->user_id_].push_back(r);
+				}
+				++ct;
+			}
+			else{
+				uint rest = rs.size() - n;
+				for (uint i = 0; i < n; ++i){
+					chunks[i][rs[i]->user_id_].push_back(rs[i]);
+				}
+				for (uint j = n; j < rest; ++j){
+					chunks[random()][rs[j]->user_id_].push_back(rs[j]);
+				}
+			}
+		}
+	}
+	else{
+
+	}
+
+	std::cout << "less than n:" << ct << std::endl;
 
 	return std::move(chunks);
 }
