@@ -7,13 +7,16 @@ TopicModel (Implemented in C++11)
 * Vanilla LDA (Latent Dirichlet Allocation)
   * Gibbs Sampling
   * Collapsed Gibbs Sampling
+  * Collapsed Variational Bayesian Inference
+ 
 * MR.LDA (MapReduce Latent Dirichlet Allocation)
   * Variational Bayesian Inference
 
-【 現在実装中(now implementing) 】
-* Vanilla LDA (Latent Dirichlet Allocation)
-  * Collapsed Variational Bayesian Inference
+【 テスト中(now validating) 】
 * Twitter LDA
+* Collavorative Topic Regression
+
+【 現在実装中(now implementing) 】
 
 【 調査・調整中(analyse and adjust) 】
 * optimize hyper-parameter alpha by Newton-Lapson method
