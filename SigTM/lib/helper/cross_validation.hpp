@@ -68,6 +68,7 @@ auto devide_adjusted_random(const uint n, SparseRatingMatrixBase_<T> const& src,
 	uint ct = 0;
 
 	if (is_user_test){
+		// for each items
 		for (auto& e : ratings){
 			std::vector<RatingPtr<T>> rs = e.second;
 
@@ -79,16 +80,24 @@ auto devide_adjusted_random(const uint n, SparseRatingMatrixBase_<T> const& src,
 				for (uint i = 0; i < n; ++i){
 					auto& r = rs[random2()];
 					chunks[i][r->user_id_].push_back(r);
+					r->is_duplicate_ = true;
+					/*for (uint j = 0; j < rs.size(); ++j) {
+						chunks[i][rs[j]->user_id_].push_back(rs[j]);
+						rs[j]->is_duplicate_ = true;
+					}*/
 				}
 				++ct;
 			}
 			else{
-				uint rest = rs.size() - n;
-				for (uint i = 0; i < n; ++i){
-					chunks[i][rs[i]->user_id_].push_back(rs[i]);
+				uint loop = rs.size() / n;
+				uint i = 0;
+				for (uint le = n * loop; i < le; ++i) {
+					chunks[i%n][rs[i]->user_id_].push_back(rs[i]);
 				}
-				for (uint j = n; j < rest; ++j){
-					chunks[random()][rs[j]->user_id_].push_back(rs[j]);
+				
+				uint rest = rs.size() - n * loop;
+				for (uint j = 0; j < rest; ++j, ++i){
+					chunks[random()][rs[i]->user_id_].push_back(rs[i]);
 				}
 			}
 		}

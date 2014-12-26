@@ -9,6 +9,7 @@ http://opensource.org/licenses/mit-license.php
 #define SIGTM_RATING_MATRIX_H
 
 #include "../sigtm.hpp"
+#include "SigUtil/lib/modify/remove.hpp"
 #include <boost/range/iterator_range.hpp>
 #include <boost/range/join.hpp>
 
@@ -25,10 +26,11 @@ struct Rating_ : boost::noncopyable
 	T value_;
 	uint user_id_;
 	uint item_id_;
+	bool is_duplicate_;
 
 public:
 	Rating_(T value, uint user_id, uint item_id)
-	: value_(value), user_id_(user_id), item_id_(item_id){}
+	: value_(value), user_id_(user_id), item_id_(item_id), is_duplicate_(false){}
 };
 
 template <class T>
@@ -65,6 +67,11 @@ protected:
 	SparseRatingMatrixBase_(UserRatings u_src, ItemRatings i_src) : user_(std::move(u_src)), item_(std::move(i_src)){}
 
 	virtual ~SparseRatingMatrixBase_() = default;
+
+	void remove_duplicate() {
+		for (auto& u : user_) sig::remove_duplicates(u);
+		for (auto& i : item_) sig::remove_duplicates(i);
+	}
 	
 public:
 	// return pair(begin, end)
@@ -161,9 +168,13 @@ class SparseBooleanMatrix : public SparseRatingMatrixBase_<int>
 	
 	SparseBooleanMatrix(std::vector<RatingContainer<T>> const& ratings){
 		for (auto&& r : ratings) reconstruct(boost::make_iterator_range(std::begin(r), std::end(r)));
+		remove_duplicate();
 	}
 
-	SparseBooleanMatrix(const_iterator_range const& ratings){ reconstruct(ratings); }
+	SparseBooleanMatrix(const_iterator_range const& ratings){
+		reconstruct(ratings);
+		remove_duplicate();
+	}
 
 public:
 	static auto makeInstance(std::vector<std::vector<Id>> const& ratings, bool is_user_rating) ->RatingMatrixPtr<T>{

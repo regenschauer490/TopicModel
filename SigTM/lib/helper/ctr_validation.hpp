@@ -11,6 +11,7 @@ http://opensource.org/licenses/mit-license.php
 #include "../model/ctr.h"
 #include "../helper/metrics.hpp"
 #include "../helper/cross_validation.hpp"
+#include "SigUtil/lib/functional/filter.hpp"
 //#include <boost/numeric/ublas/matrix_sparse.hpp>
 
 namespace sigtm
@@ -33,10 +34,10 @@ struct CTR_PR_IMPL
 				auto est = model->recommend(id, true, top_n_, threshold_);
 
 				auto val = static_cast<const Derived*>(this)->impl(
-					sig::map([](CTR::EstValueType const& e){ return e.first; }, est),
-					sig::map([](CTR::RatingPtr_ const& e){ return e->item_id_; }, test_set[id]),
+					sig::map([](CTR::EstValueType const& e) { return e.first; }, est),
+					sig::map([](CTR::RatingPtr_ const& e) { return e->item_id_; }, test_set[id]),// sig::filter([](RatingContainer_::value_type const& r) { return !r->is_duplicate_; }, test_set[id])),
 					false,
-					std::less<double>()
+					std::less<uint>()
 				);
 				if(val){
 					//std::cout << "user:" << id << ", val:" << *val << ", #ans:" << test_set[id] .size() << ", #est:" << est.size() << std::endl;
@@ -45,15 +46,15 @@ struct CTR_PR_IMPL
 			}
 		}
 		else{
-			for (ItemId id = 0, size = test_set.size(); id < size; ++id){
+			/*for (ItemId id = 0, size = test_set.size(); id < size; ++id){
 				auto val = static_cast<const Derived*>(this)->impl(
 					sig::map([](CTR::EstValueType const& e){ return e.first; }, model->recommend(id, false, top_n_, threshold_)),
 					sig::map([](CTR::RatingPtr_ const& e){ return e->user_id_; }, test_set[id]),
 					false,
-					std::less<double>()
+					std::less<uint>()
 				);
 				if(val) result.push_back(*val);
-			}
+			}*/
 		}
 		return sig::average(result);
 	}
@@ -104,11 +105,12 @@ public:
 	CrossValidation(uint n, bool is_user_test, uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<CTR::RatingValueType> ratings, uint max_iter, uint min_iter, uint save_lag)
 		: CrossValidationBase(n), models_(0), is_user_test_(is_user_test), topic_num_(topic_num), hparam_(hparam), docs_(docs)
 	{
+		//rating_chunks_ = devide_random(n, *ratings, is_user_test_);
 		rating_chunks_ = devide_adjusted_random(n, *ratings, is_user_test_);
 
 		auto train_model = [=](uint i){
-			auto model = CTR::makeInstance(topic_num_, hparam_, docs_, SparseBooleanMatrix::makeInstance(join_chunc(rating_chunks_, i)));
-			//model->train(max_iter, min_iter, save_lag);
+			auto model = CTR::makeInstance(topic_num_, hparam_, docs_, SparseBooleanMatrix::makeInstance(join_chunc(rating_chunks_, i)), i);
+			model->train(max_iter, min_iter, save_lag);
 
 			return model;
 		};
@@ -138,8 +140,8 @@ public:
 	}
 
 
-	//void debug_set_u(MatrixUK<double> v){ for(auto& m : models_) m->debug_set_u(v); }
-	//void debug_set_v(MatrixIK<double> v){ for(auto& m : models_) m->debug_set_v(v); }
+	void debug_set_u(std::vector<std::vector<double>> v){ for(auto& m : models_) m->debug_set_u(v); }
+	void debug_set_v(std::vector<std::vector<double>> v){ for(auto& m : models_) m->debug_set_v(v); }
 };
 
 

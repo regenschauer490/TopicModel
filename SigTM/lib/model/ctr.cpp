@@ -6,60 +6,46 @@ http://opensource.org/licenses/mit-license.php
 */
 
 #include "ctr.h"
-#include "SigUtil/lib/calculation/binary_operation.hpp"
+//#include "SigUtil/lib/calculation/binary_operation.hpp"
+//#include "SigUtil/lib/calculation/assign_operation.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
 #include "SigUtil/lib/functional/filter.hpp"
 #include "SigUtil/lib/functional/list_deal.hpp"
+
+#if SIG_USE_EIGEN
 #include <Eigen/Dense>
+#endif
 
 #include "SigUtil/lib/tools/time_watch.hpp"
 
 namespace sigtm
 {
-//using namespace boost::numeric;
-
-const double projection_z = 1.0;
-
-static double safe_log(double x)
+#if SIG_USE_EIGEN
+template <class V>
+auto make_zero(uint size)
 {
-	return x > 0 ? std::log(x) : log_lower_limit;
-};
-
-
-template <class C>
-static auto row_(C&& src, uint i) ->decltype(ublas::row(src, i))
-{
-	return ublas::row(src, i);
-}
-static auto row_(EigenMatrix& src, uint i) ->decltype(src.row(i))
-{
-	return src.row(i);
-}
-static auto row_(EigenMatrix const& src, uint i) ->decltype(src.row(i))
-{
-	return src.row(i);
+	return V::Zero(size);
 }
 
-template <class C>
-static auto at_(C&& src, uint row, uint col) ->decltype(src(row, col))
+template <class M>
+auto make_zero(uint size_row, uint size_col)
 {
-	return src(row, col);
-}
-static auto at_(EigenMatrix& src, uint row, uint col) ->decltype(src.coeffRef(col, row))
-{
-	return src.coeffRef(col, row);
-}
-static auto at_(EigenMatrix const& src, uint row, uint col) ->decltype(src.coeffRef(col, row))
-{
-	return src.coeffRef(col, row);
+	return M::Zero(size_row, size_col);
 }
 
 template <class V>
 void normalize_dist_v(V&& vec)
 {
 	double sum = vec.sum();
-	vec /= sum;
+	vec.array() /= sum;
 }
+
+template <class V>
+auto sum_v(V const& vec)
+{
+	return vec.sum();
+}
+
 template <class F, class V>
 auto map_v(F&& func, V&& vec)
 {
@@ -67,7 +53,7 @@ auto map_v(F&& func, V&& vec)
 
 	EigenVector result(vec.size());
 
-	for (uint i = 0, size = vec.size(); i < size; ++i){
+	for (uint i = 0, size = vec.size(); i < size; ++i) {
 		result[i] = std::forward<F>(func)(std::forward<V>(vec)(i));
 	}
 
@@ -82,10 +68,10 @@ auto map_m(F&& func, M&& mat)
 	const uint col_size = mat.cols();
 	const uint row_size = mat.rows();
 
-	EigenMatrix result(col_size, row_size);
+	EigenMatrix result(row_size, col_size);
 
-	for (uint i = 0; i < col_size; ++i){
-		for (uint j = 0; j < row_size; ++j){
+	for (uint i = 0; i < row_size; ++i) {
+		for (uint j = 0; j < col_size; ++j) {
 			result(i, j) = std::forward<F>(func)(std::forward<M>(mat)(i, j));
 		}
 	}
@@ -93,6 +79,137 @@ auto map_m(F&& func, M&& mat)
 	return result;
 }
 
+template <class V, class T>
+void assign_v(V& vec, T val)
+{
+	for (uint i = 0, size = vec.size(); i < size; ++i) vec[i] = val;
+}
+
+template <class V, class T>
+void compound_assign_plus_v(V& vec, T val)
+{
+	vec.array() += val;
+}
+
+template <class V, class T>
+void compound_assign_mult_v(V& vec, T val)
+{
+	vec.array() *= val;
+}
+
+#else
+using namespace boost::numeric;
+
+template <class V>
+auto make_zero(uint size)
+{
+	return V(size, 0);
+}
+
+template <class M>
+auto make_zero(uint size_row, uint size_col)
+{
+	return M(size_row, size_col, 0);
+}
+
+template <class V>
+void normalize_dist_v(V&& vec)
+{
+	return sig::normalize_dist(vec);
+}
+
+template <class V>
+auto sum_v(V const& vec)
+{
+	return sum(vec);
+}
+
+template <class F, class V>
+auto map_v(F&& func, V&& vec)
+{
+	return sig::map_v(std::forward<F>(func), std::forward<V>(vec));
+}
+
+template <class F, class M>
+auto map_m(F&& func, M&& mat)
+{
+	return sig::map_m(std::forward<F>(func), std::forward<M>(mat));
+}
+
+template <class V, class T>
+void assign_v(V& vec, T val)
+{
+	sig::for_each_v([val](double& v) { v = val; }, vec);
+}
+
+template <class V, class T>
+void compound_assign_plus_v(V& vec, T val)
+{
+	sig::for_each_v([val](double& v){ v += val; }, vec);
+}
+
+template <class V, class T>
+void compound_assign_mult_v(V& vec, T val)
+{
+	sig::for_each_v([val](double& v) { v *= val; }, vec);
+}
+
+#endif
+
+const double projection_z = 1.0;
+
+static double safe_log(double x)
+{
+	return x > 0 ? std::log(x) : log_lower_limit;
+};
+
+#if SIG_USE_EIGEN
+static auto row_(EigenMatrix& src, uint i) ->decltype(src.row(i))
+{
+	return src.row(i);
+}
+static auto row_(EigenMatrix const& src, uint i) ->decltype(src.row(i))
+{
+	return src.row(i);
+}
+#else
+template <class V>
+static auto row_(V&& src, uint i) ->decltype(ublas::row(src, i))
+{
+	return ublas::row(src, i);
+}
+#endif
+
+#if SIG_USE_EIGEN
+static auto at_(EigenMatrix& src, uint row, uint col) ->decltype(src.coeffRef(row, col))
+{
+	return src.coeffRef(row, col);
+}
+static auto at_(EigenMatrix const& src, uint row, uint col) ->decltype(src.coeffRef(row, col))
+{
+	return src.coeffRef(row, col);
+}
+#else
+template <class V>
+static auto at_(V&& src, uint row, uint col) ->decltype(src(row, col))
+{
+	return src(row, col);
+}
+#endif
+
+template <class V>
+auto set_zero(V& vec, uint size)
+{
+	for (uint i = 0; i < size; ++i) vec(i) = 0;
+}
+
+template <class M>
+auto set_zero(M& vec, uint size_row, uint size_col)
+{
+	for (uint i = 0; i < size_row; ++i) {
+		for (uint j = 0; j < size_col; ++j) vec(i, j) = 0;
+	}
+}
 
 template <class V>
 bool is_feasible(V const& x)
@@ -228,46 +345,45 @@ void CTR::init()
 {
 	sig::SimpleRandom<double> randf(0, 1, FixedRandom);
 
-	beta_ = MatrixKV_(V_, K_); //SIG_INIT_MATRIX(double, K, V, 0);
-
 	if (hparam_->beta_.empty()){
 		for(TopicId k = 0; k < K_; ++k){
-			auto& beta_v = row_(beta_, k);			
-			for (uint v = 0; v < V_; ++v) beta_v[v] = randf() + hparam_->beta_smooth_;
-			normalize_dist_v(beta_v);
+			auto& beta_k = row_(beta_, k);
+			for (ItemId v = 0; v < V_; ++v) {
+				beta_k(v) = randf() + hparam_->beta_smooth_;
+			}
+			normalize_dist_v(beta_k);
 		}
 	}
 	else{
 		std::cout << "beta loading" << std::endl;
-		//beta_ = sig::to_matrix_ublas(hparam_->beta_);
 		for (uint k = 0; k < K_; ++k){
-			for (uint v = 0; v < V_; ++v) beta_(v, k) = hparam_->beta_[k][v];
+			auto& beta_k = row_(beta_, k);
+			for (uint v = 0; v < V_; ++v) beta_k(v) = hparam_->beta_[k][v];
+			normalize_dist_v(beta_k);
 		}
 	}
 
+	set_zero(theta_, I_, K_);
 
-	theta_ = MatrixIK_::Zero(K_, I_); // SIG_INIT_MATRIX(double, I, K, 0);
-
-	if (hparam_->theta_opt_){
-		if (hparam_->theta_.empty()){
-			for (ItemId i = 0; i < I_; ++i){
-				auto& theta_v = row_(theta_, i);
-				for (uint k = 0; k < K_; ++k) theta_v[k] = randf() + hparam_->alpha_smooth_;
-				normalize_dist_v(theta_v);
-			}
-		}
-		else{
-			std::cout << "theta loading" << std::endl;
-			//theta_ = sig::to_matrix_ublas(hparam_->theta_);
-			for (uint i = 0; i < I_; ++i){
-				for (uint k = 0; k < K_; ++k) beta_(k, i) = hparam_->beta_[i][k];
-				
-			}
+	if (hparam_->theta_opt_ && (!hparam_->theta_.empty())) {
+		std::cout << "theta loading" << std::endl;
+		//theta_ = sig::to_matrix_ublas(hparam_->theta_);
+		for (uint i = 0; i < I_; ++i) {
+			auto& theta_i = row_(theta_, i);
+			for (uint k = 0; k < K_; ++k) theta_i(k) = hparam_->theta_[i][k];
 		}
 	}
+	else {
+		for (ItemId i = 0; i < I_; ++i) {
+			auto& theta_v = row_(theta_, i);
+			for (uint k = 0; k < K_; ++k) theta_v[k] = randf() + hparam_->alpha_smooth_;
+			normalize_dist_v(theta_v);
+		}
+	}
+	
 
-	user_factor_ = MatrixUK_::Zero(U_, K_);
-	item_factor_ = MatrixIK_::Zero(I_, K_);
+	set_zero(user_factor_, U_, K_);
+	set_zero(item_factor_, I_, K_);
 
 	if (hparam_->theta_opt_){
 		for (ItemId i = 0; i < I_; ++i){
@@ -278,6 +394,8 @@ void CTR::init()
 	else{
 		item_factor_ = theta_;
 	}
+
+	//load();
 }
 
 
@@ -334,25 +452,74 @@ void CTR::saveTmp() const
 	*/
 }
 
+const sig::FilepassString item_factor_fname = SIG_TO_FPSTR("item_factor");
+const sig::FilepassString user_factor_fname = SIG_TO_FPSTR("user_factor");
+const sig::FilepassString theta_fname = SIG_TO_FPSTR("theta");
+
+template <class M>
+void save_impl(sig::FilepassString pass, M const& mat, std::string name) 
+{
+	std::ofstream ofs(pass);
+
+	if (ofs.is_open()) {
+		for (uint i = 0, size1 = mat.rows(); i < size1; ++i) {
+			for (uint j = 0, size2 = row_(mat, i).size(); j < size2; ++j) ofs << mat(i, j) << " ";
+			ofs << std::endl;
+		}
+	}
+	else std::cout << "saving file failed: " << name << std::endl;
+};
+
+template <class M>
+void load_impl(sig::FilepassString pass, M& mat, std::string name)
+{
+	auto tmp = sig::load_num2d<double>(pass, " ");
+
+	if (tmp) {
+		for (uint i = 0, size1 = mat.rows(); i < size1; ++i) {
+			auto& row = row_(mat, i);
+			for (uint j = 0, size2 = row.size(); j < size2; ++j)  row(j) = (*tmp)[i][j];
+		}
+		std::cout << "loading file: " << name << std::endl;
+	}
+};
+
 void CTR::save() const
 {
+	std::cout << "save trained parameters... ";
+
+	auto base_pass = input_data_->getWorkingDirectory() + SIG_TO_FPSTR("params/");
+	auto mid = model_id_ >= 0 ? sig::to_fpstring(model_id_) : SIG_TO_FPSTR("");
+
+	save_impl(base_pass + item_factor_fname + mid, item_factor_, "item_factor");
+	save_impl(base_pass + user_factor_fname + mid, user_factor_, "user_factor");
+	save_impl(base_pass + theta_fname + mid, theta_, "theta");
+
+	std::cout << "saving file completed" << std::endl;
 }
 
 void CTR::load()
 {
+	//std::cout << "load prev parameters... ";
 
+	auto base_pass = input_data_->getWorkingDirectory() + SIG_TO_FPSTR("params/");
+	auto mid = model_id_ >= 0 ? sig::to_fpstring(model_id_) : SIG_TO_FPSTR("");
+
+	load_impl(base_pass + item_factor_fname + mid, item_factor_, "item_factor");
+	load_impl(base_pass + user_factor_fname + mid, user_factor_, "user_factor");
+	load_impl(base_pass + theta_fname + mid, theta_, "theta");
 }
 
 double CTR::docInference(ItemId id,	bool update_word_ss)
 {
 	double pseudo_count = 1.0;
 	double likelihood = 0;
-	auto const& theta_v = row_(theta_, id);
+	auto const theta_v = row_(theta_, id);
 	auto log_theta_v = map_v([&](double x){ return safe_log(x); }, theta_v);
 	
 	for (auto tid : item_tokens_[id]){
 		WordId w = tokens_[tid].word_id;
-		auto& phi_v = row_(phi_, tid);
+		auto phi_v = row_(phi_, tid);
 
 		for (TopicId k = 0; k < K_; ++k){
 			phi_v[k] = theta_v[k] * at_(beta_, k, w);
@@ -362,19 +529,20 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 		for (TopicId k = 0; k < K_; ++k){
 			double const& p = phi_v[k];
 			if (p > 0){
-				likelihood += p * (log_theta_v[k] + log_beta_(k, w) - std::log(p));
+				double t = log_theta_v[k];
+				double lb = log_beta_(k, w);
+				likelihood += p * (t + lb - std::log(p));
 			}
 		}
 	}
 
 	if (pseudo_count > 0) {
 		//likelihood += pseudo_count * std::accumulate(std::begin(log_theta_v), std::end(log_theta_v), 0.0);
-		likelihood += pseudo_count * log_theta_v.sum();
+		likelihood += pseudo_count * sum_v(log_theta_v);
 	}
 
 	// smoothing with small pseudo counts
-	//sig::for_each_v([&](double& v){ v = pseudo_count; }, gamma_);
-	gamma_.array() += pseudo_count;
+	assign_v(gamma_, pseudo_count);
 	
 	for (auto tid : item_tokens_[id]){
 		for (TopicId k = 0; k < K_; ++k) {
@@ -399,7 +567,7 @@ void CTR::updateU()
 	// calculate VCV^T in equation(8)
 	for (uint i = 0; i < I_; i ++){
 		if (std::begin(item_ratings_[i]) != std::end(item_ratings_[i])){
-			auto const& vec_v = row_(item_factor_, i);
+			auto const vec_v = row_(item_factor_, i);
 
 			//XX += outer_prod(vec_v, vec_v);
 			XX += vec_v.transpose() * vec_v;
@@ -417,10 +585,10 @@ void CTR::updateU()
 
 		if (std::begin(ratings) != std::end(ratings)){
 			EigenMatrix A = XX;
-			VectorK_ x(K_, 0);
+			VectorK_ x = VectorK_::Zero(K_);
 
 			for (auto rating : ratings){
-				auto const& vec_v = row_(item_factor_, rating->item_id_);
+				auto const vec_v = row_(item_factor_, rating->item_id_);
 
 				A += delta_ab * vec_v.transpose() * vec_v;
 				x += hparam_->a_ * vec_v;
@@ -428,8 +596,8 @@ void CTR::updateU()
 
 			auto vec_u = row_(user_factor_, j);
 			//vec_u = *sig::matrix_vector_solve(std::move(A), std::move(x));	// update vector u
-			auto slv = A.fullPivLu().solve(x);
-			for (uint k = 0; k < K_; ++k) vec_u.coeffRef(k) = slv.coeff(k);
+			vec_u = A.fullPivLu().solve(x);
+			//for (uint k = 0; k < K_; ++k) vec_u.coeffRef(k) = slv.coeff(k);
 
 			// update the likelihood
 			//auto result = inner_prod(vec_u, vec_u);
@@ -442,25 +610,26 @@ void CTR::updateU()
 void CTR::updateV()
 {
 	double delta_ab = hparam_->a_ - hparam_->b_;
-	MatrixKK_ XX = MatrixKK_::Zero(K_, K_);
+	MatrixKK_ XX = make_zero<MatrixKK_>(K_, K_);
 	
 	for (uint j = 0; j < U_; ++j){
 		if (std::begin(user_ratings_[j]) != std::end(user_ratings_[j])){
-			auto const& vec_u = row_(user_factor_, j);
+			auto const vec_u = row_(user_factor_, j);
 			//XX += outer_prod(vec_u, vec_u);
 			XX += vec_u.transpose() * vec_u;
 		}
 	}
+	//compound_assign_mult_m(XX, hparam_->b_)
 	XX.array() *= hparam_->b_;
 		
 	for (uint i = 0; i < I_; ++i){
 		auto& vec_v = row_(item_factor_, i);
-		auto const& theta_v = row_(theta_, i);
+		auto const theta_v = row_(theta_, i);
 		auto const& ratings = item_ratings_[i];
 
 		if (std::begin(ratings) != std::end(ratings)){
 			EigenMatrix A = XX;
-			VectorK_ x(K_, 0);
+			VectorK_ x = VectorK_::Zero(K_);
 
 			for (auto rating : ratings){
 				auto const& vec_u = row_(user_factor_, rating->user_id_);
@@ -487,7 +656,7 @@ void CTR::updateV()
 
 
 			for (auto rating : ratings){
-				auto const& vec_u = row_(user_factor_, rating->user_id_);
+				auto const vec_u = row_(user_factor_, rating->user_id_);
 				//auto result = inner_prod(vec_u, vec_v);
 				auto result = vec_u.dot(vec_u);
 
@@ -527,39 +696,55 @@ void CTR::updateBeta()
 	beta_ = word_ss_;
 
 	for (TopicId k = 0; k < K_; ++k){
-		auto& beta_v = row_(beta_, k);
+		auto beta_v = row_(beta_, k);
 
 		normalize_dist_v(beta_v);
 		row_(log_beta_, k) = map_v([&](double x){ return safe_log(x); }, beta_v);
 	}
 }
 
-auto CTR::recommend_impl(Id id, bool for_user) const->std::vector<EstValueType>
+auto CTR::recommend_impl(Id id, bool for_user, bool ignore_train_set) const->std::vector<EstValueType>
 {
 	std::vector<EstValueType> result;
 
 	if (for_user){
-		uint i = 0;
-		for (auto e : user_ratings_[id]){
-			for (uint ed = e->item_id_; i < ed; ++i){
+		result.reserve(I_);
+		if (ignore_train_set) {
+			uint i = 0;
+			for (auto e : user_ratings_[id]) {
+				for (uint ed = e->item_id_; i < ed; ++i) {
+					result.push_back(std::make_pair(i, estimate(id, i)));
+				}
+				i = e->item_id_ + 1;
+			}
+			for (; i < I_; ++i) {
 				result.push_back(std::make_pair(i, estimate(id, i)));
 			}
-			i = e->item_id_ + 1;
 		}
-		for (; i < I_; ++i){
-			result.push_back(std::make_pair(i, estimate(id, i)));
+		else {
+			for (uint i = 0; i < I_; ++i) {
+				result.push_back(std::make_pair(i, estimate(id, i)));
+			}
 		}
 	}
 	else{
-		uint u = 0;
-		for (auto e : item_ratings_[id]){
-			for (uint ed = e->item_id_; u < ed; ++u){
+		result.reserve(U_);
+		if (ignore_train_set) {
+			uint u = 0;
+			for (auto e : item_ratings_[id]) {
+				for (uint ed = e->item_id_; u < ed; ++u) {
+					result.push_back(std::make_pair(u, estimate(u, id)));
+				}
+				u = e->user_id_ + 1;
+			}
+			for (; u < U_; ++u) {
 				result.push_back(std::make_pair(u, estimate(u, id)));
 			}
-			u = e->user_id_ + 1;
 		}
-		for (; u < U_; ++u){
-			result.push_back(std::make_pair(u, estimate(u, id)));
+		else {
+			for (uint u = 0; u < U_; ++u) {
+				result.push_back(std::make_pair(u, estimate(u, id)));
+			}
 		}
 	}
 
@@ -584,8 +769,8 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 	if (hparam_->theta_opt_){
 		gamma_ = VectorK_::Zero(K_);
 		log_beta_ = map_m([&](double x){ return safe_log(x); }, beta_);
-		word_ss_ = MatrixKV_(V_, K_); // SIG_INIT_MATRIX(double, K, V, 0);
-		phi_ = MatrixKV_(K_, T_);  //SIG_INIT_MATRIX(double, T, K, 0);
+		word_ss_ = MatrixKV_(K_, V_); // SIG_INIT_MATRIX(double, K, V, 0);
+		phi_ = MatrixTK_(T_, K_);  //SIG_INIT_MATRIX(double, T, K, 0);
 	}
 
 	 while ((!conv.is_convergence() && iter < max_iter) || iter < min_iter)
@@ -608,7 +793,7 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		// update beta if needed
 		if (hparam_->theta_opt_) updateBeta();
 
-		if(likelihood_ < likelihood_old) std::cout << "likelihood is decreasing!" << std::endl;
+		//if(likelihood_ > likelihood_old) std::cout << "likelihood is decreasing!" << std::endl;
 		
 		// save intermediate results
 		if (iter % save_lag == 0) {
@@ -621,15 +806,16 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		info_print(iter, likelihood_, conv.get_value());
 	 }
 
+	 save();
 	 std::cout << "train finished" << std::endl;
 }
 
 auto CTR::recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<double> threshold) const->std::vector<EstValueType>
 {
-	auto result = recommend_impl(id, for_user);
+	auto result = recommend_impl(id, for_user, false);
 
 	if (top_n) result = sig::take(*top_n, std::move(result));
-	if (threshold) sig::filter([&](std::pair<Id, double> const& e){ return e.second > *threshold; }, std::move(result));
+	if (threshold) result = sig::filter([&](std::pair<Id, double> const& e){ return e.second > *threshold; }, std::move(result));
 
 	return result;
 }
@@ -637,7 +823,9 @@ auto CTR::recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<dou
 inline double CTR::estimate(UserId u_id, ItemId i_id) const
 {
 	//return inner_prod(row_(user_factor_, u_id), row_(item_factor_, i_id));
-	return row_(user_factor_, u_id).dot(row_(item_factor_, i_id));
+	auto uvec = row_(user_factor_, u_id);
+	auto ivec = row_(item_factor_, i_id);
+	return uvec.dot(ivec);
 }
 
 /*

@@ -15,7 +15,7 @@ http://opensource.org/licenses/mit-license.php
 #include "SigUtil/lib/calculation/basic_statistics.hpp"
 //#include <future>
 
-#if USE_SIGNLP
+#if SIG_USE_SIGNLP
 #include "../helper/document_loader_text.hpp"
 #else
 #include "../helper/document_loader.hpp"

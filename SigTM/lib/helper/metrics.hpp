@@ -53,7 +53,7 @@ struct PrecisionBase
 	
 	auto impl(uint estimate_num, uint intersection_num) const->sig::Maybe<double>
 	{
-		return estimate_num > 0 ? sig::Just(static_cast<double>(intersection_num) / estimate_num) : nullptr;
+		return estimate_num > 0 ? sig::Just(static_cast<double>(intersection_num) / estimate_num) : sig::Nothing<double>();
 	}
 };
 
@@ -71,7 +71,7 @@ struct RecallBase
 
 	auto impl(uint answer_num, uint intersection_num) const->sig::Maybe<double>
 	{
-		return answer_num > 0 ? sig::Just(static_cast<double>(intersection_num) / answer_num) : nullptr;
+		return answer_num > 0 ? sig::Just(static_cast<double>(intersection_num) / answer_num) : sig::Nothing<double>();
 	}
 };
 

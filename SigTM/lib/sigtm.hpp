@@ -15,7 +15,8 @@ http://opensource.org/licenses/mit-license.php
 namespace sigtm
 {
 
-#define USE_SIGNLP 1				// 文字列解析を行うためにSigNLPを使用するか
+#define SIG_USE_EIGEN 1			// 行列演算にライブラリのEigenを使用するか（処理速度向上）
+#define SIG_USE_SIGNLP 1		// 文字列解析を行うためにSigNLPを使用するか
 
 const bool FixedRandom = true;		// 乱数を固定するか(テスト用)
 //const std::size_t ThreadNum = 15;	// 並列処理部分で起動するスレッド数
@@ -25,7 +26,7 @@ std::wstring const VOCAB_FILENAME = L"vocab";
 std::wstring const DOC_FILENAME = L"document_names.txt";
 
 const double default_alpha_base = 50;
-const double default_beta = 0.1;
+const double default_beta = 0.01;
 
 using sig::uint;
 using sig::StrPtr;

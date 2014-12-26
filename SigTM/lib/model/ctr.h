@@ -14,13 +14,16 @@ http://opensource.org/licenses/mit-license.php
 #include "../helper/data_format.hpp"
 #include "../helper/rating_matrix.hpp"
 #include "lda_common_module.hpp"
+
+#if SIG_USE_EIGEN
 #include <Eigen/Core>
-//#include "SigUtil/lib/calculation/ublas.hpp"
-//#include <boost/numeric/ublas/matrix_sparse.hpp>
+#else
+#include "SigUtil/lib/calculation/ublas.hpp"
+#endif
 
 namespace sigtm
 {
-
+#if SIG_USE_EIGEN
 using EigenVector = Eigen::VectorXd;
 using EigenMatrix = Eigen::MatrixXd;
 
@@ -31,16 +34,14 @@ using MatrixKK_ = EigenMatrix;
 using MatrixKV_ = EigenMatrix;
 using MatrixTK_ = EigenMatrix;
 
-/*
-template<class T> using VectorK_ = sig::vector_u<T>;	// topic
-template<class T> using MatrixIK = VectorI<VectorK<T>>;	// item - topic(factor)
-
-template<class T> using MatrixIK_ = sig::matrix_u<T>;	// item - topic(factor)
-template<class T> using MatrixUK_ = sig::matrix_u<T>;	// user - topic(factor)
-template<class T> using MatrixKK_ = sig::matrix_u<T>;
-template<class T> using MatrixKV_ = sig::matrix_u<T>;
-template<class T> using MatrixTK_ = sig::matrix_u<T>;
-*/
+#else
+using VectorK_ = sig::vector_u<double>;		// topic
+using MatrixIK_ = sig::matrix_u<double>;	// item - topic(factor)
+using MatrixUK_ = sig::matrix_u<double>;	// user - topic(factor)
+using MatrixKK_ = sig::matrix_u<double>;
+using MatrixKV_ = sig::matrix_u<double>;
+using MatrixTK_ = sig::matrix_u<double>;
+#endif
 
 struct CtrHyperparameter : boost::noncopyable
 {
@@ -64,7 +65,7 @@ private:
 		lambda_v_ = 100;
 		learning_rate_ = -1;
 		alpha_smooth_ = 0.0;
-		beta_smooth_ =default_beta;
+		beta_smooth_ = default_beta;
 		theta_opt_ = optimize_theta;
 	}
 
@@ -95,6 +96,7 @@ private:
 	using RatingIter = SparseBooleanMatrix::const_iterator;
 	using RatingContainer = SparseBooleanMatrix::const_rating_range;
 	
+	const uint model_id_;
 	const CTRHyperParamPtr hparam_;
 	const DocumentSetPtr input_data_;
 	const RatingMatrixPtr<RatingValueType> ratings_;
@@ -141,22 +143,28 @@ private:
 	void updateV();
 	void updateBeta();
 
-	auto recommend_impl(Id id, bool for_user) const->std::vector<std::pair<Id, double>>;
+	auto recommend_impl(Id id, bool for_user, bool ignore_train_set = true) const->std::vector<std::pair<Id, double>>;
 	
 private:
-	CTR(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
-	: hparam_(hparam), input_data_(docs), ratings_(ratings), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
+	CTR(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings, uint model_id)
+	: model_id_(model_id), hparam_(hparam), input_data_(docs), ratings_(ratings), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
 		user_ratings_(ratings->getUsers()), item_ratings_(ratings->getItems()), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
 		U_(ratings->userSize()), I_(ratings->itemSize()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
 		gamma_(K_), log_beta_(K_, V_), word_ss_(K_, V_), phi_(T_, K_)
 	{
 		init();
 	}
+	CTR(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
+	: CTR(topic_num, hparam, docs, ratings, -1) {}
 	
 public:	
 	static auto makeInstance(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings) ->std::shared_ptr<CTR>
 	{
 		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings));
+	}
+	static auto makeInstance(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings, uint model_id) ->std::shared_ptr<CTR>
+	{
+		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings, model_id));
 	}
 
 	void train(uint max_iter, uint min_iter, uint save_lag);
@@ -167,8 +175,16 @@ public:
 	double estimate(UserId u_id, ItemId i_id) const;
 
 
-	//void debug_set_u(std::vector<std::vector<double>> const& v){ user_factor_ = sig::to_matrix_ublas(v); }
-	//void debug_set_v(std::vector<std::vector<double>> const& v){ item_factor_ = sig::to_matrix_ublas(v); }
+	void debug_set_u(std::vector<std::vector<double>> const& v) {
+		for (uint i = 0; i < v.size(); ++i) {
+			for (uint j = 0; j < v[i].size(); ++j) user_factor_(i, j) = v[i][j];
+		}
+	}
+	void debug_set_v(std::vector<std::vector<double>> const& v){
+		for (uint i = 0; i < v.size(); ++i) {
+			for (uint j = 0; j < v[i].size(); ++j)item_factor_(i, j) = v[i][j];
+		}
+	}
 };
 
 using CTRPtr = std::shared_ptr<CTR>;

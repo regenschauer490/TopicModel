@@ -10,7 +10,7 @@ http://opensource.org/licenses/mit-license.php
 
 #include "../sigtm.hpp"
 
-#if USE_SIGNLP
+#if SIG_USE_SIGNLP
 
 #include "document_loader.hpp"
 #include "SigNlp/polar_evaluation.hpp"

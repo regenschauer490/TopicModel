@@ -4,8 +4,8 @@
 #include "SigUtil/lib/tools/tag_dealer.hpp"
 #include "SigUtil/lib/tools/time_watch.hpp"
 
-const int TopicNum = 30;
-const int IterationNum = 100;
+const int TopicNum = 200;
+const int IterationNum = 500;
 
 // 入力テキストの種類 (Webページやレビュー文などの各記事はDocument, マイクロブログでの各ユーザの投稿はTweet)
 enum class InputTextType { Document, Tweet };
@@ -19,7 +19,7 @@ static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 
 #include "lib/sigtm.hpp"
 
-#if USE_SIGNLP
+#if SIG_USE_SIGNLP
 #include "lib/helper/document_loader_text.hpp"
 #else
 #include "lib/helper/document_loader.hpp"
@@ -40,7 +40,7 @@ sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, s
 	using namespace std;
 	using sig::uint;
 
-#if USE_SIGNLP
+#if SIG_USE_SIGNLP
 	// テキストからデータセットを作成する際に使用するフィルタ
 	sigtm::FilterSetting filter(true);
 
@@ -72,7 +72,7 @@ sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, s
 	sigtm::DocumentSetPtr inputdata;
 
 	if(make_new){
-#if USE_SIGNLP
+#if SIG_USE_SIGNLP
 		// 新しくデータセットを作成(外部ファイルから生成)
 		if (InputTextType::Tweet == tt) inputdata = sigtm::DocumentLoaderFromText::makeInstanceFromTweet(src_folder, filter, out_folder);
 		else inputdata = sigtm::DocumentLoaderFromText::makeInstance(src_folder, filter, out_folder);
@@ -219,7 +219,7 @@ void sample3(InputTextType tt, std::wstring src_folder, std::wstring out_folder,
 		sig::clear_file(time_pass);
 	}
 
-	sig::TimeWatch tw;
+	sig::TimeWatch<> tw;
 	auto savePerplexity = [&](sigtm::LDA const* lda)
 	{		
 		tw.save();
@@ -297,7 +297,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	resume = resume && (!make_new);
 
 	out_folder = sig::modify_dirpass_tail(out_folder, true);
-	const std::wstring perp_pass = out_folder + L"perplexity_twlda.txt";
+	const std::wstring perp_pass = out_folder + L"perplexity_ctr.txt";
 	if (!resume) sig::clear_file(perp_pass);
 
 	// file load
@@ -310,14 +310,14 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 		auto vocab_file = *sig::load_line<std::wstring>(out_folder + L"vocab");
 
 		uint total_ct = 0, did = 0;
-		for(auto const& line : token_file){
+		for (auto const& line : token_file) {
 			auto parsed = sig::split(line, " ");
 
-			for (uint n = 1, length = std::stoul(parsed[0])+1; n < length; ++n) {
+			for (uint n = 1, length = std::stoul(parsed[0]) + 1; n < length; ++n) {
 				auto word_count = sig::split(parsed[n], ":");
 				uint wid = std::stoul(word_count[0]);
 
-				for (uint m = 0, wct = std::stoul(word_count[1]); m < wct; ++m){
+				for (uint m = 0, wct = std::stoul(word_count[1]); m < wct; ++m) {
 					tokens.push_back(sigtm::Token(total_ct, did, wid));
 					++total_ct;
 				}
@@ -338,23 +338,23 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	auto docs = make_new
 		? makeInputData(InputTextType::Document, src_folder, out_folder, make_new)
 		: sigtm::DocumentLoader::makeInstance(corpus_parser);
-	
-	/*
-	auto lda = sigtm::LDA_Gibbs::makeInstance(false, 20, docs);
+
+/*	
+	auto lda = sigtm::LDA_Gibbs::makeInstance(false, TopicNum, docs);
 	auto savePerplexity = [&](sigtm::LDA const* lda)
 	{
 		double perp = lda->getPerplexity();
 		auto split = sig::split(std::to_string(perp), ",");
 		std::cout << sig::cat(split, "") << std::endl;
 	};
-	lda->train(100, savePerplexity);
+	lda->train(IterationNum, savePerplexity);
 	auto theta = lda->getTheta();
 	auto phi = lda->getPhi();
 	sig::save_num(theta, out_folder + L"theta", " ");
 	sig::save_num(phi, out_folder + L"phi", " ");
-	*/
-	
-	auto user_ratings = *sig::load_num2d<uint>(out_folder + L"user", " ");	
+*/	
+
+	auto user_ratings = *sig::load_num2d<uint>(out_folder + L"user", " ");
 	for (auto& vec : user_ratings) vec = sig::drop(1, std::move(vec));
 	//auto item_ratings = *sig::load_num2d<uint>(out_folder + L"item", " ");
 	//for (auto& vec : item_ratings) sig::drop(1, vec);
@@ -363,69 +363,92 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 	auto hparam = sigtm::CtrHyperparameter::makeInstance(true);
 
-	if (auto theta = sig::load_num2d<double>(out_folder + L"theta", " ")){
+	if (auto theta = sig::load_num2d<double>(out_folder + L"theta", " ")) {
 		hparam->setTheta(*theta);
 	}
-	if (auto beta = sig::load_num2d<double>(out_folder + L"beta", " ")){
+	if (auto beta = sig::load_num2d<double>(out_folder + L"beta", " ")) {
 		hparam->setTheta(*beta);
 	}
-	
-/*	auto ctr = sigtm::CTR::makeInstance(20, hparam, docs, ratings);
+/*
+	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
 
 	cout << "model calculate" << endl;
 
 	// 学習開始
-	ctr->train(500, 10, 10);
+	ctr->train(500, 10, 0);
+
+	auto rec0 = ctr->recommend(0, true);
+	std::ofstream ofs("./rec0.txt");
+	for(auto const& e : rec0) ofs << e.first << " " << e.second << std::endl;
+
+	std::vector<std::vector<double>> est(10, std::vector<double>(ratings->itemSize(), 0));
+	for (uint u = 0, usize = 10; u < usize; ++u) {
+		for (uint v = 0, isize = ratings->itemSize(); v < isize; ++v) {
+			est[u][v] = ctr->estimate(u, v);
+		}
+	}
+
+	sig::save_num(est, L"./est_ctr.txt", " ");
 */
 
+	sigtm::CrossValidation<sigtm::CTR> validation(5, for_user_recommend, TopicNum, hparam, docs, ratings, 100, 2, 0);
 
-	sigtm::CrossValidation<sigtm::CTR> validation(4, for_user_recommend, 20, hparam, docs, ratings, 100, 10, 5);
-		
 /*	auto tmp_u = *sig::load_num2d<double>(out_folder + L"final_U.dat", " ");
 	auto tmp_v = *sig::load_num2d<double>(out_folder + L"final_V.dat", " ");
 
 	validation.debug_set_u(tmp_u);
 	validation.debug_set_v(tmp_v);
-*/
+*/	
 	{
-	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(50, 0.5));
-	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(50, 0.5));
-	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(10, sigtm::nothing));
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(10, sigtm::nothing));
+		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+		//sig::save_num(precision, L"./precision@10.txt", "\n");
+		sig::save_num(recall, L"./recall@10.txt", "\n");
+		//sig::save_num(fmeasure, L"./f_measure@10.txt", "\n");
+	}
+	{
+		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(50, sigtm::nothing));
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(50, sigtm::nothing));
+		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+		//sig::save_num(precision, L"./precision@50.txt", "\n");
+		sig::save_num(recall, L"./recall@50.txt", "\n");
+		//sig::save_num(fmeasure, L"./f_measure@50.txt", "\n");
+	}
+	{
+		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(100, sigtm::nothing));
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(100, sigtm::nothing));
+		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+		//sig::save_num(precision, L"./precision@100.txt", "\n");
+		sig::save_num(recall, L"./recall@100.txt", "\n");
+		//sig::save_num(fmeasure, L"./f_measure@100.txt", "\n");
+	}
+	{
+		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(1000, sigtm::nothing));
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(1000, sigtm::nothing));
+		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+
+		//sig::save_num(precision, L"./precision@1000.txt", "\n");
+		sig::save_num(recall, L"./recall@1000.txt", "\n");
+		//sig::save_num(fmeasure, L"./f_measure@1000.txt", "\n");
+	}
+	{
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(sigtm::nothing, 0.8));
+
+		sig::save_num(recall, L"./recall@gt0.8.txt", "\n");
+	}
+	{
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(sigtm::nothing, sigtm::nothing));
+
+		sig::save_num(recall, L"./recall@all.txt", "\n");
+	}
 	
-	sig::save_num(precision, L"./precision.txt", "\n");
-	sig::save_num(recall, L"./recall.txt", "\n");
-	sig::save_num(fmeasure, L"./f_measure.txt", "\n");
-	}
-	{
-	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(10, sigtm::nothing));
-	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(10, sigtm::nothing));
-	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
-
-	sig::save_num(precision, L"./precision2.txt", "\n");
-	sig::save_num(recall, L"./recall2.txt", "\n");
-	sig::save_num(fmeasure, L"./f_measure2.txt", "\n");
-	}
-	{
-	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(100, sigtm::nothing));
-	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(100, sigtm::nothing));
-	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
-
-	sig::save_num(precision, L"./precision3.txt", "\n");
-	sig::save_num(recall, L"./recall3.txt", "\n");
-	sig::save_num(fmeasure, L"./f_measure3.txt", "\n");
-	}
-	{
-	auto precision = validation.run(sigtm::Precision<sigtm::CTR>(1000, sigtm::nothing));
-	auto recall = validation.run(sigtm::Recall<sigtm::CTR>(1000, sigtm::nothing));
-	auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
-
-	sig::save_num(precision, L"./precision4.txt", "\n");
-	sig::save_num(recall, L"./recall4.txt", "\n");
-	sig::save_num(fmeasure, L"./f_measure4.txt", "\n");
-	}
-
 	getchar();
 }
+
 
 int main()
 {
