@@ -174,6 +174,11 @@ public:
 
 	double estimate(UserId u_id, ItemId i_id) const;
 
+	uint getUserNum() const { return U_; }
+	uint getItemNum() const { return I_; }
+	uint getTopicNum() const { return K_; }
+	uint getWordNum() const { return V_; }
+
 
 	void debug_set_u(std::vector<std::vector<double>> const& v) {
 		for (uint i = 0; i < v.size(); ++i) {

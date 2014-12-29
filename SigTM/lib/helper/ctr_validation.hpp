@@ -56,6 +56,7 @@ struct CTR_PR_IMPL
 				if(val) result.push_back(*val);
 			}*/
 		}
+
 		return sig::average(result);
 	}
 
@@ -66,19 +67,19 @@ private:
 
 // precision for user (item recommendation)
 template <>
-struct Precision<CTR> : public PrecisionBase, public CTR_PR_IMPL<Precision<CTR>>
+struct Precision<CTR> : public PrecisionImpl, public CTR_PR_IMPL<Precision<CTR>>
 {
 	Precision(sig::Maybe<uint> top_n, sig::Maybe<double> threshold) : CTR_PR_IMPL(top_n, threshold){}
 };
 
 template <>
-struct Recall<CTR> : public RecallBase, public CTR_PR_IMPL<Recall<CTR>>
+struct Recall<CTR> : public RecallImpl, public CTR_PR_IMPL<Recall<CTR>>
 {
 	Recall(sig::Maybe<uint> top_n, sig::Maybe<double> threshold) : CTR_PR_IMPL(top_n, threshold){}
 };
 
 template <>
-struct F_Measure<CTR> : public F_MeasureBase, private CTR_PR_IMPL<Precision<CTR>>, private CTR_PR_IMPL<Recall<CTR>>
+struct F_Measure<CTR> : public F_MeasureImpl, private CTR_PR_IMPL<Precision<CTR>>, private CTR_PR_IMPL<Recall<CTR>>
 {
 	F_Measure(sig::Maybe<uint> top_n, sig::Maybe<double> threshold) : CTR_PR_IMPL<Precision<CTR>>(top_n, threshold), CTR_PR_IMPL<Recall<CTR>>(top_n, threshold){}
 
@@ -89,6 +90,40 @@ struct F_Measure<CTR> : public F_MeasureBase, private CTR_PR_IMPL<Precision<CTR>
 			CTR_PR_IMPL<Recall<CTR>>::operator()(model, test_set, is_user_test)
 		);
 	}
+};
+
+template <>
+struct AveragePrecision<CTR> : public AveragePrecisionImpl, public CTR_PR_IMPL<Recall<CTR>>
+{
+	AveragePrecision(sig::Maybe<uint> top_n, sig::Maybe<double> threshold) : CTR_PR_IMPL(top_n, threshold) {}
+};
+
+template <>
+struct CatalogueCoverage<CTR> : public CatalogueCoverageImpl
+{
+	CatalogueCoverage(sig::Maybe<uint> top_n, sig::Maybe<double> threshold) : top_n_(top_n), threshold_(threshold) {}
+
+	double operator()(CTRPtr model, std::vector<RatingContainer<CTR::RatingValueType>>& test_set, bool is_user_test) const
+	{
+		sig::Maybe<double> result;
+
+		if (is_user_test) {
+			std::vector<std::vector<Id>> ests;
+
+			for (UserId id = 0, size = test_set.size(); id < size; ++id) {
+				ests.push_back(sig::map([](CTR::EstValueType const& e) { return e.first; }, model->recommend(id, true, top_n_, threshold_)));
+			}
+
+			auto result = this->impl(ests, model->getItemNum());
+		}
+		else {}
+
+		return result ? *result : 0;
+	}
+
+private:
+	sig::Maybe<uint> top_n_;
+	sig::Maybe<double> threshold_;
 };
 
 

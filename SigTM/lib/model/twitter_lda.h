@@ -9,7 +9,7 @@ http://opensource.org/licenses/mit-license.php
 #define SIGTM_TWITTER_LDA_H
 
 #include "lda_common_module.hpp"
-#include "SigUtil/lib/array.hpp"
+#include "SigUtil/lib/container/array.hpp"
 
 namespace sigtm
 {

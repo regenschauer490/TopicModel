@@ -400,50 +400,71 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	validation.debug_set_v(tmp_v);
 */	
 	{
-		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(10, sigtm::nothing));
-		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(10, sigtm::nothing));
-		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+		const uint N = 10;
+		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(N, sigtm::nothing));
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(N, sigtm::nothing));
+		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(N, sigtm::nothing));
+		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(N, sigtm::nothing));
 
 		//sig::save_num(precision, L"./precision@10.txt", "\n");
 		sig::save_num(recall, L"./recall@10.txt", "\n");
-		//sig::save_num(fmeasure, L"./f_measure@10.txt", "\n");
+		sig::save_num(ave_pre, L"./average_precision@10.txt", "\n");
+		sig::save_num(cat_cov, L"./catalogue_coverage@10.txt", "\n");
 	}
 	{
+		const uint N = 50;
 		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(50, sigtm::nothing));
-		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(50, sigtm::nothing));
-		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(N, sigtm::nothing));
+		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(N, sigtm::nothing));
+		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(N, sigtm::nothing));
 
 		//sig::save_num(precision, L"./precision@50.txt", "\n");
 		sig::save_num(recall, L"./recall@50.txt", "\n");
-		//sig::save_num(fmeasure, L"./f_measure@50.txt", "\n");
+		sig::save_num(ave_pre, L"./average_precision@50.txt", "\n");
+		sig::save_num(cat_cov, L"./catalogue_coverage@50.txt", "\n");
 	}
 	{
+		const uint N = 100;
 		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(100, sigtm::nothing));
-		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(100, sigtm::nothing));
-		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(N, sigtm::nothing));
+		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(N, sigtm::nothing));
+		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(N, sigtm::nothing));
 
 		//sig::save_num(precision, L"./precision@100.txt", "\n");
 		sig::save_num(recall, L"./recall@100.txt", "\n");
-		//sig::save_num(fmeasure, L"./f_measure@100.txt", "\n");
+		sig::save_num(ave_pre, L"./average_precision@100.txt", "\n");
+		sig::save_num(cat_cov, L"./catalogue_coverage@100.txt", "\n");
 	}
 	{
+		const uint N = 1000;
 		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(1000, sigtm::nothing));
-		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(1000, sigtm::nothing));
-		//auto fmeasure = sig::zipWith(sigtm::F_MeasureBase(), precision, recall);
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(N, sigtm::nothing));
+		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(N, sigtm::nothing));
+		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(N, sigtm::nothing));
 
 		//sig::save_num(precision, L"./precision@1000.txt", "\n");
 		sig::save_num(recall, L"./recall@1000.txt", "\n");
-		//sig::save_num(fmeasure, L"./f_measure@1000.txt", "\n");
+		sig::save_num(ave_pre, L"./average_precision@1000.txt", "\n");
+		sig::save_num(cat_cov, L"./catalogue_coverage@1000.txt", "\n");
 	}
 	{
-		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(sigtm::nothing, 0.8));
+		const double th = 0.8;
+		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(sigtm::nothing, th));
+		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(sigtm::nothing, th));
+		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(sigtm::nothing, th));
 
 		sig::save_num(recall, L"./recall@gt0.8.txt", "\n");
+		sig::save_num(ave_pre, L"./average_precision@0.8.txt", "\n");
+		sig::save_num(cat_cov, L"./catalogue_coverage@0.8.txt", "\n");
 	}
 	{
 		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(sigtm::nothing, sigtm::nothing));
+		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(sigtm::nothing, sigtm::nothing));
+		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(sigtm::nothing, sigtm::nothing));
 
 		sig::save_num(recall, L"./recall@all.txt", "\n");
+		sig::save_num(ave_pre, L"./average_precision@all.txt", "\n");
+		sig::save_num(cat_cov, L"./catalogue_coverage@all.txt", "\n");
 	}
 	
 	getchar();
@@ -451,7 +472,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 
 int main()
-{
+
 	/*
 	[サンプルデータ]
 	
