@@ -37,8 +37,9 @@ using sig::Maybe;
 auto const nothing = boost::none; 
 using sig::FilepassString;
 
-using Document = std::vector<std::wstring>;
-using Documents = std::vector< std::vector<std::wstring> >;
+using Text = std::wstring;
+using Document = std::vector<Text>;
+using Documents = std::vector<Document>;
 
 using DocumentId = uint;
 using TopicId = uint;

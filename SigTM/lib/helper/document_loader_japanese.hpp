@@ -5,78 +5,90 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#ifndef SIGTM_INPUT_FILTER_H
-#define SIGTM_INPUT_FILTER_H
+#ifndef SIGTM_DOCUMENT_LOADER_JAPANESE_HPP
+#define SIGTM_DOCUMENT_LOADER_JAPANESE_HPP
 
 #include "../sigtm.hpp"
 
 #if SIG_USE_SIGNLP
 
 #include "document_loader.hpp"
-#include "SigNlp/polar_evaluation.hpp"
 #include "SigUtil/lib/functional/high_order.hpp"
 #include "SigUtil/lib/modify/remove.hpp"
 #include "SigUtil/lib/calculation/basic_statistics.hpp"
 #include <future>
+
+#include "SigNlp/polar_evaluation.hpp"
 
 namespace sigtm
 {
 using signlp::WordClass;
 
 
-/* 入力データへのフィルタ処理の設定を行う */
-class FilterSetting
+/* 日本語の生テキストから入力データを作成 */
+class DocumentLoaderFromJapanese : public DocumentLoader
 {
-	friend class DocumentLoaderFromText;
+public:
+	/* 入力データへのフィルタ処理の設定を行う */
+	class FilterSetting
+	{
+	public:
+		using Filter = std::function< void(Text&) >;
 
-	bool base_form_;
-	std::unordered_set<WordClass> selected_word_class_;
-	std::unordered_map< uint, std::unordered_set<std::wstring> > excepted_words_;
-	std::function< void(std::wstring&) > pre_filter_;
-	std::function< void(std::wstring&) > aft_filter_;
+	private:
+		bool base_form_;
+		std::unordered_set<WordClass> selected_word_class_;
+		Filter common_pri_filter_;
+		Filter common_post_filter_;
+		std::unordered_map< uint, Filter> individual_pri_filter_;
+		std::unordered_map< uint, Filter> individual_post_filter_;
+
+	private:
+		FilterSetting() = delete;
+
+		//_word_class に設定された品詞であるか
+		bool isSelected(WordClass self) const{ return selected_word_class_.count(self) > 0 ? true : false; }
+
+	public:
+		FilterSetting(FilterSetting const&) = default;
+
+		//オブジェクトの生成
+		//use_base_form：形態素解析後に単語を原型に修正するか (false:元表現, true:原形) 
+		FilterSetting(bool use_base_form) : base_form_(use_base_form), selected_word_class_(), common_pri_filter_(nullptr), common_post_filter_(nullptr){};
+
+		bool isBaseForm() const{ return base_form_; }
+
+		/* トークンリストに追加する単語に関する設定 */
+
+		//形態素解析後、リストに追加する品詞を指定
+		void addWordClass(WordClass select){ selected_word_class_.insert(select); }
+		bool checkWordClass(WordClass select) const{ return selected_word_class_.count(select); }
+
+
+		/* 入力データの文字列に対して行うフィルタ処理の登録 (例：正規表現でURLを除去)  */
+
+		// 各ドキュメントの各行に行うフィルタ処理を設定
+		void setCommonPriorFilter(Filter filter){ common_pri_filter_ = filter; }
+		void setCommonPosteriorFilter(Filter filter){ common_post_filter_ = filter; }
+
+		Filter getCommonPriorFilter() const{ return common_pri_filter_; }
+		Filter getCommonPosteriorFilter() const{ return common_post_filter_; }
+
+		// 指定ドキュメントの各行に行うフィルタ処理を設定 (document_idは0から)
+		void setIndividualPriorFilter(uint document_id, Filter filter){ individual_pri_filter_.emplace(document_id, filter); }
+		void setIndividualPosteriorFilter(uint document_id, Filter filter){ individual_post_filter_.emplace(document_id, filter); }
+
+		Filter getIndividualPriorFilter(uint document_id) const{ return individual_pri_filter_.count(document_id) ? individual_pri_filter_.at(document_id) : nullptr; }
+		Filter getIndividualPosteriorFilter(uint document_id) const{ return individual_post_filter_.count(document_id) ? individual_post_filter_.at(document_id) : nullptr; }
+	};
 
 private:
-	FilterSetting() = delete;
-
-	//_word_class に設定された品詞であるか
-	bool isSelected(WordClass self) const{ return selected_word_class_.count(self) > 0 ? true : false; }
-
-public:
-	FilterSetting(FilterSetting const&) = default;
-
-	//オブジェクトの生成
-	//use_base_form：形態素解析後に単語を原型に修正するか (false:元表現, true:原形) 
-	FilterSetting(bool use_base_form) : base_form_(use_base_form), selected_word_class_(), pre_filter_([](std::wstring& s){}), aft_filter_([](std::wstring& s){}){};
-
-
-	/* トークンリストに追加する単語に関する設定 */
-
-	//形態素解析後、リストに追加する品詞を指定
-	void addWordClass(WordClass select){ selected_word_class_.insert(select); }
-
-	//指定ドキュメント内で除外する単語を指定 (document_idは0から)
-	void addExceptWord(uint document_id, std::wstring const& word){ excepted_words_[document_id].insert(word); }
-
-
-	/* 入力データの文字列に対して行うフィルタ処理の登録 (例：正規表現でURLを除去)  */
-
-	//形態素解析前に行うフィルタ処理を設定
-	void setPreFilter(std::function< void(std::wstring&) > const& filter){ pre_filter_ = filter; }
-
-	//形態素解析後に行うフィルタ処理を設定
-	void setAftFilter(std::function< void(std::wstring&) > const& filter){ aft_filter_ = filter; }
-};
-
-
-/* 自然言語のテキストから入力データを作成 */
-class DocumentLoaderFromText : public DocumentLoader
-{
 	const FilterSetting filter_;
 
 private:
-	DocumentLoaderFromText() = delete;
-	DocumentLoaderFromText(DocumentLoaderFromText const& src) = delete;
-	DocumentLoaderFromText(DocumentType type, Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
+	DocumentLoaderFromJapanese() = delete;
+	DocumentLoaderFromJapanese(DocumentLoaderFromJapanese const& src) = delete;
+	DocumentLoaderFromJapanese(DocumentType type, Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
 		: DocumentLoader(type, raw_texts.size(), save_folder_pass), filter_(filter)
 	{
 		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) info_.doc_names_.push_back(sig::to_fpstring(i));
@@ -92,7 +104,7 @@ private:
 	void makeData(DocumentType type, Documents const& raw_texts);
 	
 public:
-	/* 形態素解析前の生のテキストからモデルへの入力形式データを生成する */
+	/* 形態素解析前の生テキストからモデルへの入力形式データを生成する */
 
 	// 変数に保持している一般的なdocument集合から生成 ( raw_texts[document_id][sentence_line] ) 
 	static DocumentSetPtr makeInstance(
@@ -101,7 +113,7 @@ public:
 		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
 		std::vector<FilepassString> doc_names		// 各documentの識別名
 	){
-		return DocumentSetPtr(new DocumentLoaderFromText(DocumentType::Defaut, raw_texts, filter, save_folder_pass, doc_names));
+		return DocumentSetPtr(new DocumentLoaderFromJapanese(DocumentType::Defaut, raw_texts, filter, save_folder_pass, doc_names));
 	}
 
 	// テキストファイルに保存された一般的なdocument集合から生成 (各.txtファイルがdocumentに相当)
@@ -117,7 +129,7 @@ public:
 			assert(false);
 		}
 		
-		return DocumentSetPtr(new DocumentLoaderFromText(
+		return DocumentSetPtr(new DocumentLoaderFromJapanese(
 			DocumentType::Defaut,
 			sig::map([&](FilepassString file){
 				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
@@ -133,7 +145,7 @@ public:
 		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
 		std::vector<FilepassString> user_names		// 各userの識別名
 	){
-		return DocumentSetPtr(new DocumentLoaderFromText(DocumentType::Tweet, raw_tweets, filter, save_folder_pass, user_names));
+		return DocumentSetPtr(new DocumentLoaderFromJapanese(DocumentType::Tweet, raw_tweets, filter, save_folder_pass, user_names));
 	}
 
 	// テキストファイルに保存されたtweet集合から生成 (各.txtファイルがユーザのtweet集合、各行がtweetに相当)
@@ -149,7 +161,7 @@ public:
 			assert(false);
 		}
 
-		return DocumentSetPtr(new DocumentLoaderFromText(
+		return DocumentSetPtr(new DocumentLoaderFromJapanese(
 			DocumentType::Tweet,
 			sig::map([&](FilepassString file){
 				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
@@ -160,24 +172,28 @@ public:
 };
 
 
-inline void DocumentLoaderFromText::makeData(DocumentType type, Documents const& raw_texts)
+inline void DocumentLoaderFromJapanese::makeData(DocumentType type, Documents const& raw_texts)
 {
 
-	const auto ParallelFunc = [](Document document, FilterSetting const& filter){
+	const auto ParallelFunc = [](uint id, Document document, FilterSetting const& filter){
 		std::vector<std::vector<std::wstring>> result;
 		auto& mecab = signlp::MecabWrapper::getInstance();
 
 		for (auto& sentence : document){
-			filter.pre_filter_(sentence);		//形態素解析前フィルタ処理
+			//形態素解析前フィルタ処理
+			if (auto f = filter.getCommonPriorFilter()) f(sentence);
+			if (auto f = filter.getIndividualPriorFilter(id)) f(sentence);
 
 			//形態素解析処理
 			auto parsed = [&]{
-				if (filter.base_form_) return mecab.parseGenkeiThroughFilter(sentence, [&](WordClass wc){ return filter.selected_word_class_.count(wc); });
-				else return mecab.parseSimpleThroughFilter(sentence, [&](WordClass wc){ return filter.selected_word_class_.count(wc); });
+				if (filter.isBaseForm()) return mecab.parseGenkeiThroughFilter(sentence, [&](WordClass wc){ return filter.checkWordClass(wc); });
+				else return mecab.parseSimpleThroughFilter(sentence, [&](WordClass wc){ return filter.checkWordClass(wc); });
 			}();
 
 			for (auto& word : parsed){
-				filter.aft_filter_(word);	//形態素解析後フィルタ処理
+				//形態素解析後フィルタ処理
+				if(auto f = filter.getCommonPosteriorFilter()) f(word);	
+				if (auto f = filter.getIndividualPosteriorFilter(id)) f(word);
 			}
 
 			sig::remove_all(parsed, L"");
@@ -193,8 +209,8 @@ inline void DocumentLoaderFromText::makeData(DocumentType type, Documents const&
 
 	std::vector< std::future< std::vector<std::vector<std::wstring>> > > results;
 
-	for (auto const& document : raw_texts){
-		results.push_back(std::async(std::launch::async, ParallelFunc, document, filter_));
+	for (uint i = 0; i < raw_texts.size(); ++i){
+		results.push_back(std::async(std::launch::async, ParallelFunc, i, raw_texts[i], filter_));
 	}
 
 	std::vector<std::vector<std::vector<std::wstring>>> doc_line_words;

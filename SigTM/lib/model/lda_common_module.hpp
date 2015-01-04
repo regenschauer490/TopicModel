@@ -13,13 +13,10 @@ http://opensource.org/licenses/mit-license.php
 #include "SigUtil/lib/modify/sort.hpp"
 #include "SigUtil/lib/tools/random.hpp"
 #include "SigUtil/lib/calculation/basic_statistics.hpp"
-//#include <future>
+#include <future>
 
-#if SIG_USE_SIGNLP
-#include "../helper/document_loader_text.hpp"
-#else
 #include "../helper/document_loader.hpp"
-#endif
+
 
 namespace sigtm
 {

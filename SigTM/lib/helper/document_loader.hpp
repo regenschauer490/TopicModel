@@ -5,8 +5,8 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#ifndef SIGTM_INPUT_H
-#define SIGTM_INPUT_H
+#ifndef SIGTM_DOCUMENT_LOADER_HPP
+#define SIGTM_DOCUMENT_LOADER_HPP
 
 #include "document_set.hpp"
 #include "SigUtil/lib/file/load.hpp"
