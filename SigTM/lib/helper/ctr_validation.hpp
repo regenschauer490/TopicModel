@@ -35,7 +35,7 @@ struct CTR_PR_IMPL
 
 				auto val = static_cast<const Derived*>(this)->impl(
 					sig::map([](CTR::EstValueType const& e) { return e.first; }, est),
-					sig::map([](CTR::RatingPtr_ const& e) { return e->item_id_; }, test_set[id]),// sig::filter([](RatingContainer_::value_type const& r) { return !r->is_duplicate_; }, test_set[id])),
+					sig::map([](CTR::RatingPtr_ const& e) { return e->item_id_; }, sig::filter([](RatingContainer_::value_type const& r) { return !r->is_duplicate_; }, test_set[id])),
 					false,
 					std::less<uint>()
 				);
@@ -93,7 +93,7 @@ struct F_Measure<CTR> : public F_MeasureImpl, private CTR_PR_IMPL<Precision<CTR>
 };
 
 template <>
-struct AveragePrecision<CTR> : public AveragePrecisionImpl, public CTR_PR_IMPL<Recall<CTR>>
+struct AveragePrecision<CTR> : public AveragePrecisionImpl, public CTR_PR_IMPL<AveragePrecision<CTR>>
 {
 	AveragePrecision(sig::Maybe<uint> top_n, sig::Maybe<double> threshold) : CTR_PR_IMPL(top_n, threshold) {}
 };
@@ -105,7 +105,7 @@ struct CatalogueCoverage<CTR> : public CatalogueCoverageImpl
 
 	double operator()(CTRPtr model, std::vector<RatingContainer<CTR::RatingValueType>>& test_set, bool is_user_test) const
 	{
-		sig::Maybe<double> result;
+		double result = -1;
 
 		if (is_user_test) {
 			std::vector<std::vector<Id>> ests;
@@ -114,11 +114,12 @@ struct CatalogueCoverage<CTR> : public CatalogueCoverageImpl
 				ests.push_back(sig::map([](CTR::EstValueType const& e) { return e.first; }, model->recommend(id, true, top_n_, threshold_)));
 			}
 
-			auto result = this->impl(ests, model->getItemNum());
+			auto val = this->impl(ests, model->getItemNum());
+			if(val) result = *val;
 		}
 		else {}
 
-		return result ? *result : 0;
+		return result;
 	}
 
 private:

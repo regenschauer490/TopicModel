@@ -812,7 +812,7 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 
 auto CTR::recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<double> threshold) const->std::vector<EstValueType>
 {
-	auto result = recommend_impl(id, for_user, false);
+	auto result = recommend_impl(id, for_user);
 
 	if (top_n) result = sig::take(*top_n, std::move(result));
 	if (threshold) result = sig::filter([&](std::pair<Id, double> const& e){ return e.second > *threshold; }, std::move(result));

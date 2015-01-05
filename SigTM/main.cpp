@@ -401,12 +401,12 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 */	
 	{
 		const uint N = 10;
-		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(N, sigtm::nothing));
+		auto precision = validation.run(sigtm::Precision<sigtm::CTR>(N, sigtm::nothing));
 		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(N, sigtm::nothing));
 		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(N, sigtm::nothing));
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(N, sigtm::nothing));
 
-		//sig::save_num(precision, L"./precision@10.txt", "\n");
+		sig::save_num(precision, L"./precision@10.txt", "\n");
 		sig::save_num(recall, L"./recall@10.txt", "\n");
 		sig::save_num(ave_pre, L"./average_precision@10.txt", "\n");
 		sig::save_num(cat_cov, L"./catalogue_coverage@10.txt", "\n");
@@ -472,7 +472,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 
 int main()
-
+{
 	/*
 	[サンプルデータ]
 	
