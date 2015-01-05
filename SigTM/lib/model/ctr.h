@@ -16,7 +16,7 @@ http://opensource.org/licenses/mit-license.php
 #include "lda_common_module.hpp"
 
 #if SIG_USE_EIGEN
-#include <Eigen/Core>
+#include "Eigen/Core"
 #else
 #include "SigUtil/lib/calculation/ublas.hpp"
 #endif

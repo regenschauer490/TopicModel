@@ -20,7 +20,7 @@ static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 #include "lib/sigtm.hpp"
 
 #if SIG_USE_SIGNLP
-#include "lib/helper/document_loader_text.hpp"
+#include "lib/helper/document_loader_japanese.hpp"
 #else
 #include "lib/helper/document_loader.hpp"
 #endif
@@ -42,7 +42,7 @@ sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, s
 
 #if SIG_USE_SIGNLP
 	// テキストからデータセットを作成する際に使用するフィルタ
-	sigtm::FilterSetting filter(true);
+	sigtm::DocumentLoaderFromJapanese::FilterSetting filter(true);
 
 	// 使用品詞の設定
 	filter.addWordClass(signlp::WordClass::名詞);
@@ -50,7 +50,7 @@ sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, s
 	//filter.addWordClass(signlp::WordClass::動詞);
 	
 	// 形態素解析前のフィルタ処理
-	filter.setPreFilter([](wstring& str){
+	filter.setCommonPriorFilter([](wstring& str){
 		static auto& replace = sig::ZenHanReplace::get_instance();
 		static sig::TagDealer<std::wstring> tag_dealer(L"<", L">");
 
@@ -62,7 +62,7 @@ sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, s
 	});
 
 	// 形態素解析後にフィルタ処理
-	filter.setAftFilter([](wstring& str){
+	filter.setCommonPosteriorFilter([](wstring& str){
 		str = regex_replace(str, noise_reg, wstring(L""));
 		str = regex_replace(str, a_hira_kata_reg, wstring(L""));
 	});
@@ -74,8 +74,8 @@ sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, s
 	if(make_new){
 #if SIG_USE_SIGNLP
 		// 新しくデータセットを作成(外部ファイルから生成)
-		if (InputTextType::Tweet == tt) inputdata = sigtm::DocumentLoaderFromText::makeInstanceFromTweet(src_folder, filter, out_folder);
-		else inputdata = sigtm::DocumentLoaderFromText::makeInstance(src_folder, filter, out_folder);
+		if (InputTextType::Tweet == tt) inputdata = sigtm::DocumentLoaderFromJapanese::makeInstanceFromTweet(src_folder, filter, out_folder);
+		else inputdata = sigtm::DocumentLoaderFromJapanese::makeInstance(src_folder, filter, out_folder);
 #else
 		assert(false);
 #endif
@@ -401,12 +401,12 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 */	
 	{
 		const uint N = 10;
-		auto precision = validation.run(sigtm::Precision<sigtm::CTR>(N, sigtm::nothing));
+		//auto precision = validation.run(sigtm::Precision<sigtm::CTR>(N, sigtm::nothing));
 		auto recall = validation.run(sigtm::Recall<sigtm::CTR>(N, sigtm::nothing));
 		auto ave_pre = validation.run(sigtm::AveragePrecision<sigtm::CTR>(N, sigtm::nothing));
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<sigtm::CTR>(N, sigtm::nothing));
 
-		sig::save_num(precision, L"./precision@10.txt", "\n");
+		//sig::save_num(precision, L"./precision@10.txt", "\n");
 		sig::save_num(recall, L"./recall@10.txt", "\n");
 		sig::save_num(ave_pre, L"./average_precision@10.txt", "\n");
 		sig::save_num(cat_cov, L"./catalogue_coverage@10.txt", "\n");
