@@ -172,15 +172,7 @@ static auto row_(EigenMatrix const& src, uint i) ->decltype(src.row(i))
 {
 	return src.row(i);
 }
-#else
-template <class V>
-static auto row_(V&& src, uint i) ->decltype(ublas::row(src, i))
-{
-	return ublas::row(src, i);
-}
-#endif
 
-#if SIG_USE_EIGEN
 static auto at_(EigenMatrix& src, uint row, uint col) ->decltype(src.coeffRef(row, col))
 {
 	return src.coeffRef(row, col);
@@ -191,11 +183,18 @@ static auto at_(EigenMatrix const& src, uint row, uint col) ->decltype(src.coeff
 }
 #else
 template <class V>
+static auto row_(V&& src, uint i) ->decltype(ublas::row(src, i))
+{
+	return ublas::row(src, i);
+}
+
+template <class V>
 static auto at_(V&& src, uint row, uint col) ->decltype(src(row, col))
 {
 	return src(row, col);
 }
 #endif
+
 
 template <class V>
 auto set_zero(V& vec, uint size)
@@ -349,7 +348,7 @@ void CTR::init()
 		for(TopicId k = 0; k < K_; ++k){
 			auto& beta_k = row_(beta_, k);
 			for (ItemId v = 0; v < V_; ++v) {
-				beta_k(v) = randf() + hparam_->beta_smooth_;
+				beta_k(v) = randf();
 			}
 			normalize_dist_v(beta_k);
 		}
@@ -376,7 +375,7 @@ void CTR::init()
 	else {
 		for (ItemId i = 0; i < I_; ++i) {
 			auto& theta_v = row_(theta_, i);
-			for (uint k = 0; k < K_; ++k) theta_v[k] = randf() + hparam_->alpha_smooth_;
+			for (uint k = 0; k < K_; ++k) theta_v[k] = randf();
 			normalize_dist_v(theta_v);
 		}
 	}
@@ -488,12 +487,12 @@ void CTR::save() const
 {
 	std::cout << "save trained parameters... ";
 
-	auto base_pass = input_data_->getWorkingDirectory() + SIG_TO_FPSTR("params/");
+	auto base_pass = input_data_->getWorkingDirectory(); //+ SIG_TO_FPSTR("params/");
 	auto mid = model_id_ >= 0 ? sig::to_fpstring(model_id_) : SIG_TO_FPSTR("");
 
-	save_impl(base_pass + item_factor_fname + mid, item_factor_, "item_factor");
-	save_impl(base_pass + user_factor_fname + mid, user_factor_, "user_factor");
-	save_impl(base_pass + theta_fname + mid, theta_, "theta");
+	save_impl(base_pass + item_factor_fname + mid, item_factor_, "ctr_item_factor");
+	save_impl(base_pass + user_factor_fname + mid, user_factor_, "ctr_user_factor");
+	save_impl(base_pass + theta_fname + mid, theta_, "ctr_theta");
 
 	std::cout << "saving file completed" << std::endl;
 }
@@ -505,9 +504,9 @@ void CTR::load()
 	auto base_pass = input_data_->getWorkingDirectory() + SIG_TO_FPSTR("params/");
 	auto mid = model_id_ >= 0 ? sig::to_fpstring(model_id_) : SIG_TO_FPSTR("");
 
-	load_impl(base_pass + item_factor_fname + mid, item_factor_, "item_factor");
-	load_impl(base_pass + user_factor_fname + mid, user_factor_, "user_factor");
-	load_impl(base_pass + theta_fname + mid, theta_, "theta");
+	load_impl(base_pass + item_factor_fname + mid, item_factor_, "ctr_item_factor");
+	load_impl(base_pass + user_factor_fname + mid, user_factor_, "ctr_user_factor");
+	load_impl(base_pass + theta_fname + mid, theta_, "ctr_theta");
 }
 
 double CTR::docInference(ItemId id,	bool update_word_ss)
@@ -705,49 +704,40 @@ void CTR::updateBeta()
 
 auto CTR::recommend_impl(Id id, bool for_user, bool ignore_train_set) const->std::vector<EstValueType>
 {
+	auto get_id = [](RatingPtr_ const& rp, bool is_user) { return is_user ? rp->user_id_ : rp->item_id_; };
+	auto get_estimate = [&](Id a, Id b, bool is_user) { return is_user ? estimate(a, b) : estimate(b, a); };
+
 	std::vector<EstValueType> result;
+	std::unordered_set<Id> check;
 
-	if (for_user){
-		result.reserve(I_);
-		if (ignore_train_set) {
-			uint i = 0;
-			for (auto e : user_ratings_[id]) {
-				for (uint ed = e->item_id_; i < ed; ++i) {
-					result.push_back(std::make_pair(i, estimate(id, i)));
-				}
-				i = e->item_id_ + 1;
-			}
-			for (; i < I_; ++i) {
-				result.push_back(std::make_pair(i, estimate(id, i)));
-			}
+	auto& ratings = for_user ? user_ratings_ : item_ratings_;
+	const uint S = for_user ? I_ : U_;
+
+	result.reserve(S);
+	if (ignore_train_set) {
+		for (auto const& e : ratings[id]) check.emplace(get_id(e, !for_user));
+
+		for (Id i = 0; i < S; ++i) {
+			if(!check.count(i)) result.push_back(std::make_pair(i, get_estimate(id, i, for_user)));
 		}
-		else {
-			for (uint i = 0; i < I_; ++i) {
-				result.push_back(std::make_pair(i, estimate(id, i)));
+
+		/*uint i = 0;
+		for (auto e : ratings[id]) {
+			for (uint ed = get_id(e, !for_user); i < ed; ++i) {
+				result.push_back(std::make_pair(i, get_estimates(id, i, for_user)));
 			}
+			i = get_id(e, !for_user) + 1;
+		}
+		for (; i < S; ++i) {
+			result.push_back(std::make_pair(i, get_estimates(id, i, for_user)));
+		}*/
+	}
+	else {
+		for (uint i = 0; i < S; ++i) {
+			result.push_back(std::make_pair(i, get_estimate(id, i, for_user)));
 		}
 	}
-	else{
-		result.reserve(U_);
-		if (ignore_train_set) {
-			uint u = 0;
-			for (auto e : item_ratings_[id]) {
-				for (uint ed = e->item_id_; u < ed; ++u) {
-					result.push_back(std::make_pair(u, estimate(u, id)));
-				}
-				u = e->user_id_ + 1;
-			}
-			for (; u < U_; ++u) {
-				result.push_back(std::make_pair(u, estimate(u, id)));
-			}
-		}
-		else {
-			for (uint u = 0; u < U_; ++u) {
-				result.push_back(std::make_pair(u, estimate(u, id)));
-			}
-		}
-	}
-
+	
 	sig::sort(result, [](std::pair<Id, double> const& v1, std::pair<Id, double> const& v2){ return v1.second > v2.second; });
 
 	return result;
@@ -764,6 +754,9 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		return true;
 	};
 
+	// キャッシュ用の領域確保（今後、trainの終了判定をユーザが設定できるよう変更する場合、キャッシュの再確保を行わないように変更）
+	if (hparam_->enable_recommend_cache_) estimate_ratings_ = MatrixUI<Maybe<double>>(U_, std::vector<Maybe<double>>(I_, nothing));
+
 	if (max_iter < min_iter) std::swap(max_iter, min_iter);
 
 	if (hparam_->theta_opt_){
@@ -772,7 +765,7 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		word_ss_ = MatrixKV_(K_, V_); // SIG_INIT_MATRIX(double, K, V, 0);
 		phi_ = MatrixTK_(T_, K_);  //SIG_INIT_MATRIX(double, T, K, 0);
 	}
-
+	
 	 while ((!conv.is_convergence() && iter < max_iter) || iter < min_iter)
 	 {
 		likelihood_old = likelihood_;
@@ -806,8 +799,13 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		info_print(iter, likelihood_, conv.get_value());
 	 }
 
-	 save();
-	 std::cout << "train finished" << std::endl;
+	save();
+	std::cout << "train finished" << std::endl;
+
+	gamma_.resize(0);
+	log_beta_.resize(0, 0);
+	word_ss_.resize(0, 0);
+	phi_.resize(0, 0);
 }
 
 auto CTR::recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<double> threshold) const->std::vector<EstValueType>
@@ -822,10 +820,19 @@ auto CTR::recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<dou
 
 inline double CTR::estimate(UserId u_id, ItemId i_id) const
 {
-	//return inner_prod(row_(user_factor_, u_id), row_(item_factor_, i_id));
-	auto uvec = row_(user_factor_, u_id);
-	auto ivec = row_(item_factor_, i_id);
-	return uvec.dot(ivec);
+	// todo: この判定がオーバーヘッド
+	if (!estimate_ratings_) {
+		auto uvec = row_(user_factor_, u_id);
+		auto ivec = row_(item_factor_, i_id);
+		return uvec.dot(ivec);
+	}
+	else if(!(*estimate_ratings_)[u_id][i_id]) {
+		//return inner_prod(row_(user_factor_, u_id), row_(item_factor_, i_id));
+		auto uvec = row_(user_factor_, u_id);
+		auto ivec = row_(item_factor_, i_id);
+		(*estimate_ratings_)[u_id][i_id] = uvec.dot(ivec);
+	}
+	return *(*estimate_ratings_)[u_id][i_id];
 }
 
 /*

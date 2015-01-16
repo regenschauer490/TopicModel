@@ -42,6 +42,19 @@ template <class T>
 using RatingContainer = std::vector<RatingPtr<T>>;
 
 
+template <class T>
+void rating_remove_duplicate(RatingContainer<T>& rating_vec, bool is_user_ratings) {
+	if (is_user_ratings) sig::remove_duplicates(rating_vec, [](RatingPtr<T> const& e) { return e->item_id_;  });
+	else sig::remove_duplicates(rating_vec, [](RatingPtr<T> const& e) { return e->user_id_;  });
+}
+
+template <class T>
+void rating_sort(RatingContainer<T>& rating_vec, bool is_user_ratings) {
+	if (is_user_ratings) sig::sort(rating_vec, [](RatingPtr<T> const& a, RatingPtr<T> const& b) { return a->item_id_ < b->item_id_;  });
+	else sig::sort(rating_vec, [](RatingPtr<T> const& a, RatingPtr<T> const& b) { return a->user_id_ < b->user_id_;  });
+}
+
+
 // user-item ratings for sparse matrix
 template <class T>
 class SparseRatingMatrixBase_ : boost::noncopyable
@@ -69,8 +82,13 @@ protected:
 	virtual ~SparseRatingMatrixBase_() = default;
 
 	void remove_duplicate() {
-		for (auto& u : user_) sig::remove_duplicates(u);
-		for (auto& i : item_) sig::remove_duplicates(i);
+		for (auto& u : user_) rating_remove_duplicate(u, true);
+		for (auto& i : item_) rating_remove_duplicate(i, false);
+	}
+
+	void sort() {
+		for (auto& u : user_) rating_sort(u, true);
+		for (auto& i : item_) rating_sort(i, false);
 	}
 	
 public:
@@ -164,15 +182,20 @@ class SparseBooleanMatrix : public SparseRatingMatrixBase_<int>
 				user_[id] = std::move(id_rating_map[id]);
 			}
 		}
+
+		sort();
+		remove_duplicate();
 	}
 	
 	SparseBooleanMatrix(std::vector<RatingContainer<T>> const& ratings){
 		for (auto&& r : ratings) reconstruct(boost::make_iterator_range(std::begin(r), std::end(r)));
+		sort();
 		remove_duplicate();
 	}
 
 	SparseBooleanMatrix(const_iterator_range const& ratings){
 		reconstruct(ratings);
+		sort();
 		remove_duplicate();
 	}
 

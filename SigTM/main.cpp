@@ -361,13 +361,13 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 
 	auto ratings = sigtm::SparseBooleanMatrix::makeInstance(user_ratings, true);
 
-	auto hparam = sigtm::CtrHyperparameter::makeInstance(true);
+	auto hparam = sigtm::CtrHyperparameter::makeInstance(TopicNum, true, true);
 
 	if (auto theta = sig::load_num2d<double>(out_folder + L"theta", " ")) {
 		hparam->setTheta(*theta);
 	}
 	if (auto beta = sig::load_num2d<double>(out_folder + L"beta", " ")) {
-		hparam->setTheta(*beta);
+		hparam->setBeta(*beta);
 	}
 /*
 	auto ctr = sigtm::CTR::makeInstance(TopicNum, hparam, docs, ratings);
@@ -391,7 +391,7 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	sig::save_num(est, L"./est_ctr.txt", " ");
 */
 
-	sigtm::CrossValidation<sigtm::CTR> validation(5, for_user_recommend, TopicNum, hparam, docs, ratings, 100, 2, 0);
+	sigtm::CrossValidation<sigtm::CTR> validation(for_user_recommend, TopicNum, hparam, docs, ratings, 100, 2, 0);
 
 /*	auto tmp_u = *sig::load_num2d<double>(out_folder + L"final_U.dat", " ");
 	auto tmp_v = *sig::load_num2d<double>(out_folder + L"final_V.dat", " ");

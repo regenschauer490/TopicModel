@@ -23,6 +23,10 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
+
+template <class T>
+using MatrixUI = std::vector<std::vector<T>>;
+
 #if SIG_USE_EIGEN
 using EigenVector = Eigen::VectorXd;
 using EigenMatrix = Eigen::MatrixXd;
@@ -47,31 +51,31 @@ struct CtrHyperparameter : boost::noncopyable
 {
 	std::vector<VectorK<double>> theta_;
 	VectorK<VectorV<double>> beta_;
-	double a_;				// positive item weight
-	double b_;				// negative item weight(b < a)
+	uint topic_num_;
+	double a_;				// positive update weight in U,V
+	double b_;				// negative update weight in U,V (b < a)
 	double lambda_u_;
 	double lambda_v_;
 	double learning_rate_;	// stochastic version for large datasets. Stochastic learning will be called when > 0
-	double alpha_smooth_;
-	double beta_smooth_;
 	bool theta_opt_;
+	bool enable_recommend_cache_;
 
 private:
-	CtrHyperparameter(bool optimize_theta)
+	CtrHyperparameter(uint topic_num, bool optimize_theta, bool enable_recommend_cache)
 	{
+		topic_num_ = topic_num;
 		a_ = 1;
 		b_ = 0.01;
 		lambda_u_ = 0.01;
 		lambda_v_ = 100;
 		learning_rate_ = -1;
-		alpha_smooth_ = 0.0;
-		beta_smooth_ = default_beta;
 		theta_opt_ = optimize_theta;
+		enable_recommend_cache_ = enable_recommend_cache;
 	}
 
 public:
-	static auto makeInstance(bool optimize_theta) ->std::shared_ptr<CtrHyperparameter>{
-		return std::shared_ptr<CtrHyperparameter>(new CtrHyperparameter(optimize_theta));
+	static auto makeInstance(uint topic_num, bool optimize_theta, bool enable_recommend_cache) ->std::shared_ptr<CtrHyperparameter>{
+		return std::shared_ptr<CtrHyperparameter>(new CtrHyperparameter(topic_num, optimize_theta, enable_recommend_cache));
 	}
 
 	void setTheta(std::vector<VectorK<double>> const& init){
@@ -96,7 +100,7 @@ private:
 	using RatingIter = SparseBooleanMatrix::const_iterator;
 	using RatingContainer = SparseBooleanMatrix::const_rating_range;
 	
-	const uint model_id_;
+	const int model_id_;
 	const CTRHyperParamPtr hparam_;
 	const DocumentSetPtr input_data_;
 	const RatingMatrixPtr<RatingValueType> ratings_;
@@ -117,6 +121,8 @@ private:
 	MatrixIK_ theta_;
 	MatrixUK_ user_factor_;
 	MatrixIK_ item_factor_;
+
+	mutable Maybe<MatrixUI<Maybe<double>>> estimate_ratings_;
 
 	double likelihood_;
 	const double conv_epsilon_ = 1e-4;
@@ -146,25 +152,25 @@ private:
 	auto recommend_impl(Id id, bool for_user, bool ignore_train_set = true) const->std::vector<std::pair<Id, double>>;
 	
 private:
-	CTR(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings, uint model_id)
+	CTR(CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings, int model_id)
 	: model_id_(model_id), hparam_(hparam), input_data_(docs), ratings_(ratings), tokens_(docs->tokens_), item_tokens_(docs->getDevidedDocument()),
-		user_ratings_(ratings->getUsers()), item_ratings_(ratings->getItems()), T_(docs->getTokenNum()), K_(topic_num), V_(docs->getWordNum()),
-		U_(ratings->userSize()), I_(ratings->itemSize()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_), likelihood_(-std::exp(50)),
-		gamma_(K_), log_beta_(K_, V_), word_ss_(K_, V_), phi_(T_, K_)
+		user_ratings_(ratings->getUsers()), item_ratings_(ratings->getItems()), T_(docs->getTokenNum()), K_(hparam->topic_num_), V_(docs->getWordNum()),
+		U_(ratings->userSize()), I_(ratings->itemSize()), beta_(K_, V_), theta_(I_, K_), user_factor_(U_, K_), item_factor_(I_, K_),
+		estimate_ratings_(nothing), likelihood_(-std::exp(50)),	gamma_(K_), log_beta_(K_, V_), word_ss_(K_, V_), phi_(T_, K_)
 	{
 		init();
 	}
-	CTR(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
-	: CTR(topic_num, hparam, docs, ratings, -1) {}
+	CTR(CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings)
+	: CTR(hparam, docs, ratings, -1) {}
 	
 public:	
-	static auto makeInstance(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings) ->std::shared_ptr<CTR>
+	static auto makeInstance(CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings) ->std::shared_ptr<CTR>
 	{
-		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings));
+		return std::shared_ptr<CTR>(new CTR(hparam, docs, ratings));
 	}
-	static auto makeInstance(uint topic_num, CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings, uint model_id) ->std::shared_ptr<CTR>
+	static auto makeInstance(CTRHyperParamPtr hparam, DocumentSetPtr docs, RatingMatrixPtr<RatingValueType> ratings, uint model_id) ->std::shared_ptr<CTR>
 	{
-		return std::shared_ptr<CTR>(new CTR(topic_num, hparam, docs, ratings, model_id));
+		return std::shared_ptr<CTR>(new CTR(hparam, docs, ratings, model_id));
 	}
 
 	void train(uint max_iter, uint min_iter, uint save_lag);
@@ -178,7 +184,8 @@ public:
 	uint getItemNum() const { return I_; }
 	uint getTopicNum() const { return K_; }
 	uint getWordNum() const { return V_; }
-
+	uint getUserRatingNum(uint user_id) const { return user_ratings_[user_id].size(); }
+	uint getItemRatingNum(uint item_id) const { return item_ratings_[item_id].size(); }
 
 	void debug_set_u(std::vector<std::vector<double>> const& v) {
 		for (uint i = 0; i < v.size(); ++i) {

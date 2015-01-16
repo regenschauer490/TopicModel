@@ -127,11 +127,11 @@ public:
 	// ファイルに出力
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const override;
 
-	//ドキュメントのトピック分布
+	//ドキュメントのトピック比率
 	using LDA::getTheta;		// [doc][topic]
 	auto getTheta(DocumentId d_id) const->VectorK<double> override;	// [topic]
 
-	//トピックの単語分布
+	//トピックの単語比率
 	using LDA::getPhi;		// [topic][word] //std::bind(std::mem_fn<VectorV<double>, LDA_Gibbs, TopicId>(LDA_Gibbs::getPhi), *this,)
 	auto getPhi(TopicId k_id) const->VectorV<double> override;	// [word]
 

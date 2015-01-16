@@ -106,8 +106,8 @@ inline void DocumentLoader::reconstruct()
 	std::cout << "document_num: " << doc_num << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl << std::endl;
 
 	if (doc_num <= 0 || tnum <= 0 || wnum <= 0) {
-		std::cout << "token file is corrupted" << std::endl;
-		assert(false);
+		std::cout << "header info is invalid in token file" << std::endl;
+		getchar();	std::terminate();
 	}
 
 	info_.doc_num_ = static_cast<uint>(doc_num);
@@ -117,20 +117,34 @@ inline void DocumentLoader::reconstruct()
 	for (uint i = ++line_iter; i<token_text.size(); ++i){
 		if (!parseLine(token_text[i]) && token_text[i] != L"") {
 			std::cout << "error in token file at line : " << i << std::endl;
-			assert(false);
+			getchar();	std::terminate();
 		}
+	}
+
+	if (tnum != tokens_.size()) {
+		std::cout << "token file is corrupted" << std::endl;
+		getchar();	std::terminate();
 	}
 
 	auto vocab_text = fileopen(base_pass + VOCAB_FILENAME);
 
-	sig::for_each([&](uint i, std::wstring const& e){
-		auto word = std::make_shared<std::wstring>(e);
-		words_.emplace(i, word);
+	for (uint i = 0; i < wnum; ++i) {
+		auto word = std::make_shared<std::wstring>(vocab_text[i]);
+
+		if (words_.hasElement(word)) {
+			words_.emplace(i, word->append(L"_" + std::to_wstring(i)));
+			continue;
+		}
+
+		words_.emplace(i, word);		
 	}
-	, 0, vocab_text);
-
-
+	
 	info_.doc_names_ = fileopen(base_pass + DOC_FILENAME);	
+
+	if (wnum != words_.size()) {
+		std::cout << "vocab file is corrupted" << std::endl;
+		getchar();	std::terminate();
+	}
 }
 
 }

@@ -82,7 +82,7 @@ public:
 	WordSet(WordSet const&) = delete;
 
 #if SIG_ENABLE_BOOST
-	void emplace(WordId id, C_WStrPtr word){ id_word_.insert(bimap::value_type(id, word)); }
+	void emplace(WordId id, C_WStrPtr const& word){ id_word_.insert(bimap::value_type(id, word)); }
 	void emplace(WordId id, std::wstring word){	id_word_.insert(bimap::value_type(id, std::make_shared<std::wstring>(word))); }
 	
 	//C_WStrPtr getWord(WordId id){ return id_word_.left[id]; }
@@ -91,12 +91,12 @@ public:
 	C_WStrPtr getWord(const_iterator::value_type const& elem) const{ return elem.right; }
 
 	//WordId getWordID(C_WStrPtr word){ return id_word_.right[word]; }
-	WordId getWordID(C_WStrPtr word) const{ return id_word_.right.at(word); }
+	WordId getWordID(C_WStrPtr const& word) const{ return id_word_.right.at(word); }
 	WordId getWordID(const_iterator iter) const{ return iter->left; }
 	WordId getWordID(const_iterator::value_type const& elem) const{ return elem.left; }
 
-	bool hasElement(C_WStrPtr word) const{ return id_word_.right.count(word) > 0 ? true : false; }
-	bool hasElement(WordId id) const{ return id_word_.left.count(id) > 0 ? true : false; }
+	bool hasElement(C_WStrPtr const& word) const{ return id_word_.right.count(word); }
+	bool hasElement(WordId id) const{ return id_word_.left.count(id); }
 #else
 	void emplace(WordId id, C_WStrPtr word){
 		id_word_.push_back(word);

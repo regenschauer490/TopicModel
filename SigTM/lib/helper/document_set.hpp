@@ -132,16 +132,19 @@ inline void DocumentSet::save() const
 
 	sig::clear_file(vocab_pass);
 	sig::clear_file(token_pass);
-
-	std::locale loc = std::locale("japanese").combine< std::numpunct<char> >(std::locale::classic());
-	std::locale::global(loc);
+	
+	std::vector<Text> tmp;
 
 	// save words
-	std::wofstream ofs2(vocab_pass);
-	for (auto const& word : words_){
-		ofs2 << *words_.getWord(word) << std::endl;
+	for (uint i = 0; i < words_.size(); ++i) {
+		//sig::save_line(*words_.getWord(word), vocab_pass, sig::WriteMode::append);
+		//ofs2 << *words_.getWord(word) << std::endl;
+		tmp.push_back(*words_.getWord(i));
 	}
-	ofs2.close();
+	sig::save_line(tmp, vocab_pass);
+
+	auto loc = std::locale("japanese").combine< std::numpunct<char> >(std::locale::classic());
+	std::locale::global(loc);
 
 	// save tokens
 	std::ofstream ofs(token_pass);

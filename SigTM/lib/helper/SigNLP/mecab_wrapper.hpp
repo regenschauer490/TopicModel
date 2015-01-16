@@ -13,10 +13,10 @@
 
 #if defined(_WIN64)
 #include "../../../external/mecab/x64/mecab.h"
-#pragma comment(lib, "../../SigTM/external/mecab/x64/libmecab.lib")
+#pragma comment(lib, "libmecab.lib")
 #elif defined(_WIN32)
 #include "../../../external/mecab/x86/mecab.h"
-#pragma comment(lib, "../../SigTM/external/mecab/x86/libmecab.lib")
+//#pragma comment(lib, "../../SigTM/external/mecab/x86/libmecab.lib")
 #else
 static_assert(false, "this environment doesn't support.");
 #endif
@@ -27,7 +27,7 @@ namespace signlp
 /* MeCab ユーティリティ */
 class MecabWrapper
 {
-	MeCab::Model* model_;
+	std::shared_ptr<MeCab::Model> model_;
 
 	//ex)もう	副詞,一般,*,*,*,*,もう,モウ,モー,,
 	//   眠い	形容詞,自立,*,*,形容詞・アウオ段,基本形,眠い,ネムイ,ネムイ,ねむい/眠い,
@@ -39,7 +39,12 @@ class MecabWrapper
 	using LatticePtr = std::shared_ptr<MeCab::Lattice>;
 
 private:
-	MecabWrapper() : model_(MeCab::createModel("")){}
+	MecabWrapper() : model_(MeCab::createModel("")){
+			if (!model_) {
+				std::cout << "failed to make mecab instance" << std::endl;
+				getchar();
+			}
+		}
 	MecabWrapper(MecabWrapper const&) = delete;
 
 	// 並列処理を考慮
