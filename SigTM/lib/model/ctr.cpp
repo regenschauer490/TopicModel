@@ -156,13 +156,6 @@ void compound_assign_mult_v(V& vec, T val)
 
 #endif
 
-const double projection_z = 1.0;
-
-static double safe_log(double x)
-{
-	return x > 0 ? std::log(x) : log_lower_limit;
-};
-
 #if SIG_USE_EIGEN
 static auto row_(EigenMatrix& src, uint i) ->decltype(src.row(i))
 {
@@ -195,6 +188,13 @@ static auto at_(V&& src, uint row, uint col) ->decltype(src(row, col))
 }
 #endif
 
+
+const double projection_z = 1.0;
+
+static double safe_log(double x)
+{
+	return x > 0 ? std::log(x) : log_lower_limit;
+};
 
 template <class V>
 auto set_zero(V& vec, uint size)
@@ -834,6 +834,59 @@ inline double CTR::estimate(UserId u_id, ItemId i_id) const
 	}
 	return *(*estimate_ratings_)[u_id][i_id];
 }
+
+
+inline auto CTR::getTheta() const->MatrixIK
+{
+	MatrixDK<double> theta;
+
+	for (ItemId i = 0; i < I_; ++i) theta.push_back(getTheta(i));
+
+	return theta;
+}
+inline auto CTR::getTheta(ItemId i_id) const->VectorK_
+{
+	return row_(theta_, i_id);
+}
+
+inline auto CTR::getPhi() const->MatrixKV_
+{
+	return beta_;
+}
+inline auto CTR::getPhi(TopicId k_id) const->VectorV_
+{
+	return row_(beta_, k_id);
+}
+
+auto CTR::getTermScore() const->MatrixKV<double>
+{
+	using sig::operator<<=;
+
+	if (!term_score_) {
+		term_score_ <<= SIG_INIT_MATRIX(double, K, V, 0);
+		calcTermScore(getPhi(), *term_score_);
+	}
+	return *term_score_;
+}
+auto CTR::getTermScore(TopicId t_id) const->VectorV<double>
+{
+	if (!term_score_) {
+		getTermScore();
+	}
+	return (*term_score_)[t_id];
+}
+
+auto CTR::getWordOfTopic(TopicId k_id, uint return_word_num, bool calc_term_score = true) const->std::vector< std::tuple<std::wstring, double>>
+{
+	std::vector< std::tuple<std::wstring, double> > result;
+
+	std::vector<double> df;
+	if (calc_term_score) df = getTermScore(k_id);
+	else df = getPhi(k_id);
+
+	return getTopWords(df, return_word_num, input_data_->words_);
+}
+
 
 /*
 void c_ctr::learn_map_estimate(

@@ -32,6 +32,7 @@ using EigenVector = Eigen::VectorXd;
 using EigenMatrix = Eigen::MatrixXd;
 
 using VectorK_ = EigenVector;		// topic
+using VectorV_ = EigenVector;		// word
 using MatrixIK_ = EigenMatrix;		// item - topic(factor)
 using MatrixUK_ = EigenMatrix;		// user - topic(factor)
 using MatrixKK_ = EigenMatrix;
@@ -40,6 +41,7 @@ using MatrixTK_ = EigenMatrix;
 
 #else
 using VectorK_ = sig::vector_u<double>;		// topic
+using VectorV_ = sig::vector_u<double>;		// word
 using MatrixIK_ = sig::matrix_u<double>;	// item - topic(factor)
 using MatrixUK_ = sig::matrix_u<double>;	// user - topic(factor)
 using MatrixKK_ = sig::matrix_u<double>;
@@ -89,7 +91,7 @@ public:
 using CTRHyperParamPtr = std::shared_ptr<CtrHyperparameter>;
 
 //template <class RatingValueType>
-class CTR
+class CTR : private impl::LDA_Module
 {
 public:
 	using RatingValueType = int;
@@ -123,6 +125,7 @@ private:
 	MatrixIK_ item_factor_;
 
 	mutable Maybe<MatrixUI<Maybe<double>>> estimate_ratings_;
+	mutable Maybe<MatrixKV<double>> term_score_;	// word score of emphasizing each topic
 
 	double likelihood_;
 	const double conv_epsilon_ = 1e-4;
@@ -179,6 +182,22 @@ public:
 	auto recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<double> threshold) const->std::vector<std::pair<Id, double>>;
 
 	double estimate(UserId u_id, ItemId i_id) const;
+	
+
+	//ドキュメントのトピック比率
+	auto getTheta() const->MatrixIK_;		// [doc][topic]
+	auto getTheta(ItemId i_id) const->VectorK_;	// [topic]
+	
+	//トピックの単語比率
+	auto getPhi() const->MatrixKV_;		// [topic][word]
+	auto getPhi(TopicId k_id) const->VectorV_;	// [word]
+	
+	//トピックを強調する単語スコア
+	auto getTermScore() const->MatrixKV<double>;		// [topic][word]
+	auto getTermScore(TopicId t_id) const->VectorV<double>;	// [word]
+
+	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
+	auto getWordOfTopic(TopicId k_id, uint return_word_num, bool calc_term_score = true) const->std::vector< std::tuple<std::wstring, double>>;	// [ranking]<vocab, score>
 
 	uint getUserNum() const { return U_; }
 	uint getItemNum() const { return I_; }
