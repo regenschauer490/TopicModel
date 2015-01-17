@@ -28,8 +28,6 @@ template <class T>
 using MatrixUI = std::vector<std::vector<T>>;
 
 #if SIG_USE_EIGEN
-using EigenVector = Eigen::VectorXd;
-using EigenMatrix = Eigen::MatrixXd;
 
 using VectorK_ = EigenVector;		// topic
 using VectorV_ = EigenVector;		// word
