@@ -6,8 +6,6 @@ http://opensource.org/licenses/mit-license.php
 */
 
 #include "ctr.h"
-//#include "SigUtil/lib/calculation/binary_operation.hpp"
-//#include "SigUtil/lib/calculation/assign_operation.hpp"
 #include "SigUtil/lib/tools/convergence.hpp"
 #include "SigUtil/lib/functional/filter.hpp"
 #include "SigUtil/lib/functional/list_deal.hpp"
@@ -20,181 +18,12 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
-#if SIG_USE_EIGEN
-template <class V>
-auto make_zero(uint size)
-{
-	return V::Zero(size);
-}
-
-template <class M>
-auto make_zero(uint size_row, uint size_col)
-{
-	return M::Zero(size_row, size_col);
-}
-
-template <class V>
-void normalize_dist_v(V&& vec)
-{
-	double sum = vec.sum();
-	vec.array() /= sum;
-}
-
-template <class V>
-auto sum_v(V const& vec)
-{
-	return vec.sum();
-}
-
-template <class F, class V>
-auto map_v(F&& func, V&& vec)
-{
-	using RT = decltype(sig::impl::eval(std::forward<F>(func), std::forward<V>(vec)(0)));
-
-	EigenVector result(vec.size());
-
-	for (uint i = 0, size = vec.size(); i < size; ++i) {
-		result[i] = std::forward<F>(func)(std::forward<V>(vec)(i));
-	}
-
-	return result;
-}
-
-template <class F, class M>
-auto map_m(F&& func, M&& mat)
-{
-	using RT = decltype(sig::impl::eval(std::forward<F>(func), std::forward<M>(mat)(0, 0)));
-
-	const uint col_size = mat.cols();
-	const uint row_size = mat.rows();
-
-	EigenMatrix result(row_size, col_size);
-
-	for (uint i = 0; i < row_size; ++i) {
-		for (uint j = 0; j < col_size; ++j) {
-			result(i, j) = std::forward<F>(func)(std::forward<M>(mat)(i, j));
-		}
-	}
-
-	return result;
-}
-
-template <class V, class T>
-void assign_v(V& vec, T val)
-{
-	for (uint i = 0, size = vec.size(); i < size; ++i) vec[i] = val;
-}
-
-template <class V, class T>
-void compound_assign_plus_v(V& vec, T val)
-{
-	vec.array() += val;
-}
-
-template <class V, class T>
-void compound_assign_mult_v(V& vec, T val)
-{
-	vec.array() *= val;
-}
-
-#else
-using namespace boost::numeric;
-
-template <class V>
-auto make_zero(uint size)
-{
-	return V(size, 0);
-}
-
-template <class M>
-auto make_zero(uint size_row, uint size_col)
-{
-	return M(size_row, size_col, 0);
-}
-
-template <class V>
-void normalize_dist_v(V&& vec)
-{
-	return sig::normalize_dist(vec);
-}
-
-template <class V>
-auto sum_v(V const& vec)
-{
-	return sum(vec);
-}
-
-template <class F, class V>
-auto map_v(F&& func, V&& vec)
-{
-	return sig::map_v(std::forward<F>(func), std::forward<V>(vec));
-}
-
-template <class F, class M>
-auto map_m(F&& func, M&& mat)
-{
-	return sig::map_m(std::forward<F>(func), std::forward<M>(mat));
-}
-
-template <class V, class T>
-void assign_v(V& vec, T val)
-{
-	sig::for_each_v([val](double& v) { v = val; }, vec);
-}
-
-template <class V, class T>
-void compound_assign_plus_v(V& vec, T val)
-{
-	sig::for_each_v([val](double& v){ v += val; }, vec);
-}
-
-template <class V, class T>
-void compound_assign_mult_v(V& vec, T val)
-{
-	sig::for_each_v([val](double& v) { v *= val; }, vec);
-}
-
-#endif
-
 const double projection_z = 1.0;
 
 static double safe_log(double x)
 {
 	return x > 0 ? std::log(x) : log_lower_limit;
 };
-
-#if SIG_USE_EIGEN
-static auto row_(EigenMatrix& src, uint i) ->decltype(src.row(i))
-{
-	return src.row(i);
-}
-static auto row_(EigenMatrix const& src, uint i) ->decltype(src.row(i))
-{
-	return src.row(i);
-}
-
-static auto at_(EigenMatrix& src, uint row, uint col) ->decltype(src.coeffRef(row, col))
-{
-	return src.coeffRef(row, col);
-}
-static auto at_(EigenMatrix const& src, uint row, uint col) ->decltype(src.coeffRef(row, col))
-{
-	return src.coeffRef(row, col);
-}
-#else
-template <class V>
-static auto row_(V&& src, uint i) ->decltype(ublas::row(src, i))
-{
-	return ublas::row(src, i);
-}
-
-template <class V>
-static auto at_(V&& src, uint row, uint col) ->decltype(src(row, col))
-{
-	return src(row, col);
-}
-#endif
-
 
 template <class V>
 auto set_zero(V& vec, uint size)
@@ -566,7 +395,7 @@ void CTR::updateU()
 	// calculate VCV^T in equation(8)
 	for (uint i = 0; i < I_; i ++){
 		if (std::begin(item_ratings_[i]) != std::end(item_ratings_[i])){
-			auto const vec_v = row_(item_factor_, i);
+			auto const& vec_v = row_(item_factor_, i);
 
 			//XX += outer_prod(vec_v, vec_v);
 			XX += vec_v.transpose() * vec_v;
@@ -587,9 +416,12 @@ void CTR::updateU()
 			VectorK_ x = VectorK_::Zero(K_);
 
 			for (auto rating : ratings){
-				auto const vec_v = row_(item_factor_, rating->item_id_);
+				auto const& vec_v = row_(item_factor_, rating->item_id_);
 
-				A += delta_ab * vec_v.transpose() * vec_v;
+				for (uint m = 0; m < K_; ++m) {
+					for (uint n = 0; n < K_; ++n) at_(A, m, n) += delta_ab * vec_v[m] * vec_v[n];
+				}
+				//A += delta_ab * vec_v.transpose() * vec_v;
 				x += hparam_->a_ * vec_v;
 			}
 
@@ -613,7 +445,7 @@ void CTR::updateV()
 	
 	for (uint j = 0; j < U_; ++j){
 		if (std::begin(user_ratings_[j]) != std::end(user_ratings_[j])){
-			auto const vec_u = row_(user_factor_, j);
+			auto const& vec_u = row_(user_factor_, j);
 			//XX += outer_prod(vec_u, vec_u);
 			XX += vec_u.transpose() * vec_u;
 		}
@@ -633,8 +465,11 @@ void CTR::updateV()
 			for (auto rating : ratings){
 				auto const& vec_u = row_(user_factor_, rating->user_id_);
 
+				for (uint m = 0; m < K_; ++m) {
+					for (uint n = 0; n < K_; ++n) at_(A, m, n) += delta_ab * vec_u[m] * vec_u[n];
+				}
 				//A += delta_ab * outer_prod(vec_u, vec_u);
-				A += delta_ab * vec_u.transpose() * vec_u;
+				//A += delta_ab * vec_u.transpose() * vec_u;
 				x += hparam_->a_ * vec_u;
 			}
 
@@ -655,7 +490,7 @@ void CTR::updateV()
 
 
 			for (auto rating : ratings){
-				auto const vec_u = row_(user_factor_, rating->user_id_);
+				auto const& vec_u = row_(user_factor_, rating->user_id_);
 				//auto result = inner_prod(vec_u, vec_v);
 				auto result = vec_u.dot(vec_u);
 
@@ -833,6 +668,31 @@ inline double CTR::estimate(UserId u_id, ItemId i_id) const
 		(*estimate_ratings_)[u_id][i_id] = uvec.dot(ivec);
 	}
 	return *(*estimate_ratings_)[u_id][i_id];
+}
+
+
+auto CTR::getTermScore() const->MatrixKV<double>
+{
+	using sig::operator<<=;
+
+	if (!term_score_) {
+		term_score_ <<= SIG_INIT_MATRIX(double, K, V, 0);
+		calcTermScore(getPhi(), *term_score_);
+	}
+	return *term_score_;
+}
+auto CTR::getTermScore(TopicId t_id) const->VectorV<double>
+{
+	if (!term_score_) {
+		getTermScore();
+	}
+	return (*term_score_)[t_id];
+}
+
+auto CTR::getWordOfTopic(TopicId k_id, uint return_word_num, bool calc_term_score) const->std::vector< std::tuple<std::wstring, double>>
+{
+	if (calc_term_score) return getTopWords(getTermScore(k_id), return_word_num, input_data_->words_);
+	else return getTopWords(getPhi(k_id), return_word_num, input_data_->words_);
 }
 
 /*

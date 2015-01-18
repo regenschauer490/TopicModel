@@ -13,35 +13,29 @@ http://opensource.org/licenses/mit-license.php
 
 #include "../helper/data_format.hpp"
 #include "../helper/rating_matrix.hpp"
+#include "../helper/eigen_ublas_util.hpp"
 #include "lda_common_module.hpp"
-
-#if SIG_USE_EIGEN
-#include "Eigen/Core"
-#else
-#include "SigUtil/lib/calculation/ublas.hpp"
-#endif
 
 namespace sigtm
 {
 
-template <class T>
-using MatrixUI = std::vector<std::vector<T>>;
+template <class T> using MatrixUI = std::vector<std::vector<T>>;
+template <class T> using MatrixIK = std::vector<std::vector<T>>;
 
 #if SIG_USE_EIGEN
-using EigenVector = Eigen::VectorXd;
-using EigenMatrix = Eigen::MatrixXd;
-
-using VectorK_ = EigenVector;		// topic
-using MatrixIK_ = EigenMatrix;		// item - topic(factor)
-using MatrixUK_ = EigenMatrix;		// user - topic(factor)
+using VectorK_ = EigenVector;
+using VectorV_ = EigenVector;
+using MatrixIK_ = EigenMatrix;
+using MatrixUK_ = EigenMatrix;
 using MatrixKK_ = EigenMatrix;
 using MatrixKV_ = EigenMatrix;
 using MatrixTK_ = EigenMatrix;
 
 #else
-using VectorK_ = sig::vector_u<double>;		// topic
-using MatrixIK_ = sig::matrix_u<double>;	// item - topic(factor)
-using MatrixUK_ = sig::matrix_u<double>;	// user - topic(factor)
+using VectorK_ = sig::vector_u<double>;
+using VectorV_ = sig::vector_u<double>;
+using MatrixIK_ = sig::matrix_u<double>;
+using MatrixUK_ = sig::matrix_u<double>;
 using MatrixKK_ = sig::matrix_u<double>;
 using MatrixKV_ = sig::matrix_u<double>;
 using MatrixTK_ = sig::matrix_u<double>;
@@ -88,8 +82,9 @@ public:
 
 using CTRHyperParamPtr = std::shared_ptr<CtrHyperparameter>;
 
+
 //template <class RatingValueType>
-class CTR
+class CTR : private impl::LDA_Module
 {
 public:
 	using RatingValueType = int;
@@ -123,6 +118,7 @@ private:
 	MatrixIK_ item_factor_;
 
 	mutable Maybe<MatrixUI<Maybe<double>>> estimate_ratings_;
+	mutable Maybe<MatrixKV<double>> term_score_;
 
 	double likelihood_;
 	const double conv_epsilon_ = 1e-4;
@@ -179,6 +175,21 @@ public:
 	auto recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<double> threshold) const->std::vector<std::pair<Id, double>>;
 
 	double estimate(UserId u_id, ItemId i_id) const;
+
+	//ドキュメントのトピック比率
+	auto getTheta() const->MatrixIK<double>{ return to_stl_matrix(theta_); }
+	auto getTheta(ItemId i_id) const->VectorK<double>{ return to_stl_vector(row_(theta_, i_id)); }
+
+	//トピックの単語比率
+	auto getPhi() const->MatrixKV<double>{ return to_stl_matrix(beta_); }
+	auto getPhi(TopicId k_id) const->VectorV<double>{ return to_stl_vector(row_(beta_, k_id)); }
+
+	//トピックを強調する単語スコア
+	auto getTermScore() const->MatrixKV<double>;
+	auto getTermScore(TopicId t_id) const->VectorV<double>;
+
+	// 指定トピックの上位return_word_num個の、語彙とスコアを返す
+	auto getWordOfTopic(TopicId k_id, uint return_word_num, bool calc_term_score = true) const->std::vector< std::tuple<std::wstring, double>>;
 
 	uint getUserNum() const { return U_; }
 	uint getItemNum() const { return I_; }

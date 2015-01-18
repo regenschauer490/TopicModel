@@ -182,6 +182,7 @@
     <ClInclude Include="..\..\SigTM\lib\helper\document_set.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\document_loader.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\document_loader_japanese.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\helper\eigen_ublas_util.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\mapreduce_module.h" />
     <ClInclude Include="..\..\SigTM\lib\helper\metrics.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\rating_matrix.hpp" />
