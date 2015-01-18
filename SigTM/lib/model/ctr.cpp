@@ -670,7 +670,6 @@ inline double CTR::estimate(UserId u_id, ItemId i_id) const
 	return *(*estimate_ratings_)[u_id][i_id];
 }
 
-
 auto CTR::getTermScore() const->MatrixKV<double>
 {
 	using sig::operator<<=;
@@ -694,6 +693,7 @@ auto CTR::getWordOfTopic(TopicId k_id, uint return_word_num, bool calc_term_scor
 	if (calc_term_score) return getTopWords(getTermScore(k_id), return_word_num, input_data_->words_);
 	else return getTopWords(getPhi(k_id), return_word_num, input_data_->words_);
 }
+
 
 /*
 void c_ctr::learn_map_estimate(

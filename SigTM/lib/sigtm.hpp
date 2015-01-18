@@ -56,6 +56,7 @@ template<class T> using VectorU = std::vector<T>;	// user
 
 const uint zero = 0;
 const double log_lower_limit = -100000;
+
 }
 
 namespace std

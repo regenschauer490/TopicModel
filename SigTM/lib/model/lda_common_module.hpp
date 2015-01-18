@@ -27,11 +27,14 @@ const uint cpu_core_num = std::thread::hardware_concurrency();
 class LDA_Module
 {
 protected:
-	void calcTermScore(MatrixKV<double> const& phi, MatrixKV<double>& dest) const;
+	template <class MatrixKVd1, class MatrixKVd2>
+	void calcTermScore(MatrixKVd1 const& phi, MatrixKVd2& dest) const;
 
-	auto getTopWords(VectorV<double> const& dist, uint num, WordSet const& words) const->std::vector<std::tuple<std::wstring, double>>;
+	template <class VectorVd>
+	auto getTopWords(VectorVd const& dist, uint num, WordSet const& words) const->std::vector<std::tuple<std::wstring, double>>;
 
-	auto getTermScoreOfDocument(VectorK<double> const& theta, MatrixKV<double> const& tscore) const->std::vector< std::tuple<WordId, double>>;
+	template <class VectorKd, class MatrixKVd>
+	auto getTermScoreOfDocument(VectorKd const& theta, MatrixKVd const& tscore) const->std::vector< std::tuple<WordId, double>>;
 
 	// data[class][word], names[class]
 	template <class CC>
@@ -45,7 +48,8 @@ protected:
 };
 
 
-inline void LDA_Module::calcTermScore(MatrixKV<double> const& phi, MatrixKV<double>& dest) const
+template <class MatrixKVd1, class MatrixKVd2>
+void LDA_Module::calcTermScore(MatrixKVd1 const& phi, MatrixKVd2& dest) const
 {
 	const uint K = phi.size();
 	const uint V = std::begin(phi)->size();
@@ -85,7 +89,8 @@ inline void LDA_Module::calcTermScore(MatrixKV<double> const& phi, MatrixKV<doub
 	}
 }
 
-inline auto LDA_Module::getTopWords(VectorV<double> const& dist, uint num, WordSet const& words) const->std::vector<std::tuple<std::wstring, double>>
+template <class VectorVd>
+auto LDA_Module::getTopWords(VectorVd const& dist, uint num, WordSet const& words) const->std::vector<std::tuple<std::wstring, double>>
 {
 	std::vector< std::tuple<std::wstring, double> > result;
 	std::vector< std::tuple<WordId, double> > tmp;
@@ -100,7 +105,8 @@ inline auto LDA_Module::getTopWords(VectorV<double> const& dist, uint num, WordS
 	return std::move(result);
 }
 
-inline auto LDA_Module::getTermScoreOfDocument(VectorK<double> const& theta, MatrixKV<double> const& tscore) const->std::vector< std::tuple<WordId, double>>
+template <class VectorKd, class MatrixKVd>
+auto LDA_Module::getTermScoreOfDocument(VectorKd const& theta, MatrixKVd const& tscore) const->std::vector< std::tuple<WordId, double>>
 {
 	VectorV<double> tmp(std::begin(tscore)->size(), 0.0);
 	TopicId t = 0;

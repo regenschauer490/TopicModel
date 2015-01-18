@@ -175,6 +175,7 @@ public:
 	auto recommend(Id id, bool for_user, sig::Maybe<uint> top_n, sig::Maybe<double> threshold) const->std::vector<std::pair<Id, double>>;
 
 	double estimate(UserId u_id, ItemId i_id) const;
+	
 
 	//ドキュメントのトピック比率
 	auto getTheta() const->MatrixIK<double>{ return to_stl_matrix(theta_); }
