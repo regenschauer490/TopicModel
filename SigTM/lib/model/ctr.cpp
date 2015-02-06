@@ -204,8 +204,8 @@ void CTR::init()
 	else {
 		for (ItemId i = 0; i < I_; ++i) {
 			auto& theta_v = row_(theta_, i);
-			for (uint k = 0; k < K_; ++k) theta_v[k] = randf();
-			normalize_dist_v(theta_v);
+			for (uint k = 0; k < K_; ++k) theta_v[k] = 0;// randf();
+			//normalize_dist_v(theta_v);
 		}
 	}
 	
@@ -213,7 +213,7 @@ void CTR::init()
 	set_zero(user_factor_, U_, K_);
 	set_zero(item_factor_, I_, K_);
 
-	if (hparam_->theta_opt_){
+	if (!hparam_->theta_opt_){
 		for (ItemId i = 0; i < I_; ++i){
 			auto& if_v = row_(item_factor_, i);
 			for (uint k = 0; k < K_; ++k) if_v[k] = randf();
@@ -280,12 +280,12 @@ void CTR::saveTmp() const
 	*/
 }
 
-const sig::FilepassString item_factor_fname = SIG_TO_FPSTR("item_factor");
-const sig::FilepassString user_factor_fname = SIG_TO_FPSTR("user_factor");
-const sig::FilepassString theta_fname = SIG_TO_FPSTR("theta");
+const sig::FilepassString item_factor_fname = SIG_TO_FPSTR("ctr_item_factor");
+const sig::FilepassString user_factor_fname = SIG_TO_FPSTR("ctr_user_factor");
+const sig::FilepassString theta_fname = SIG_TO_FPSTR("ctr_theta");
 
 template <class M>
-void save_impl(sig::FilepassString pass, M const& mat, std::string name) 
+void save_impl(sig::FilepassString pass, M const& mat) 
 {
 	std::ofstream ofs(pass);
 
@@ -295,11 +295,11 @@ void save_impl(sig::FilepassString pass, M const& mat, std::string name)
 			ofs << std::endl;
 		}
 	}
-	else std::cout << "saving file failed: " << name << std::endl;
+	else std::wcout << L"saving file failed: " << pass << std::endl;
 };
 
 template <class M>
-void load_impl(sig::FilepassString pass, M& mat, std::string name)
+void load_impl(sig::FilepassString pass, M& mat)
 {
 	auto tmp = sig::load_num2d<double>(pass, " ");
 
@@ -308,7 +308,7 @@ void load_impl(sig::FilepassString pass, M& mat, std::string name)
 			auto& row = row_(mat, i);
 			for (uint j = 0, size2 = row.size(); j < size2; ++j)  row(j) = (*tmp)[i][j];
 		}
-		std::cout << "loading file: " << name << std::endl;
+		std::wcout << L"loading file: " << pass << std::endl;
 	}
 };
 
@@ -319,9 +319,9 @@ void CTR::save() const
 	auto base_pass = input_data_->getWorkingDirectory(); //+ SIG_TO_FPSTR("params/");
 	auto mid = model_id_ >= 0 ? sig::to_fpstring(model_id_) : SIG_TO_FPSTR("");
 
-	save_impl(base_pass + item_factor_fname + mid, item_factor_, "ctr_item_factor");
-	save_impl(base_pass + user_factor_fname + mid, user_factor_, "ctr_user_factor");
-	save_impl(base_pass + theta_fname + mid, theta_, "ctr_theta");
+	save_impl(base_pass + item_factor_fname + mid, item_factor_);
+	save_impl(base_pass + user_factor_fname + mid, user_factor_);
+	save_impl(base_pass + theta_fname + mid, theta_);
 
 	std::cout << "saving file completed" << std::endl;
 }
@@ -333,9 +333,9 @@ void CTR::load()
 	auto base_pass = input_data_->getWorkingDirectory() + SIG_TO_FPSTR("params/");
 	auto mid = model_id_ >= 0 ? sig::to_fpstring(model_id_) : SIG_TO_FPSTR("");
 
-	load_impl(base_pass + item_factor_fname + mid, item_factor_, "ctr_item_factor");
-	load_impl(base_pass + user_factor_fname + mid, user_factor_, "ctr_user_factor");
-	load_impl(base_pass + theta_fname + mid, theta_, "ctr_theta");
+	load_impl(base_pass + item_factor_fname + mid, item_factor_);
+	load_impl(base_pass + user_factor_fname + mid, user_factor_);
+	load_impl(base_pass + theta_fname + mid, theta_);
 }
 
 double CTR::docInference(ItemId id,	bool update_word_ss)
@@ -347,7 +347,7 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 	
 	for (auto tid : item_tokens_[id]){
 		WordId w = tokens_[tid].word_id;
-		auto phi_v = row_(phi_, tid);
+		auto& phi_v = row_(phi_, tid);
 
 		for (TopicId k = 0; k < K_; ++k){
 			phi_v[k] = theta_v[k] * at_(beta_, k, w);
@@ -601,7 +601,7 @@ void CTR::train(uint max_iter, uint min_iter, uint save_lag)
 		phi_ = MatrixTK_(T_, K_);  //SIG_INIT_MATRIX(double, T, K, 0);
 	}
 	
-	 while ((!conv.is_convergence() && iter < max_iter) || iter < min_iter)
+	 while (((!conv.is_convergence()) && iter < max_iter) || iter < min_iter)
 	 {
 		likelihood_old = likelihood_;
 		likelihood_ = 0.0;

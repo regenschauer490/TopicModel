@@ -5,7 +5,7 @@
 #include "SigUtil/lib/tools/time_watch.hpp"
 
 const int TopicNum = 200;
-const int IterationNum = 500;
+const int IterationNum = 300;
 
 // 入力テキストの種類 (Webページやレビュー文などの各記事はDocument, マイクロブログでの各ユーザの投稿はTweet)
 enum class InputTextType { Document, Tweet };
@@ -469,7 +469,6 @@ void sample5(std::wstring src_folder, std::wstring out_folder, bool resume, bool
 	
 	getchar();
 }
-
 
 int main()
 {

@@ -88,12 +88,16 @@ protected:
 	{
 		const uint n = detail_info_->div_num_;
 		const bool is_user_test = detail_info_->is_user_test_;
+		uint all_ct = 0;
 
 		auto&& src_vecs = is_user_test ? src.getUsers() : src.getItems();
 		std::vector<RatingPtr<T>> ratings;
 
 		for (auto&& sv : src_vecs) {
-			for (auto&& e : sv) ratings.push_back(e);
+			for (auto&& e : sv) {
+				ratings.push_back(e);
+				++all_ct;
+			}
 		}
 		sig::shuffle(ratings);
 
@@ -107,7 +111,7 @@ protected:
 		}
 
 		const double matrix_size = src.userSize() * src.itemSize();
-		detail_info_->sparsity_ = ratings.size() / matrix_size;
+		detail_info_->sparsity_ = all_ct / matrix_size;
 		for (auto const& c : chunks) detail_info_->chunk_sparsity_.push_back(delta / matrix_size);
 
 		return std::move(chunks);
@@ -118,6 +122,7 @@ protected:
 	{
 		const uint n = detail_info_->div_num_;
 		const bool is_user_test = detail_info_->is_user_test_;
+		uint ct = 0, all_ct = 0;
 
 		auto&& src_vecs = is_user_test ? src.getUsers() : src.getItems();
 		std::unordered_map<Id, std::vector<RatingPtr<T>>> ratings;
@@ -129,13 +134,12 @@ protected:
 				auto id = get_id(r, !is_user_test);
 				if (ratings.count(id)) ratings[id].push_back(r);
 				else ratings.emplace(id, std::vector<RatingPtr<T>>{r});
+				++all_ct;
 			}
 		}
 
 		RatingChunk<T> chunks(n, std::vector<RatingContainer<T>>(is_user_test ? src.userSize() : src.itemSize()));
-
 		sig::SimpleRandom<uint> random(0, n - 1, FixedRandom);
-		uint ct = 0;
 
 		// for each items or users
 		for (auto& e : ratings) {
@@ -175,7 +179,7 @@ protected:
 		detail_info_->less_than_div_num_ = ct;
 
 		const double matrix_size = src.userSize() * src.itemSize();
-		detail_info_->sparsity_ = ratings.size() / matrix_size;
+		detail_info_->sparsity_ = all_ct / matrix_size;
 		for (auto const& c : chunks) {
 			uint ct = 0;
 			for (auto const& vec : c) ct += vec.size();

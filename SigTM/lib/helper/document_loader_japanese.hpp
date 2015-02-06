@@ -36,7 +36,8 @@ public:
 		using Filter = std::function< void(Text&) >;
 
 	private:
-		bool base_form_;
+		const bool base_form_;
+		uint remove_word_count_;
 		std::unordered_set<WordClass> selected_word_class_;
 		Filter common_pri_filter_;
 		Filter common_post_filter_;
@@ -44,17 +45,16 @@ public:
 		std::unordered_map< uint, Filter> individual_post_filter_;
 
 	private:
-		FilterSetting() = delete;
-
 		//_word_class に設定された品詞であるか
 		bool isSelected(WordClass self) const{ return selected_word_class_.count(self) > 0 ? true : false; }
 
 	public:
+		FilterSetting() = delete;
 		FilterSetting(FilterSetting const&) = default;
 
 		//オブジェクトの生成
 		//use_base_form：形態素解析後に単語を原型に修正するか (false:元表現, true:原形) 
-		FilterSetting(bool use_base_form) : base_form_(use_base_form), selected_word_class_(), common_pri_filter_(nullptr), common_post_filter_(nullptr){};
+		FilterSetting(bool use_base_form) : base_form_(use_base_form), remove_word_count_(0), selected_word_class_(), common_pri_filter_(nullptr), common_post_filter_(nullptr){};
 
 		bool isBaseForm() const{ return base_form_; }
 
@@ -64,6 +64,9 @@ public:
 		void addWordClass(WordClass select){ selected_word_class_.insert(select); }
 		bool checkWordClass(WordClass select) const{ return selected_word_class_.count(select); }
 
+		// 出現数が指定数以下の単語を除外
+		void setRemoveWordCount(uint threshold_num) { remove_word_count_ = threshold_num; }
+		uint getRemoveWordCount() const { return remove_word_count_;  }
 
 		/* 入力データの文字列に対して行うフィルタ処理の登録 (例：正規表現でURLを除去)  */
 
@@ -213,15 +216,19 @@ inline void DocumentLoaderFromJapanese::makeData(DocumentType type, Documents co
 		results.push_back(std::async(std::launch::async, ParallelFunc, i, raw_texts[i], filter_));
 	}
 
-	std::vector<std::vector<std::vector<std::wstring>>> doc_line_words;
+	DocLineWords doc_line_words;
 
 	for (auto& result : results){
 		doc_line_words.push_back(result.get());
 	}
+
+	RemoveMinorWord(doc_line_words, filter_.getRemoveWordCount());
+	/*
 	for (uint i = 0; i<doc_line_words.size(); ++i){
 		std::wcout << info_.doc_names_[i] << L" parsed. word-num: " << sig::sum(doc_line_words[i], [](std::vector<std::wstring> const& e){ return e.size(); }) << std::endl;
 	}
 	std::cout << std::endl;
+	*/
 
 	int token_ct = 0;
 	int doc_id = 0;
@@ -229,6 +236,8 @@ inline void DocumentLoaderFromJapanese::makeData(DocumentType type, Documents co
 		int line_id = 0;
 		for (auto const& words : line_words){
 			for (auto const& word : words){
+				if (word == L"") continue;
+
 				auto wp = std::make_shared<std::wstring const>(word);
 
 				//wordが既出か判定

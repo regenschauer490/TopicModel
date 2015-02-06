@@ -46,7 +46,7 @@ struct CtrHyperparameter : boost::noncopyable
 	std::vector<VectorK<double>> theta_;
 	VectorK<VectorV<double>> beta_;
 	uint topic_num_;
-	double a_;				// positive update weight in U,V
+	double a_;				// positive update weight in U,V (smoothing?)
 	double b_;				// negative update weight in U,V (b < a)
 	double lambda_u_;
 	double lambda_v_;
@@ -61,7 +61,7 @@ private:
 		a_ = 1;
 		b_ = 0.01;
 		lambda_u_ = 0.01;
-		lambda_v_ = 100;
+		lambda_v_ = 10;
 		learning_rate_ = -1;
 		theta_opt_ = optimize_theta;
 		enable_recommend_cache_ = enable_recommend_cache;

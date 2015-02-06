@@ -15,6 +15,10 @@ http://opensource.org/licenses/mit-license.php
 #include "SigUtil/lib/calculation/basic_statistics.hpp"
 #include <future>
 
+#if SIG_USE_SIGNLP
+#include "SigNLP/tree_tagger_wrapper.hpp"
+#endif
+
 namespace sigtm
 {
 using signlp::WordClass;
@@ -31,15 +35,32 @@ public:
 		using Filter = std::function< void(Text&) >;
 
 	private:
+		const bool base_form_;
+		uint remove_word_count_;
+		const FilepassString exe_pass_;
+		const FilepassString param_pass_;
 		Filter common_pri_filter_;
 		Filter common_post_filter_;
 		std::unordered_map< uint, Filter> individual_pri_filter_;
 		std::unordered_map< uint, Filter> individual_post_filter_;
 	
 	public:
-		FilterSetting() : common_pri_filter_(nullptr), common_post_filter_(nullptr){};
+		FilterSetting() : base_form_(false), common_pri_filter_(nullptr), common_post_filter_(nullptr){};
+#if SIG_USE_SIGNLP
+		FilterSetting(FilepassString exe_pass, FilepassString param_pass, bool use_base_form)
+			: base_form_(use_base_form), exe_pass_(exe_pass), param_pass_(param_pass), common_pri_filter_(nullptr), common_post_filter_(nullptr) {};
+#endif
 		FilterSetting(FilterSetting const&) = default;
-	
+
+		bool isBaseForm() const { return base_form_; }
+
+		FilepassString getTreeTaggerPass() const { return exe_pass_; }
+		FilepassString getTreeTaggerParamPass() const { return param_pass_; }
+
+		// 出現数が指定数以下の単語を除外
+		void setRemoveWordCount(uint threshold_num) { remove_word_count_ = threshold_num; }
+		uint getRemoveWordCount() const { return remove_word_count_; }
+
 		/* 入力データの文字列に対して行うフィルタ処理の登録 (例：正規表現でURLを除去)  */
 
 		// 各ドキュメントの各行に行うフィルタ処理を設定
@@ -153,11 +174,17 @@ inline void DocumentLoaderFromEnglish::makeData(DocumentType type, Documents con
 	{
 		std::vector<std::vector<std::wstring>> result;
 
+#if SIG_USE_SIGNLP
+		auto& tagger = signlp::TreeTaggerWrapper::getInstance(filter.getTreeTaggerPass(), filter.getTreeTaggerParamPass());
+		auto parser =  [&](Text const& text) { return filter.isBaseForm() ? tagger.parseGenkei(text) : sig::split(text, L" "); };
+#else
+		auto parser = [](Text const& text) { return sig::split(text, L" "); };
+#endif
 		for (auto& sentence : document){
 			if(auto f = filter.getCommonPriorFilter()) f(sentence);
 			if(auto f = filter.getIndividualPriorFilter(id)) f(sentence);
 
-			auto parsed = sig::split(sentence, L" ");
+			auto parsed = parser(sentence);
 
 			for (auto& word : parsed){
 				if(auto f = filter.getCommonPosteriorFilter()) f(word);
@@ -175,21 +202,26 @@ inline void DocumentLoaderFromEnglish::makeData(DocumentType type, Documents con
 
 	std::cout << "make token data : " << std::endl;
 
-	std::vector< std::future< std::vector<std::vector<std::wstring>> > > results;
-
-	for (uint i = 0; i < raw_texts.size(); ++i){
-		results.push_back(std::async(std::launch::async, ParallelFunc, i, raw_texts[i], filter_));
-	}
-
 	std::vector<std::vector<std::vector<std::wstring>>> doc_line_words;
 
-	for (auto& result : results){
-		doc_line_words.push_back(result.get());
+	const uint block = 100;
+	for (uint d = 0, ds = 1 + raw_texts.size() / block; d < ds; ++d) {
+		std::vector< std::future< std::vector<std::vector<std::wstring>> > > results;
+
+		for (uint i = block * d, is = sig::min(block * (d+1), raw_texts.size()); i < is; ++i) {
+			results.push_back(std::async(std::launch::async, ParallelFunc, i, raw_texts[i], filter_));
+		}
+		for (auto& result : results) {
+			doc_line_words.push_back(result.get());
+		}
 	}
+
 	for (uint i = 0; i < doc_line_words.size(); ++i){
 		std::wcout << info_.doc_names_[i] << L" parsed. word-num: " << sig::sum(doc_line_words[i], [](std::vector<std::wstring> const& e){ return e.size(); }) << std::endl;
 	}
 	std::cout << std::endl;
+
+	RemoveMinorWord(doc_line_words, filter_.getRemoveWordCount());
 
 	int token_ct = 0;
 	int doc_id = 0;

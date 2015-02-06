@@ -58,7 +58,7 @@ void LDA_Module::calcTermScore(MatrixKVd1 const& phi, MatrixKVd2& dest) const
 		std::vector< std::vector<double> > ts(K);
 
 		for (uint _w = begin, i = 0; _w < end; ++_w, ++i){
-			double ip = 1;
+			double ip = std::pow(2, K);
 			for (uint k2 = 0; k2 < K; ++k2){
 				ip *= phi[k2][_w];
 			}

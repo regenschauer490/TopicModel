@@ -19,6 +19,7 @@ namespace sigtm
 class DocumentLoader : public DocumentSet
 {
 public:
+	using DocLineWords = std::vector<std::vector<std::vector<std::wstring>>>;
 	using PF = std::function<DocumentLoaderSetInfo(TokenList& tokens, WordSet& words)>;
 
 private:
@@ -37,6 +38,7 @@ protected:
 	DocumentLoader(DocumentType type, uint doc_num, FilepassString working_directory)
 		: DocumentSet(type, doc_num, working_directory){};
 	
+	auto RemoveMinorWord(DocLineWords& src, uint threshold_num) const->std::unordered_map<Text, uint>;
 public:
 	virtual ~DocumentLoader(){}
 
@@ -145,6 +147,32 @@ inline void DocumentLoader::reconstruct()
 		std::cout << "vocab file is corrupted" << std::endl;
 		getchar();	std::terminate();
 	}
+}
+
+inline auto DocumentLoader::RemoveMinorWord(DocLineWords& src, uint threshold_num) const->std::unordered_map<Text, uint>
+{
+	std::unordered_map<Text, uint> ck;
+
+	if (threshold_num < 1) return ck;
+
+	for (auto const& doc : src) {
+		for (auto const& line : doc) {
+			for (auto const& word : line) {
+				if (ck.count(word)) ++ck[word];
+				else ck.emplace(word, 0);
+			}
+		}
+	}
+
+	for (auto& doc : src) {
+		for (auto& line : doc) {
+			for (auto& word : line) {
+				if (ck[word] <= threshold_num) word = L"";
+			}
+		}
+	}
+
+	return ck;
 }
 
 }

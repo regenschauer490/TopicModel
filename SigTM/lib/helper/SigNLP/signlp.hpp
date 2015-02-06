@@ -4,12 +4,15 @@
 #include "SigUtil/lib/string.hpp"
 #include "SigUtil/lib/file.hpp"
 
-namespace signlp{
+namespace signlp
+{
 
+#define SIG_USE_MECAB 1
 
 const bool enable_warning = false;
 
 using sig::uint;
+using sig::FilepassString;
 
 enum class WordClass{ NA, 名詞, 動詞, 形容詞, 副詞, 接続詞, 感動詞, 助詞, 助動詞, 連体詞, 記号 };
 

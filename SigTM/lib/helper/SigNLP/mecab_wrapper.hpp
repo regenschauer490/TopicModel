@@ -1,15 +1,9 @@
 ﻿#ifndef SIG_MECAB_WRAPPER_HPP
 #define SIG_MECAB_WRAPPER_HPP
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <tuple>
-#include <memory>
-#include <functional>
-
 #include "signlp.hpp"
-#include "SigUtil/lib/string/manipulate.hpp"
+
+#if SIG_USE_MECAB
 
 #if defined(_WIN64)
 #include "../../../external/mecab/x64/mecab.h"
@@ -24,7 +18,7 @@ static_assert(false, "this environment doesn't support.");
 
 namespace signlp
 {
-/* MeCab ユーティリティ */
+// 日本語形態素解析器 MeCab ユーティリティ
 class MecabWrapper
 {
 	std::shared_ptr<MeCab::Model> model_;
@@ -48,7 +42,7 @@ private:
 	MecabWrapper(MecabWrapper const&) = delete;
 
 	// 並列処理を考慮
-	volatile void ParseImpl(std::string const& src, std::string& dest) const;
+	volatile void parseImpl(std::string const& src, std::string& dest) const;
 
 public:
 	static MecabWrapper& getInstance(){
@@ -95,7 +89,7 @@ public:
 	return std::move(result);
 
 
-inline volatile void MecabWrapper::ParseImpl(std::string const& src, std::string& dest) const
+inline volatile void MecabWrapper::parseImpl(std::string const& src, std::string& dest) const
 {
 	TaggerPtr tagger(model_->createTagger());
 	LatticePtr lattice(model_->createLattice());
@@ -115,7 +109,7 @@ inline auto MecabWrapper::parseSimple(std::string const& sentence) const ->std::
 	if (enable_warning && sentence.empty()){ std::cout << "sentense is empty" << std::endl; return result; }
 
 	std::string parse;
-	ParseImpl(sentence, parse);
+	parseImpl(sentence, parse);
 	auto wlist = sig::split(parse, "\n");
 	for (auto& w : wlist){
 		auto tmp = sig::split(w, "\t");
@@ -135,7 +129,7 @@ inline auto MecabWrapper::parseSimpleWithWC(std::string const& sentence) const->
 	if (enable_warning && sentence.empty()){ std::cout << "sentense is empty" << std::endl; return result; }
 
 	std::string parse;
-	ParseImpl(sentence, parse);
+	parseImpl(sentence, parse);
 	auto wlist = sig::split(parse, "\n");
 	for (auto& w : wlist){
 		auto tmp = sig::split(w, "\t");
@@ -158,7 +152,7 @@ inline auto MecabWrapper::parseGenkei(std::string const& sentence, bool skip) co
 	if (enable_warning && sentence.empty()){ std::cout << "sentense is empty" << std::endl; return result; }
 
 	std::string parse;
-	ParseImpl(sentence, parse);
+	parseImpl(sentence, parse);
 	auto wlist = sig::split(parse, "\n");
 
 	for (auto& w : wlist){
@@ -185,7 +179,7 @@ inline auto MecabWrapper::parseGenkeiWithWC(std::string const& sentence, bool sk
 	if (enable_warning && sentence.empty()){ std::cout << "sentense is empty" << std::endl; return result; }
 
 	std::string parse;
-	ParseImpl(sentence, parse);
+	parseImpl(sentence, parse);
 
 	auto wlist = sig::split(parse, "\n");
 	for (auto& w : wlist){
@@ -238,7 +232,7 @@ inline auto MecabWrapper::parseGenkeiThroughFilter(std::wstring const& sentence,
 	return sig::str_to_wstr(parseGenkeiThroughFilter(sig::wstr_to_str(sentence), pred));
 }
 
-
 }
+#endif
 #endif
 
