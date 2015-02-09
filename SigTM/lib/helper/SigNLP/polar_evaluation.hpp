@@ -162,14 +162,14 @@ inline PosiNega EvaluationLibrary::getSentencePN(std::wstring const& sentence, u
 inline PosiNega EvaluationLibrary::getWordPN(std::string const& word, WordClass wc) const
 {
 	switch (wc){
-	case WordClass::名詞:
+	case WordClass::Noun:
 	{
 						  const auto ser = noun_ev_.find(word);
 						  if (ser != noun_ev_.end()) return std::get<0>(ser->second);
 						  else return PosiNega::NA;
 	}
-	case WordClass::動詞:
-	case WordClass::形容詞:
+	case WordClass::Verb:
+	case WordClass::Adjective:
 	{
 						   const auto ser = declinable_ev_.find(word);
 						   if (ser != declinable_ev_.end()) return std::get<0>(ser->second);
@@ -186,9 +186,9 @@ inline PosiNega EvaluationLibrary::getWordPN(std::wstring const& word, WordClass
 
 inline PosiNega EvaluationLibrary::getSentencePN(std::string const& sentence, ScoreMap score_map, double th) const
 {
-	if (!score_map.count(WordClass::名詞)) score_map[WordClass::名詞] = 0;
-	if (!score_map.count(WordClass::形容詞)) score_map[WordClass::形容詞] = 0;
-	if (!score_map.count(WordClass::動詞)) score_map[WordClass::動詞] = 0;
+	if (!score_map.count(WordClass::Noun)) score_map[WordClass::Noun] = 0;
+	if (!score_map.count(WordClass::Adjective)) score_map[WordClass::Adjective] = 0;
+	if (!score_map.count(WordClass::Verb)) score_map[WordClass::Verb] = 0;
 	if (!score_map.count(WordClass::NA)) score_map[WordClass::NA] = 0;
 
 	int score = 0;
@@ -200,8 +200,8 @@ inline PosiNega EvaluationLibrary::getSentencePN(std::string const& sentence, Sc
 			for (const auto& ev : noun_ev_){
 				if (std::get<0>(w) == ev.first){
 					const auto pn = std::get<0>(ev.second);
-					if (pn == PosiNega::P)  tscore += score_map[WordClass::名詞];
-					else if (pn == PosiNega::N) tscore -= score_map[WordClass::名詞];
+					if (pn == PosiNega::P)  tscore += score_map[WordClass::Noun];
+					else if (pn == PosiNega::N) tscore -= score_map[WordClass::Noun];
 				}
 			}
 		}
@@ -240,8 +240,8 @@ inline PosiNega EvaluationLibrary::getSentencePN(std::string const& sentence, Sc
 
 	const auto parse = mecab_.parseGenkeiWithWC(sentence);
 	std::vector<std::tuple<std::string, WordClass>> parse_n, parse_d;
-	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_n), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::名詞; });
-	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_d), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::形容詞 || std::get<1>(e) == WordClass::動詞; });
+	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_n), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::Noun; });
+	std::copy_if(parse.begin(), parse.end(), back_inserter(parse_d), [](const std::tuple<std::string, WordClass>& e){ return std::get<1>(e) == WordClass::Adjective || std::get<1>(e) == WordClass::Verb; });
 
 	//auto nf = async(launch::async, );
 	//auto df = async(launch::async, );

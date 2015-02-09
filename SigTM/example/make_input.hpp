@@ -39,9 +39,9 @@ inline sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_fo
 	sigtm::DocumentLoaderFromJapanese::FilterSetting filter(true);
 
 	// 使用品詞の設定
-	filter.addWordClass(signlp::WordClass::名詞);
-	filter.addWordClass(signlp::WordClass::形容詞);
-	//filter.addWordClass(signlp::WordClass::動詞);
+	filter.addWordClass(signlp::WordClass::Noun);
+	filter.addWordClass(signlp::WordClass::Adjective);
+	//filter.addWordClass(signlp::WordClass::Verb);
 
 	// 形態素解析前のフィルタ処理
 	filter.setCommonPriorFilter([](wstring& str) {

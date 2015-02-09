@@ -14,7 +14,7 @@ const bool enable_warning = false;
 using sig::uint;
 using sig::FilepassString;
 
-enum class WordClass{ NA, 名詞, 動詞, 形容詞, 副詞, 接続詞, 感動詞, 助詞, 助動詞, 連体詞, 記号 };
+enum class WordClass{ NA, Noun, Verb, Adjective, Adverb, Conjunction, Interjection, PostParticle, AuxiliaryVerb, Determiner, Symbol };
 
 //Positive, Negative, nEutral
 enum class PosiNega { NA, P, N, E };
@@ -24,16 +24,16 @@ enum class PNStandard { NA, Act, EvaEmo_Sbj, Event, ExisProp, Exp, State_Obj, Pl
 
 
 inline WordClass StrToWC(std::string const& str){
-	if (str == "名詞") return WordClass::名詞;
-	if (str == "動詞") return WordClass::動詞;
-	if (str == "形容詞") return WordClass::形容詞;
-	if (str == "副詞") return WordClass::副詞;
-	if (str == "感動詞") return WordClass::感動詞;
-	if (str == "接続詞") return WordClass::接続詞;
-	if (str == "助詞") return WordClass::助詞;
-	if (str == "助動詞") return WordClass::助動詞;
-	if (str == "連体詞") return WordClass::連体詞;
-	if (str == "記号") return WordClass::記号;
+	if (str == "名詞") return WordClass::Noun;
+	if (str == "動詞") return WordClass::Verb;
+	if (str == "形容詞") return WordClass::Adjective;
+	if (str == "副詞") return WordClass::Adverb;
+	if (str == "接続詞") return WordClass::Conjunction;
+	if (str == "感動詞") return WordClass::Interjection;
+	if (str == "助詞") return WordClass::PostParticle;
+	if (str == "助動詞") return WordClass::AuxiliaryVerb;
+	if (str == "連体詞") return WordClass::Determiner;
+	if (str == "記号") return WordClass::Symbol;
 	return WordClass::NA;
 };
 
