@@ -61,7 +61,6 @@ public:
 
 	SIG_MakeCompareInnerClass(LDA);
 
-protected:
 	// method chain 生成
 	SIG_MakeDist2CmpMapBase;
 	SIG_MakeDist2CmpMap(Distribution::DOCUMENT, LDA::CmpD<std::function< VectorD<double>(DocumentId) >>);
@@ -69,10 +68,10 @@ protected:
 	SIG_MakeDist2CmpMap(Distribution::TERM_SCORE, LDA::CmpV<std::function< VectorK<double>(TopicId) >>);
 	//SIG_MakeDist2CmpMap(Distribution::DOC_TERM, LDA::CmpV);
 	
-	template <LDA::Distribution Select>
-	friend auto compare(LDAPtr lda, Id id1, Id id2) ->typename Map2Cmp<Select>::type;
+	//template <LDA::Distribution Select>
+	//auto compare(Id id1, Id id2) ->typename Map2Cmp<Select>::type;
 
-	
+protected:	
 	// 確率分布同士の類似度を測る(メソッドチェーンな感じに使用)
 	template <Distribution Select>
 	auto compareDefault(Id id1, Id id2, uint D, uint K) const->typename Map2Cmp<Select>::type

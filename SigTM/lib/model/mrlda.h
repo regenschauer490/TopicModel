@@ -203,7 +203,7 @@ public:
 	// id1,id2: 類似度を測る対象のindex
 	// return -> 比較関数の選択(関数オブジェクト)
 	template <Distribution Select>
-	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type{ return compareDefault<Select>(id1, id2, D_, K_); }
+	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type { return compareDefault<Select>(id1, id2, D_, K_); }
 
 	// コンソールに出力
 	void print(Distribution target) const override{ save(target, L""); }

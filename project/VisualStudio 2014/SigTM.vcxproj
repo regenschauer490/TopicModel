@@ -151,6 +151,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\SigTM\example\example_ctr.cpp" />
+    <ClCompile Include="..\..\SigTM\example\example_lda_cvb.cpp" />
+    <ClCompile Include="..\..\SigTM\example\example_lda_gibbs.cpp" />
+    <ClCompile Include="..\..\SigTM\example\example_lda_mapreduce.cpp" />
+    <ClCompile Include="..\..\SigTM\example\example_lda_twitter.cpp" />
+    <ClCompile Include="..\..\SigTM\example\make_input.hpp" />
     <ClCompile Include="..\..\SigTM\lib\helper\mapreduce_module.cpp" />
     <ClCompile Include="..\..\SigTM\lib\model\ctr.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
@@ -174,6 +180,8 @@
     <ClCompile Include="..\..\SigTM\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\SigTM\example\example.h" />
+    <ClInclude Include="..\..\SigTM\lib\helper\compare.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\compare_method.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\cross_validation.hpp" />
     <ClInclude Include="..\..\SigTM\lib\helper\ctr_validation.hpp" />

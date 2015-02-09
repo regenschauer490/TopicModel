@@ -103,15 +103,15 @@ auto df_simplex(
 	return g;
 }
 
-template <class V1, class V2, class V3>
+template <class V1, class V2>
 double f_simplex(
 	V1 const& gamma,
 	V2 const& v,
 	double lambda,
-	V3 const& opt_x)
+	V2 const& opt_x)
 {
-	auto y = map_v([&](double x){ return safe_log(x); }, opt_x);
-	auto z = v - opt_x;
+	V1 y = map_v([&](double x){ return safe_log(x); }, opt_x);
+	V1 z = v - opt_x;
 	
 	//double f = ublas::inner_prod(y, gamma);
 	double f = y.dot(gamma);
@@ -125,12 +125,12 @@ double f_simplex(
 }
 
 // projection gradient algorithm
-template <class V1, class V2, class V3>
+template <class V1, class V2>
 void optimize_simplex(
 	V1 const& gamma, 
 	V2 const& v, 
 	double lambda,
-	V3& opt_x)
+	V2& opt_x)
 {
 	size_t size = sig::min(gamma.size(), v.size());
 	EigenVector x_bar(size);
