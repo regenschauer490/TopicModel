@@ -125,29 +125,28 @@ auto LDA_Module::getTermScoreOfDocument(VectorKd const& theta, MatrixKVd const& 
 template <class CC>
 void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& names, WordSet const& words, Maybe<uint> top_num, Maybe<FilepassString> save_pass) const
 {
-	auto Output = [](std::wostream& ofs, std::vector<std::tuple<std::wstring, double>> const& data, Maybe<FilepassString> header)
+	using OS = typename sig::impl::StreamSelector<FilepassString>::ostream;
+	using OFS = typename sig::impl::StreamSelector<FilepassString>::ofstream;
+
+	auto Output = [](OS& ofs, std::vector<std::tuple<std::wstring, double>> const& data, Maybe<FilepassString> header)
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
-			ofs << std::get<0>(e) << L' ' << std::get<1>(e) << std::endl;
+			ofs << std::get<0>(e) << SIG_TO_FPSTR(' ') << std::get<1>(e) << std::endl;
 		}
 		ofs << std::endl;
 	};
 
-	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : std::wofstream(SIG_TO_FPSTR(""));
+	auto ofs = save_pass ? OFS(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : OFS(SIG_TO_FPSTR(""));
+	OS& os = save_pass ? ofs : get_std_out<FilepassString>().cout;
 
 	// 各クラス(ex.トピック)のスコア上位top_num個の単語を出力
 	sig::for_each([&](int i, VectorV<double> const& wscore)
 	{
 		auto rank_words = top_num ? getTopWords(wscore, sig::fromJust(top_num), words) : getTopWords(wscore, wscore.size(), words);
-		auto header = L"class:" + (names.empty() ? std::to_wstring(i) : names[i - 1]);
+		auto header = SIG_TO_FPSTR("topic:") + (names.empty() ? std::to_wstring(i) : names[i - 1]);
 
-		if (save_pass){
-			Output(ofs, rank_words, header);
-		}
-		else{
-			Output(std::wcout, rank_words, header);
-		}
+		Output(os, rank_words, header);
 	}
 	, 1, data);
 	/*
@@ -167,7 +166,10 @@ void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& na
 template <class CC>
 void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& names, Maybe<FilepassString> save_pass) const
 {
-	auto Output = [](std::wostream& ofs, VectorK<double> data, Maybe<FilepassString> header)
+	using OS = typename sig::impl::StreamSelector<FilepassString>::ostream;
+	using OFS = typename sig::impl::StreamSelector<FilepassString>::ofstream;
+
+	auto Output = [](OFS& ofs, VectorK<double> data, Maybe<FilepassString> header)
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
@@ -176,18 +178,15 @@ void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& n
 		ofs << std::endl;
 	};
 
-	auto ofs = save_pass ? std::wofstream(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : std::wofstream(SIG_TO_FPSTR(""));
+	auto ofs = save_pass ? OFS(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : OFS(SIG_TO_FPSTR(""));
+	OS& os = save_pass ? ofs : get_std_out<FilepassString>().cout;
 
 	// 各クラス(ex.ドキュメント)のトピック分布を出力
 	sig::for_each([&](int i, VectorK<double> const& tscore)
 	{
-		auto header = L"id:" + (names.empty() ? std::to_wstring(i) : names[i - 1]);
-		if (save_pass){
-			Output(ofs, tscore, header);
-		}
-		else{
-			Output(std::wcout, tscore, header);
-		}
+		auto header = SIG_TO_FPSTR("id:") + (names.empty() ? std::to_wstring(i) : names[i - 1]);
+
+		Output(ofs, tscore, header);
 	}
 	, 1, data);
 }

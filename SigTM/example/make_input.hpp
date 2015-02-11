@@ -9,6 +9,8 @@
 #include "../lib/helper/document_loader.hpp"
 #endif
 
+using sig::FilepassString;
+
 // 入力テキストの種類 (Webページやレビュー文などの各記事はDocument, マイクロブログでの各ユーザの投稿はTweet)
 enum class InputTextType { Document, Tweet };
 

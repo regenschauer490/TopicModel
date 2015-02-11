@@ -40,6 +40,8 @@ namespace sig
 
 namespace sigtm
 {
+namespace impl
+{
 #if SIG_USE_EIGEN
 
 template <class M>
@@ -72,6 +74,18 @@ template <class T>
 auto at_(std::vector<std::vector<T>> const& src, uint row, uint col) ->decltype(src[row][col])
 {
 	return src[row][col];
+}
+
+template <class V>
+uint size(V const& vec)
+{
+	return vec.size();
+}
+
+template <class M>
+uint size_row(M const& mat)
+{
+	return mat.rows();
 }
 
 template <class V>
@@ -134,18 +148,6 @@ void assign_v(V& vec, T val)
 	for (uint i = 0, size = vec.size(); i < size; ++i) vec[i] = val;
 }
 
-template <class V, class T>
-void compound_assign_plus_v(V& vec, T val)
-{
-	vec.array() += val;
-}
-
-template <class V, class T>
-void compound_assign_mult_v(V& vec, T val)
-{
-	vec.array() *= val;
-}
-
 template <class V>
 auto to_stl_vector(V&& vec)
 {
@@ -175,6 +177,19 @@ auto to_stl_matrix(M&& mat)
 	return result;
 }
 
+template <class V1, class V2>
+auto inner_prod(V1&& vec1, V2&& vec2)
+{
+	return vec1.dot(vec2);
+}
+
+template <class V1, class V2>
+auto outer_prod(V1&& vec1, V2&& vec2)
+{
+	return vec1.transpose() * vec2;
+}
+
+
 #else
 using namespace boost::numeric;
 
@@ -188,6 +203,18 @@ template <class V>
 static auto at_(V&& src, uint row, uint col) ->decltype(src(row, col))
 {
 	return src(row, col);
+}
+
+template <class V>
+uint size(V const& vec)
+{
+	return vec.size();
+}
+
+template <class M>
+uint size_row(M const& mat)
+{
+	return mat.size1();
 }
 
 template <class V>
@@ -205,7 +232,7 @@ auto make_zero(uint size_row, uint size_col)
 template <class V>
 void normalize_dist_v(V&& vec)
 {
-	return sig::normalize_dist(vec);
+	sig::normalize_dist_v(vec);
 }
 
 template <class V>
@@ -232,32 +259,59 @@ void assign_v(V& vec, T val)
 	sig::for_each_v([val](double& v) { v = val; }, vec);
 }
 
-template <class V, class T>
-void compound_assign_plus_v(V& vec, T val)
+template <class V, class F>
+void compound_assign_v(F&& func, V& vec)
 {
-	sig::for_each_v([val](double& v){ v += val; }, vec);
+	sig::for_each_v([&](double& v){ func(v); }, vec);
 }
 
-template <class V, class T>
-void compound_assign_mult_v(V& vec, T val)
+template <class F, class M>
+void compound_assign_m(F&& func, M& vec)
 {
-	sig::for_each_v([val](double& v) { v *= val; }, vec);
+	sig::for_each_m([&](double& v){ func(v); }, vec);
 }
 
 
 template <class V>
 auto to_stl_vector(V&& vec)
 {
-	return from_vector_ublas(std::forward<V>(vec));
+	return sig::from_vector_ublas(std::forward<V>(vec));
 }
 
 template <class M>
 auto to_stl_matrix(M&& mat)
 {
-	return from_matrix_ublas(std::forward<V>(mat));
+	return sig::from_matrix_ublas(std::forward<M>(mat));
+}
+
+template <class V1, class V2>
+auto inner_prod(V1&& vec1, V2&& vec2)
+{
+	return ublas::inner_prod(vec1, vec2);
+}
+
+template <class V1, class V2>
+auto outer_prod(V1&& vec1, V2&& vec2)
+{
+	return ublas::outer_prod(vec1, vec2);
 }
 
 #endif
 
+template <class V>
+auto set_zero(V& vec, uint size)
+{
+	for (uint i = 0; i < size; ++i) vec(i) = 0;
 }
+
+template <class M>
+auto set_zero(M& vec, uint size_row, uint size_col)
+{
+	for (uint i = 0; i < size_row; ++i) {
+		for (uint j = 0; j < size_col; ++j) vec(i, j) = 0;
+	}
+}
+
+}	// impl
+}	// sigtm
 #endif

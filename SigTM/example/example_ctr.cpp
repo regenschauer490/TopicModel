@@ -5,9 +5,9 @@
 
 const bool ENABLE_CTR_CACHE = true;
 
-void runLDA(sigtm::LDAPtr lda, std::wstring out_folder, sig::uint iteration_num)
+void runLDA(sigtm::LDAPtr lda, FilepassString out_folder, sig::uint iteration_num)
 {
-	const std::wstring perp_pass = out_folder + L"perplexity_ctr.txt";
+	const FilepassString perp_pass = out_folder + SIG_TO_FPSTR("perplexity_ctr.txt");
 	sig::clear_file(perp_pass);
 
 	auto savePerplexity = [&](sigtm::LDA const* lda)

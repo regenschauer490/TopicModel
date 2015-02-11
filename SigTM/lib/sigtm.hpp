@@ -57,7 +57,23 @@ template<class T> using VectorU = std::vector<T>;	// user
 const uint zero = 0;
 const double log_lower_limit = -100000;
 
-}
+namespace impl
+{
+template <class S>
+struct get_std_out;
+
+template <>
+struct get_std_out<std::string> {
+	std::ostream& cout = std::cout;
+};
+
+template <>
+struct get_std_out<std::wstring> {
+	std::wostream& cout = std::wcout;
+};
+
+}	// impl
+}	// sigtm
 
 namespace std
 {

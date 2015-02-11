@@ -61,7 +61,7 @@ private:
 		a_ = 1;
 		b_ = 0.01;
 		lambda_u_ = 0.01;
-		lambda_v_ = 10;
+		lambda_v_ = 100;
 		learning_rate_ = -1;
 		theta_opt_ = optimize_theta;
 		enable_recommend_cache_ = enable_recommend_cache;
@@ -178,12 +178,12 @@ public:
 	
 
 	//ドキュメントのトピック比率
-	auto getTheta() const->MatrixIK<double>{ return to_stl_matrix(theta_); }
-	auto getTheta(ItemId i_id) const->VectorK<double>{ return to_stl_vector(row_(theta_, i_id)); }
+	auto getTheta() const->MatrixIK<double>{ return impl::to_stl_matrix(theta_); }
+	auto getTheta(ItemId i_id) const->VectorK<double>{ return impl::to_stl_vector(impl::row_(theta_, i_id)); }
 
 	//トピックの単語比率
-	auto getPhi() const->MatrixKV<double>{ return to_stl_matrix(beta_); }
-	auto getPhi(TopicId k_id) const->VectorV<double>{ return to_stl_vector(row_(beta_, k_id)); }
+	auto getPhi() const->MatrixKV<double>{ return impl::to_stl_matrix(beta_); }
+	auto getPhi(TopicId k_id) const->VectorV<double>{ return impl::to_stl_vector(impl::row_(beta_, k_id)); }
 
 	//トピックを強調する単語スコア
 	auto getTermScore() const->MatrixKV<double>;
