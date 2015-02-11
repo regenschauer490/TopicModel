@@ -2,8 +2,9 @@
 #include "../lib/model/mrlda.h"
 #include "SigUtil/lib/tools/time_watch.hpp"
 
+#if SIG_MSVC_ENV
 
-void example_lda_mapreduce(InputTextType tt, std::wstring src_folder, sig::uint topic_num, sig::uint iteration_num, std::wstring out_folder, bool resume, bool make_new)
+void example_lda_mapreduce(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -39,3 +40,5 @@ void example_lda_mapreduce(InputTextType tt, std::wstring src_folder, sig::uint 
 	cout << "model training" << endl;
 	mrlda->train(iteration_num, savePerplexity);
 }
+
+#endif

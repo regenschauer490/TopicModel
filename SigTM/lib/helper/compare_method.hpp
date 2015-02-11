@@ -67,7 +67,7 @@ class CmpV{	\
 	bool valid_;	\
 \
 public:	\
-	CmpV(uint d1, uint d2, FUNC vector_producer, bool error = false) : d1_(d1), d2_(d2), vp_(vector_producer), valid_(valid){}	\
+	CmpV(uint d1, uint d2, FUNC vector_producer, bool valid = false) : d1_(d1), d2_(d2), vp_(vector_producer), valid_(valid){}	\
 \
 	Maybe<double> method(CompareMethodV method){\
 		return !valid_	\
@@ -76,21 +76,20 @@ public:	\
 				? sig::cosine_similarity(vp_(d1_), vp_(d2_))	\
 				: nothing	\
 		; }	\
-}
+};
 
 
 #define SIG_MakeDist2CmpMapBase \
-template <enum class Distribution tag>	\
+template <enum Distribution tag, class = void>	\
 struct Map2Cmp{\
-	typedef void type;	\
-}
-
+	using type = void;	\
+};
 
 #define SIG_MakeDist2CmpMap(KEY, TYPE) \
-template <>	\
-struct Map2Cmp<KEY>{\
-	typedef TYPE type;	\
-}
+template <class D>	\
+struct Map2Cmp<KEY, D>{\
+	using type = TYPE;	\
+};
 
 }
 #endif

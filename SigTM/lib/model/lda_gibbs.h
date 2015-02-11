@@ -51,7 +51,7 @@ public:
 			double const& alpha = obj->alpha_[k];
 			double const& beta = obj->beta_[v];
 			
-			if(k != pre_k) dk_sum = static_cast<double>(sig::sum(obj->doc_ct_[d]));
+			if(static_cast<int>(k) != pre_k) dk_sum = static_cast<double>(sig::sum(obj->doc_ct_[d]));
 			pre_k = k;
 			return ((obj->doc_ct_[d][k] + alpha) / (dk_sum + obj->alpha_sum_)) * ((obj->word_ct_[v][k] + beta) / (obj->topic_ct_[k] + obj->beta_sum_));
 		}
@@ -122,7 +122,7 @@ public:
 	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type { return compareDefault<Select>(id1, id2, D_, K_); }
 
 	// コンソールに出力
-	void print(Distribution target) const override{ save(target, L""); }
+	void print(Distribution target) const override{ save(target, SIG_TO_FPSTR("")); }
 
 	// ファイルに出力
 	void save(Distribution target, FilepassString save_folder, bool detail = false) const override;

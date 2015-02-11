@@ -1,7 +1,7 @@
 ﻿#include "example.h"
 #include "../lib/model/twitter_lda.h"
 
-void example_lda_twitter(std::wstring src_folder, std::wstring out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
+void example_lda_twitter(FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -10,7 +10,7 @@ void example_lda_twitter(std::wstring src_folder, std::wstring out_folder, sig::
 	resume = resume && (!make_new);
 
 	out_folder = sig::modify_dirpass_tail(out_folder, true);
-	const wstring perp_pass = out_folder + L"perplexity_twlda.txt";
+	const FilepassString perp_pass = out_folder + SIG_TO_FPSTR("perplexity_twlda.txt");
 	if (!resume) sig::clear_file(perp_pass);
 
 	auto savePerplexity = [&](sigtm::TwitterLDA const* lda)
@@ -34,7 +34,7 @@ void example_lda_twitter(std::wstring src_folder, std::wstring out_folder, sig::
 	auto phi = lda->getPhi();
 	auto phib = lda->getPhiBackground();
 
-	sig::save_num(theta, out_folder + L"theta", ",");
-	sig::save_num(phi, out_folder + L"phi", ",");
-	sig::save_num(phib, out_folder + L"phib", ",");
+	sig::save_num(theta, out_folder + SIG_TO_FPSTR("theta"), ",");
+	sig::save_num(phi, out_folder + SIG_TO_FPSTR("phi"), ",");
+	sig::save_num(phib, out_folder + SIG_TO_FPSTR("phib"), ",");
 }

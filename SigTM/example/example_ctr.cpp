@@ -5,6 +5,10 @@
 
 const bool ENABLE_CTR_CACHE = true;
 
+const FilepassString rating_fname = SIG_TO_FPSTR("user");
+const FilepassString theta_fname = SIG_TO_FPSTR("theta");
+const FilepassString phi_fname = SIG_TO_FPSTR("phi");
+
 void runLDA(sigtm::LDAPtr lda, FilepassString out_folder, sig::uint iteration_num)
 {
 	const FilepassString perp_pass = out_folder + SIG_TO_FPSTR("perplexity_ctr.txt");
@@ -23,33 +27,32 @@ void runLDA(sigtm::LDAPtr lda, FilepassString out_folder, sig::uint iteration_nu
 	auto theta = lda->getTheta();
 	auto phi = lda->getPhi();
 
-	sig::save_num(theta, out_folder + L"theta", " ");
-	sig::save_num(phi, out_folder + L"phi", " ");
+	sig::save_num(theta, out_folder + theta_fname, " ");
+	sig::save_num(phi, out_folder + phi_fname, " ");
 }
 
 template <class Model>
-void runCTR(sigtm::CrossValidation<Model> validation, std::wstring out_folder)
+void runCTR(sigtm::CrossValidation<Model> validation, FilepassString out_folder)
 {
 	using namespace std;
 	using sig::uint;
 
 	out_folder = sig::modify_dirpass_tail(out_folder, true);
 
-	/*	auto tmp_u = *sig::load_num2d<double>(out_folder + L"final_U.dat", " ");
-	auto tmp_v = *sig::load_num2d<double>(out_folder + L"final_V.dat", " ");
-
-	validation.debug_set_u(tmp_u);
-	validation.debug_set_v(tmp_v);
-	*/
+	//auto tmp_u = *sig::load_num2d<double>(out_folder + L"final_U.dat", " ");
+	//auto tmp_v = *sig::load_num2d<double>(out_folder + L"final_V.dat", " ");
+	//validation.debug_set_u(tmp_u);
+	//validation.debug_set_v(tmp_v);
+	
 	{
 		const uint N = 5;
 		auto recall = validation.run(sigtm::Recall<Model>(N, sigtm::nothing));
 		auto ave_pre = validation.run(sigtm::AveragePrecision<Model>(N, sigtm::nothing));
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(N, sigtm::nothing));
 
-		sig::save_num(recall, out_folder + L"./recall@5.txt", "\n");
-		sig::save_num(ave_pre, out_folder + L"./average_precision@5.txt", "\n");
-		sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@5.txt", "\n");
+		sig::save_num(recall, out_folder + SIG_TO_FPSTR("./recall@5.txt"), "\n");
+		sig::save_num(ave_pre, out_folder + SIG_TO_FPSTR("./average_precision@5.txt"), "\n");
+		sig::save_num(cat_cov, out_folder + SIG_TO_FPSTR("./catalogue_coverage@5.txt"), "\n");
 	}
 	{
 		const uint N = 10;
@@ -58,10 +61,10 @@ void runCTR(sigtm::CrossValidation<Model> validation, std::wstring out_folder)
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(N, sigtm::nothing));
 		auto precision = validation.run(sigtm::Precision<Model>(N, sigtm::nothing));
 
-		sig::save_num(precision, out_folder + L"precision@10.txt", "\n");
-		sig::save_num(recall, out_folder + L"./recall@10.txt", "\n");
-		sig::save_num(ave_pre, out_folder + L"./average_precision@10.txt", "\n");
-		sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@10.txt", "\n");
+		sig::save_num(precision, out_folder + SIG_TO_FPSTR("precision@10.txt"), "\n");
+		sig::save_num(recall, out_folder + SIG_TO_FPSTR("./recall@10.txt"), "\n");
+		sig::save_num(ave_pre, out_folder + SIG_TO_FPSTR("./average_precision@10.txt"), "\n");
+		sig::save_num(cat_cov, out_folder + SIG_TO_FPSTR("./catalogue_coverage@10.txt"), "\n");
 	}
 	{
 		const uint N = 50;
@@ -69,9 +72,9 @@ void runCTR(sigtm::CrossValidation<Model> validation, std::wstring out_folder)
 		auto ave_pre = validation.run(sigtm::AveragePrecision<Model>(N, sigtm::nothing));
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(N, sigtm::nothing));
 
-		sig::save_num(recall, out_folder + L"./recall@50.txt", "\n");
-		sig::save_num(ave_pre, out_folder + L"./average_precision@50.txt", "\n");
-		sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@50.txt", "\n");
+		sig::save_num(recall, out_folder + SIG_TO_FPSTR("./recall@50.txt"), "\n");
+		sig::save_num(ave_pre, out_folder + SIG_TO_FPSTR("./average_precision@50.txt"), "\n");
+		sig::save_num(cat_cov, out_folder + SIG_TO_FPSTR("./catalogue_coverage@50.txt"), "\n");
 	}
 	{
 		const uint N = 100;
@@ -79,9 +82,9 @@ void runCTR(sigtm::CrossValidation<Model> validation, std::wstring out_folder)
 		auto ave_pre = validation.run(sigtm::AveragePrecision<Model>(N, sigtm::nothing));
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(N, sigtm::nothing));
 
-		sig::save_num(recall, out_folder + L"./recall@100.txt", "\n");
-		sig::save_num(ave_pre, out_folder + L"./average_precision@100.txt", "\n");
-		sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@100.txt", "\n");
+		sig::save_num(recall, out_folder + SIG_TO_FPSTR("./recall@100.txt"), "\n");
+		sig::save_num(ave_pre, out_folder + SIG_TO_FPSTR("./average_precision@100.txt"), "\n");
+		sig::save_num(cat_cov, out_folder + SIG_TO_FPSTR("./catalogue_coverage@100.txt"), "\n");
 	}
 	{
 		const uint N = 1000;
@@ -91,34 +94,23 @@ void runCTR(sigtm::CrossValidation<Model> validation, std::wstring out_folder)
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(N, sigtm::nothing));
 
 		//sig::save_num(precision, L"./precision@1000.txt", "\n");
-		sig::save_num(recall, out_folder + L"./recall@1000.txt", "\n");
-		sig::save_num(ave_pre, out_folder + L"./average_precision@1000.txt", "\n");
-		sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@1000.txt", "\n");
+		sig::save_num(recall, out_folder + SIG_TO_FPSTR("./recall@1000.txt"), "\n");
+		sig::save_num(ave_pre, out_folder + SIG_TO_FPSTR("./average_precision@1000.txt"), "\n");
+		sig::save_num(cat_cov, out_folder + SIG_TO_FPSTR("./catalogue_coverage@1000.txt"), "\n");
 	}
-	/*{
-	const double th = 0.8;
-	auto recall = validation.run(sigtm::Recall<Model>(sigtm::nothing, th));
-	auto ave_pre = validation.run(sigtm::AveragePrecision<Model>(sigtm::nothing, th));
-	auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(sigtm::nothing, th));
-
-	sig::save_num(recall, out_folder + L"./recall@gt0.8.txt", "\n");
-	sig::save_num(ave_pre, out_folder + L"./average_precision@0.8.txt", "\n");
-	sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@0.8.txt", "\n");
-	}*/
 	{
 		auto recall = validation.run(sigtm::Recall<Model>(sigtm::nothing, sigtm::nothing));
 		auto ave_pre = validation.run(sigtm::AveragePrecision<Model>(sigtm::nothing, sigtm::nothing));
 		auto cat_cov = validation.run(sigtm::CatalogueCoverage<Model>(sigtm::nothing, sigtm::nothing));
 
-		sig::save_num(recall, out_folder + L"./recall@all.txt", "\n");
-		sig::save_num(ave_pre, out_folder + L"./average_precision@all.txt", "\n");
-		sig::save_num(cat_cov, out_folder + L"./catalogue_coverage@all.txt", "\n");
+		sig::save_num(recall, out_folder + SIG_TO_FPSTR("./recall@all.txt"), "\n");
+		sig::save_num(ave_pre, out_folder + SIG_TO_FPSTR("./average_precision@all.txt"), "\n");
+		sig::save_num(cat_cov, out_folder + SIG_TO_FPSTR("./catalogue_coverage@all.txt"), "\n");
 	}
-
 }
 
 
-void example_ctr(std::wstring src_folder, std::wstring out_folder, sig::uint topic_num, bool run_lda, bool make_new)
+void example_ctr(FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, bool run_lda, bool make_new)
 {
 	using namespace std;
 
@@ -135,8 +127,8 @@ void example_ctr(std::wstring src_folder, std::wstring out_folder, sig::uint top
 	{
 		sigtm::DocumentLoaderSetInfo info;
 
-		auto token_file = *sig::load_line(out_folder + L"token");
-		auto vocab_file = *sig::load_line<std::wstring>(out_folder + L"vocab");
+		auto token_file = *sig::load_line(out_folder + sigtm::TOKEN_FILENAME);
+		auto vocab_file = *sig::load_line<std::wstring>(out_folder + sigtm::VOCAB_FILENAME);
 
 		sig::uint total_ct = 0, did = 0;
 		for (auto const& line : token_file) {
@@ -153,7 +145,7 @@ void example_ctr(std::wstring src_folder, std::wstring out_folder, sig::uint top
 				words.emplace(wid, vocab_file[wid]);
 			}
 			++did;
-			info.doc_names_.push_back(L"doc " + std::to_wstring(did));
+			info.doc_names_.push_back(SIG_TO_FPSTR("doc ") + sig::to_fpstring(did));
 		}
 
 		info.doc_num_ = did;
@@ -174,7 +166,7 @@ void example_ctr(std::wstring src_folder, std::wstring out_folder, sig::uint top
 		runLDA(lda, out_folder, lda_iteration_num);
 	}
 
-	auto user_ratings = *sig::load_num2d<sig::uint>(out_folder + L"user", " ");
+	auto user_ratings = *sig::load_num2d<sig::uint>(out_folder + rating_fname, " ");
 	for (auto& vec : user_ratings) vec = sig::drop(1, std::move(vec));
 	//auto item_ratings = *sig::load_num2d<uint>(out_folder + L"item", " ");
 	//for (auto& vec : item_ratings) sig::drop(1, vec);
@@ -185,10 +177,10 @@ void example_ctr(std::wstring src_folder, std::wstring out_folder, sig::uint top
 
 	auto hparam = sigtm::CtrHyperparameter::makeInstance(topic_num, true, ENABLE_CTR_CACHE);
 
-	if (auto theta = sig::load_num2d<double>(out_folder + L"theta", " ")) {
+	if (auto theta = sig::load_num2d<double>(out_folder + theta_fname, " ")) {
 		hparam->setTheta(*theta);
 	}
-	if (auto beta = sig::load_num2d<double>(out_folder + L"beta", " ")) {
+	if (auto beta = sig::load_num2d<double>(out_folder + phi_fname, " ")) {
 		hparam->setBeta(*beta);
 	}
 
@@ -211,5 +203,5 @@ void example_ctr(std::wstring src_folder, std::wstring out_folder, sig::uint top
 	*/
 
 	sigtm::CrossValidation<sigtm::CTR> validation(validation_cross_num, use_item_factor, hparam, docs, ratings, max_ctr_iteration, 2, 0);
-	runCTR<sigtm::CTR>(validation, out_folder + L"validation/");
+	runCTR<sigtm::CTR>(validation, out_folder + SIG_TO_FPSTR("validation/"));
 }

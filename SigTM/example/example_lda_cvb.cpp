@@ -13,7 +13,7 @@
 ・最終的な反復回数はperplexityを参考に模索して決める
 */
 
-void example_lda_cvb(InputTextType tt, std::wstring src_folder, std::wstring out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
+void example_lda_cvb(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -21,7 +21,7 @@ void example_lda_cvb(InputTextType tt, std::wstring src_folder, std::wstring out
 
 	resume = resume && (!make_new);
 
-	const wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_cvb.txt";
+	const FilepassString perp_pass = sig::modify_dirpass_tail(out_folder, true) + SIG_TO_FPSTR("perplexity_cvb.txt");
 	if (!resume) sig::clear_file(perp_pass);
 
 	auto savePerplexity = [&](sigtm::LDA const* lda)

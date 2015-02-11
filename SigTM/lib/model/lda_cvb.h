@@ -91,7 +91,7 @@ namespace sigtm
 		auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type{ return compareDefault<Select>(id1, id2, D_, K_); }
 
 		// コンソールに出力
-		void print(Distribution target) const override{ save(target, L""); }
+		void print(Distribution target) const override{ save(target, SIG_TO_FPSTR("")); }
 
 		// ファイルに出力
 		void save(Distribution target, FilepassString save_folder, bool detail = false) const override;

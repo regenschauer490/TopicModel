@@ -8,6 +8,8 @@ http://opensource.org/licenses/mit-license.php
 #ifndef SIGTM_MRLDA_H
 #define SIGTM_MRLDA_H
 
+#if SIG_MSVC_ENV
+
 #include "lda_common_module.hpp"
 #include "../helper/mapreduce_module.h"
 #include "../../external/mapreduce/include/mapreduce.hpp"
@@ -272,4 +274,5 @@ template <> struct hash<typename sigtm::MrLDA::reduce_key_type>
 	}
 };
 }	//std
+#endif
 #endif

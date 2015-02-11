@@ -132,23 +132,24 @@ void LDA_Module::printWord(CC const& data, std::vector<FilepassString> const& na
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
-			ofs << std::get<0>(e) << SIG_TO_FPSTR(' ') << std::get<1>(e) << std::endl;
+			ofs << sig::to_fpstring(std::get<0>(e)) << SIG_TO_FPSTR(' ') << std::get<1>(e) << std::endl;
 		}
 		ofs << std::endl;
 	};
 
-	auto ofs = save_pass ? OFS(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : OFS(SIG_TO_FPSTR(""));
+	OFS ofs(save_pass ? sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt") : SIG_TO_FPSTR(""));
 	OS& os = save_pass ? ofs : get_std_out<FilepassString>().cout;
 
 	// 各クラス(ex.トピック)のスコア上位top_num個の単語を出力
 	sig::for_each([&](int i, VectorV<double> const& wscore)
 	{
 		auto rank_words = top_num ? getTopWords(wscore, sig::fromJust(top_num), words) : getTopWords(wscore, wscore.size(), words);
-		auto header = SIG_TO_FPSTR("topic:") + (names.empty() ? std::to_wstring(i) : names[i - 1]);
+		auto header = SIG_TO_FPSTR("topic:") + (names.empty() ? sig::to_fpstring(i) : names[i - 1]);
 
 		Output(os, rank_words, header);
 	}
 	, 1, data);
+	
 	/*
 	if (save_pass && detail){
 	// 全単語を出力
@@ -169,7 +170,7 @@ void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& n
 	using OS = typename sig::impl::StreamSelector<FilepassString>::ostream;
 	using OFS = typename sig::impl::StreamSelector<FilepassString>::ofstream;
 
-	auto Output = [](OFS& ofs, VectorK<double> data, Maybe<FilepassString> header)
+	auto Output = [](OS& ofs, VectorK<double> data, Maybe<FilepassString> header)
 	{
 		if (header) ofs << sig::fromJust(header) << std::endl;
 		for (auto const& e : data){
@@ -178,13 +179,13 @@ void LDA_Module::printTopic(CC const& data, std::vector<FilepassString> const& n
 		ofs << std::endl;
 	};
 
-	auto ofs = save_pass ? OFS(sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt")) : OFS(SIG_TO_FPSTR(""));
+	OFS ofs(save_pass ? sig::fromJust(save_pass) + SIG_TO_FPSTR(".txt") : SIG_TO_FPSTR(""));
 	OS& os = save_pass ? ofs : get_std_out<FilepassString>().cout;
 
 	// 各クラス(ex.ドキュメント)のトピック分布を出力
 	sig::for_each([&](int i, VectorK<double> const& tscore)
 	{
-		auto header = SIG_TO_FPSTR("id:") + (names.empty() ? std::to_wstring(i) : names[i - 1]);
+		auto header = SIG_TO_FPSTR("id:") + (names.empty() ? sig::to_fpstring(i) : names[i - 1]);
 
 		Output(ofs, tscore, header);
 	}

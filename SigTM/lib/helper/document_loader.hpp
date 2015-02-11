@@ -81,21 +81,25 @@ inline bool DocumentLoader::parseLine(std::wstring const& line)
 	return true;
 }
 
+namespace impl
+{
+template <class R>
+auto fileopen(FilepassString pass) ->std::vector<R>
+{
+	auto m_text = sig::load_line<R>(pass);
+	if (!sig::isJust(m_text)){
+		sig::FileOpenErrorPrint(pass);
+		assert(false);
+	}
+	return sig::fromJust(std::move(m_text));
+};
+}
+
 inline void DocumentLoader::reconstruct()
 {
-	auto fileopen = [&](FilepassString pass) ->std::vector<std::wstring>
-	{
-		auto m_text = sig::load_line<std::wstring>(pass);
-		if (!sig::isJust(m_text)){
-			sig::FileOpenErrorPrint(pass);
-			assert(false);
-		}
-		return sig::fromJust(std::move(m_text));
-	};
-
 	auto base_pass = sig::modify_dirpass_tail(info_.working_directory_, true);
 
-	auto token_text = fileopen(base_pass + TOKEN_FILENAME);
+	auto token_text = impl::fileopen<std::wstring>(base_pass + TOKEN_FILENAME);
 	uint line_iter = 0;
 
 	// get feature size
@@ -123,14 +127,14 @@ inline void DocumentLoader::reconstruct()
 		}
 	}
 
-	if (tnum != tokens_.size()) {
+	if (tnum != static_cast<int>(tokens_.size())) {
 		std::cout << "token file is corrupted" << std::endl;
 		getchar();	std::terminate();
 	}
 
-	auto vocab_text = fileopen(base_pass + VOCAB_FILENAME);
+	auto vocab_text = impl::fileopen<std::wstring>(base_pass + VOCAB_FILENAME);
 
-	for (uint i = 0; i < wnum; ++i) {
+	for (int i = 0; i < wnum; ++i) {
 		auto word = std::make_shared<std::wstring>(vocab_text[i]);
 
 		if (words_.hasElement(word)) {
@@ -141,9 +145,9 @@ inline void DocumentLoader::reconstruct()
 		words_.emplace(i, word);		
 	}
 	
-	info_.doc_names_ = fileopen(base_pass + DOC_FILENAME);	
+	info_.doc_names_ = impl::fileopen<std::string>(base_pass + DOC_FILENAME);	
 
-	if (wnum != words_.size()) {
+	if (wnum != static_cast<int>(words_.size())) {
 		std::cout << "vocab file is corrupted" << std::endl;
 		getchar();	std::terminate();
 	}

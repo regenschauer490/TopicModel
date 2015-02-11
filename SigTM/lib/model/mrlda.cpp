@@ -5,6 +5,8 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
+#if SIG_MSVC_ENV
+
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "mrlda.h"
@@ -427,3 +429,4 @@ auto MrLDA::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std:
 }
 
 }
+#endif

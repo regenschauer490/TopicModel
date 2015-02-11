@@ -123,7 +123,7 @@ void optimize_simplex(
 	V1 const& gamma, 
 	V2 const& v, 
 	double lambda,
-	V2& opt_x)
+	V2&& opt_x)
 {
 	size_t size = sig::min(gamma.size(), v.size());
 	VectorK_ x_bar(size);
@@ -167,7 +167,7 @@ void CTR::init()
 
 	if (hparam_->beta_.empty()){
 		for(TopicId k = 0; k < K_; ++k){
-			auto& beta_k = impl::row_(beta_, k);
+			auto&& beta_k = impl::row_(beta_, k);
 			for (ItemId v = 0; v < V_; ++v) {
 				beta_k(v) = randf();
 			}
@@ -177,7 +177,7 @@ void CTR::init()
 	else{
 		std::cout << "beta loading" << std::endl;
 		for (uint k = 0; k < K_; ++k){
-			auto& beta_k = impl::row_(beta_, k);
+			auto&& beta_k = impl::row_(beta_, k);
 			for (uint v = 0; v < V_; ++v) beta_k(v) = hparam_->beta_[k][v];
 			impl::normalize_dist_v(beta_k);
 		}
@@ -189,13 +189,13 @@ void CTR::init()
 		std::cout << "theta loading" << std::endl;
 		//theta_ = sig::to_matrix_ublas(hparam_->theta_);
 		for (uint i = 0; i < I_; ++i) {
-			auto& theta_i = impl::row_(theta_, i);
+			auto&& theta_i = impl::row_(theta_, i);
 			for (uint k = 0; k < K_; ++k) theta_i(k) = hparam_->theta_[i][k];
 		}
 	}
 	else {
 		for (ItemId i = 0; i < I_; ++i) {
-			auto& theta_v = impl::row_(theta_, i);
+			auto&& theta_v = impl::row_(theta_, i);
 			for (uint k = 0; k < K_; ++k) theta_v[k] = 0;// randf();
 			//normalize_dist_v(theta_v);
 		}
@@ -207,7 +207,7 @@ void CTR::init()
 
 	if (!hparam_->theta_opt_){
 		for (ItemId i = 0; i < I_; ++i){
-			auto& if_v = impl::row_(item_factor_, i);
+			auto&& if_v = impl::row_(item_factor_, i);
 			for (uint k = 0; k < K_; ++k) if_v[k] = randf();
 		}
 	}
@@ -287,7 +287,7 @@ void save_impl(sig::FilepassString pass, M const& mat)
 			ofs << std::endl;
 		}
 	}
-	else std::wcout << L"saving file failed: " << pass << std::endl;
+	else std::cout << "saving file failed: " << sig::to_string(pass) << std::endl;
 };
 
 template <class M>
@@ -297,10 +297,10 @@ void load_impl(sig::FilepassString pass, M& mat)
 
 	if (tmp) {
 		for (uint i = 0, size1 = impl::size_row(mat); i < size1; ++i) {
-			auto& row = impl::row_(mat, i);
+			auto&& row = impl::row_(mat, i);
 			for (uint j = 0, size2 = impl::size(row); j < size2; ++j)  row(j) = (*tmp)[i][j];
 		}
-		std::wcout << L"loading file: " << pass << std::endl;
+		std::cout << "loading file: " << sig::to_string(pass) << std::endl;
 	}
 };
 
@@ -339,7 +339,7 @@ double CTR::docInference(ItemId id,	bool update_word_ss)
 	
 	for (auto tid : item_tokens_[id]){
 		WordId w = tokens_[tid].word_id;
-		auto& phi_v = impl::row_(phi_, tid);
+		auto&& phi_v = impl::row_(phi_, tid);
 
 		for (TopicId k = 0; k < K_; ++k){
 			phi_v[k] = theta_v[k] * impl::at_(beta_, k, w);
@@ -453,7 +453,7 @@ void CTR::updateV()
 #endif
 		
 	for (uint i = 0; i < I_; ++i){
-		auto& vec_v = impl::row_(item_factor_, i);
+		auto&& vec_v = impl::row_(item_factor_, i);
 		auto const theta_v = impl::row_(theta_, i);
 		auto const& ratings = item_ratings_[i];
 
@@ -546,7 +546,7 @@ auto CTR::recommend_impl(Id id, bool for_user, bool ignore_train_set) const->std
 	std::vector<EstValueType> result;
 	std::unordered_set<Id> check;
 
-	auto& ratings = for_user ? user_ratings_ : item_ratings_;
+	auto&& ratings = for_user ? user_ratings_ : item_ratings_;
 	const uint S = for_user ? I_ : U_;
 
 	result.reserve(S);

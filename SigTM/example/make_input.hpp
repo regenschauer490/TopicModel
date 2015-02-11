@@ -31,7 +31,7 @@ static const std::wregex a_hira_kata_reg(L"^[ぁ-んァ-ン0-9０-９]$");
 ・vocabデータ：出現単語に関する情報
 */
 
-inline sigtm::DocumentSetPtr makeInputData(InputTextType tt, std::wstring src_folder, std::wstring out_folder, bool make_new)
+inline sigtm::DocumentSetPtr makeInputData(InputTextType tt, FilepassString src_folder, FilepassString out_folder, bool make_new)
 {
 	using namespace std;
 	using sig::uint;

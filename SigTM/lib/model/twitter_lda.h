@@ -101,17 +101,16 @@ public:
 			? TwitterLDAPtr(new TwitterLDA(resume, topic_num, input_data, nothing, nothing, nothing))
 			: nullptr;
 	}
-	// alpha, beta をsymmetricに設定する場合
-	static TwitterLDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data, double alpha, Maybe<double> gamma = nothing, Maybe<double> beta = nothing){
+	// alpha, beta, gamma をsymmetricに設定する場合
+	static TwitterLDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data, double alpha, Maybe<double> beta = nothing, Maybe<double> gamma = nothing){
 		return TwitterLDAPtr(new TwitterLDA(resume, topic_num, input_data, VectorK<double>(topic_num, alpha),
 			beta ? sig::Just<VectorV<double>>(VectorV<double>(input_data->getWordNum(), sig::fromJust(beta))) : nothing,
 			gamma ? sig::Just<VectorB<double>>(VectorB<double>{sig::fromJust(gamma), 1 - sig::fromJust(gamma)}) : nothing)
 		);
 	}
-	// alpha, beta を多次元で設定する場合
-	template <class SamplingMethod = CollapsedGibbsSampling>
-	static LDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing){
-		return LDAPtr(new LDA_Gibbs(SamplingMethod(), resume, topic_num, input_data, alpha, beta));
+	// alpha, beta, gamma を多次元で設定する場合
+	static TwitterLDAPtr makeInstance(bool resume, uint topic_num, DocumentSetPtr input_data, VectorK<double> alpha, Maybe<VectorV<double>> beta = nothing, Maybe<VectorB<double>> gamma = nothing){
+		return TwitterLDAPtr(new TwitterLDA(resume, topic_num, input_data, alpha, beta, gamma));
 	}
 
 	/* モデルの学習を行う */
@@ -130,7 +129,7 @@ public:
 //	auto compare(Id id1, Id id2) const->typename Map2Cmp<Select>::type
 
 	// コンソールに出力
-	void print(Distribution target) const{ save(target, L""); }
+	void print(Distribution target) const{ save(target, SIG_TO_FPSTR("")); }
 
 	// ファイルに出力
 	// save_folder: 保存先のフォルダのパス

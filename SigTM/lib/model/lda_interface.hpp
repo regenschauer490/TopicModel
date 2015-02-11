@@ -33,19 +33,19 @@ template<class T> using SMatrixKV = SVectorK<SVectorV<T>>;
 */
 
 #define SIG_INIT_VECTOR(type, index_name, value)\
-	Vector ## index_name ## <type>(index_name ## _, value)
+	Vector ## index_name <type>(index_name ## _, value)
 
 #define SIG_INIT_VECTOR_R(type, index_name, range, value)\
-	Vector ## index_name ## <type>(range, value)
+	Vector ## index_name <type>(range, value)
 
 #define SIG_INIT_MATRIX(type, index_name1, index_name2, value)\
-	Matrix ## index_name1 ## index_name2 ## <type>(index_name1 ## _, SIG_INIT_VECTOR(type, index_name2, value))
+	Matrix ## index_name1 ## index_name2 <type>(index_name1 ## _, SIG_INIT_VECTOR(type, index_name2, value))
 
 #define SIG_INIT_MATRIX_R(type, index_name1,range1, index_name2, range2, value)\
-	Matrix ## index_name1 ## index_name2 ## <type>(range1, SIG_INIT_VECTOR_R(type, index_name2, range2, value))
+	Matrix ## index_name1 ## index_name2 <type>(range1, SIG_INIT_VECTOR_R(type, index_name2, range2, value))
 
 #define SIG_INIT_MATRIX3(type, index_name1, index_name2, index_name3, value)\
-	Vector ## index_name1 ## <type>(index_name1 ## _, SIG_INIT_MATRIX(type, index_name2, index_name3, value))
+	Vector ## index_name1 <type>(index_name1 ## _, SIG_INIT_MATRIX(type, index_name2, index_name3, value))
 
 
 // LDAインタフェース

@@ -9,7 +9,8 @@ http://opensource.org/licenses/mit-license.php
 #define SIGTM_RATING_MATRIX_H
 
 #include "../sigtm.hpp"
-#include "SigUtil/lib/modify/remove.hpp"
+#include "SigUtil/lib/modify.hpp"
+#include "SigUtil/lib/functional/high_order.hpp"
 #include <boost/range/iterator_range.hpp>
 #include <boost/range/join.hpp>
 

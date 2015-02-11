@@ -12,7 +12,7 @@ http://opensource.org/licenses/mit-license.php
 #include "../helper/metrics.hpp"
 #include "../helper/cross_validation.hpp"
 #include "SigUtil/lib/functional/filter.hpp"
-#include "SigUtil/lib/tools/histgram.hpp";
+#include "SigUtil/lib/tools/histgram.hpp"
 //#include <boost/numeric/ublas/matrix_sparse.hpp>
 
 namespace sigtm

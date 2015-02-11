@@ -1,6 +1,6 @@
 COMPILER = g++
-CFLAGS   = -Wextra -g -MMD -MP -std=gnu++1y -fextended-identifiers
-LDFLAGS  =
+CFLAGS   = -Wextra -g -MMD -MP -std=gnu++1y -fextended-identifiers -O2
+LDFLAGS  = -lpthread
 #BOOST_DIR = usr/include/c++/boost/boost_1_55_0
 BOOST_DIR = home/nishimura/lib/boost_1_57_0
 INCLUDE = -I/$(BOOST_DIR) -I//home/nishimura/github/Utility

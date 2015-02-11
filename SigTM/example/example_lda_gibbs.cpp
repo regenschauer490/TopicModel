@@ -16,7 +16,7 @@
 ・レジューム機能あり
 */
 
-void example_lda_gibbs(InputTextType tt, std::wstring src_folder, std::wstring out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
+void example_lda_gibbs(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -25,7 +25,7 @@ void example_lda_gibbs(InputTextType tt, std::wstring src_folder, std::wstring o
 	resume = resume && (!make_new);
 
 	out_folder = sig::modify_dirpass_tail(out_folder, true);
-	const wstring perp_pass = out_folder + L"perplexity_gibbs.txt";
+	const FilepassString perp_pass = out_folder + SIG_TO_FPSTR("perplexity_gibbs.txt");
 	if (!resume) sig::clear_file(perp_pass);
 
 	auto savePerplexity = [&](sigtm::LDA const* lda)
@@ -51,7 +51,7 @@ void example_lda_gibbs(InputTextType tt, std::wstring src_folder, std::wstring o
 
 	auto phi = lda->getPhi();
 	for (sig::uint i = 0; i<phi.size(); ++i) {
-		sig::save_num(phi[i], out_folder + L"tphi/phi" + to_wstring(i), "\n");
+		sig::save_num(phi[i], out_folder + SIG_TO_FPSTR("phi") + sig::to_fpstring(i), "\n");
 	}
 
 	// document間の類似度測定

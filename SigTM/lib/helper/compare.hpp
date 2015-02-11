@@ -12,10 +12,12 @@ auto compare(LDAPtr lda, Id id1, Id id2) ->typename LDA::Map2Cmp<Select>::type
 	switch (lda->getDynamicType()) {
 	case LDA::DynamicType::GIBBS:
 		return std::static_pointer_cast<LDA_Gibbs>(lda)->compare<Select>(id1, id2);
-	case LDA::DynamicType::MRLDA:
-		return std::static_pointer_cast<MrLDA>(lda)->compare<Select>(id1, id2);
 	case LDA::DynamicType::CVB0:
 		return std::static_pointer_cast<LDA_CVB0>(lda)->compare<Select>(id1, id2);
+#if SIG_MSVC_ENV
+	case LDA::DynamicType::MRLDA:
+		return std::static_pointer_cast<MrLDA>(lda)->compare<Select>(id1, id2);
+#endif
 	default:
 		assert(false);
 	}
