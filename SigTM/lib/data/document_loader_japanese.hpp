@@ -91,8 +91,8 @@ private:
 private:
 	DocumentLoaderFromJapanese() = delete;
 	DocumentLoaderFromJapanese(DocumentLoaderFromJapanese const& src) = delete;
-	DocumentLoaderFromJapanese(DocumentType type, Documents const& raw_texts, FilterSetting const& filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
-		: DocumentLoader(type, raw_texts.size(), save_folder_pass), filter_(filter)
+	DocumentLoaderFromJapanese(DocumentType type, Documents const& raw_texts, FilterSetting const& filter, FilepassString working_directory, std::vector<FilepassString> const& doc_names)
+		: DocumentLoader(type, raw_texts.size(), working_directory), filter_(filter)
 	{
 		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) info_.doc_names_.push_back(sig::to_fpstring(i));
 		else{
@@ -113,21 +113,21 @@ public:
 	static DocumentSetPtr makeInstance(
 		Documents const& raw_texts,				// 生のテキストデータ
 		FilterSetting const& filter,			// テキストへのフィルタ処理
-		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
+		FilepassString const& working_directory,		// 出力データの保存先
 		std::vector<FilepassString> doc_names		// 各documentの識別名
 	){
-		return DocumentSetPtr(new DocumentLoaderFromJapanese(DocumentType::Defaut, raw_texts, filter, save_folder_pass, doc_names));
+		return DocumentSetPtr(new DocumentLoaderFromJapanese(DocumentType::Defaut, raw_texts, filter, working_directory, doc_names));
 	}
 
 	// テキストファイルに保存された一般的なdocument集合から生成 (各.txtファイルがdocumentに相当)
 	static DocumentSetPtr makeInstance(
 		FilepassString const& src_folder_pass,		// 生のテキストデータが保存されているフォルダ
 		FilterSetting const& filter,				// テキストへのフィルタ処理
-		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
+		FilepassString const& working_directory,		// 出力データの保存先
 		Maybe<std::vector<FilepassString>> doc_names = nothing	// 各documentの識別名(デフォルトはファイル名)
 	){
 		auto doc_passes = sig::get_file_names(src_folder_pass, false);
-		if (!sig::isJust(doc_passes)){
+		if (!isJust(doc_passes)){
 			sig::FileOpenErrorPrint(src_folder_pass);
 			assert(false);
 		}
@@ -135,9 +135,9 @@ public:
 		return DocumentSetPtr(new DocumentLoaderFromJapanese(
 			DocumentType::Defaut,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
-				}, sig::fromJust(doc_passes)
-			), filter, save_folder_pass, doc_names ? sig::fromJust(doc_names) : sig::fromJust(doc_passes))
+				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
+				}, fromJust(doc_passes)
+			), filter, working_directory, doc_names ? fromJust(doc_names) : fromJust(doc_passes))
 		);
 	}
 
@@ -145,21 +145,21 @@ public:
 	static DocumentSetPtr makeInstanceFromTweet(
 		Documents const& raw_tweets,			// 生のテキストデータ
 		FilterSetting const& filter,			// テキストへのフィルタ処理
-		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
+		FilepassString const& working_directory,		// 出力データの保存先
 		std::vector<FilepassString> user_names		// 各userの識別名
 	){
-		return DocumentSetPtr(new DocumentLoaderFromJapanese(DocumentType::Tweet, raw_tweets, filter, save_folder_pass, user_names));
+		return DocumentSetPtr(new DocumentLoaderFromJapanese(DocumentType::Tweet, raw_tweets, filter, working_directory, user_names));
 	}
 
 	// テキストファイルに保存されたtweet集合から生成 (各.txtファイルがユーザのtweet集合、各行がtweetに相当)
 	static DocumentSetPtr makeInstanceFromTweet(
 		FilepassString const& src_folder_pass,		// 生のテキストデータが保存されているフォルダ
 		FilterSetting const& filter,				// テキストへのフィルタ処理
-		FilepassString const& save_folder_pass,		// 作成した入力データの保存先
+		FilepassString const& working_directory,		// 出力データの保存先
 		Maybe<std::vector<FilepassString>> user_names = nothing	// 各ユーザの識別名(デフォルトはファイル名)
 	){
 		auto doc_passes = sig::get_file_names(src_folder_pass, false);
-		if (!sig::isJust(doc_passes)){
+		if (!isJust(doc_passes)){
 			sig::FileOpenErrorPrint(src_folder_pass);
 			assert(false);
 		}
@@ -167,9 +167,9 @@ public:
 		return DocumentSetPtr(new DocumentLoaderFromJapanese(
 			DocumentType::Tweet,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
-			}, sig::fromJust(doc_passes)
-			), filter, save_folder_pass, user_names ? sig::fromJust(user_names) : sig::fromJust(doc_passes))
+				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
+			}, fromJust(doc_passes)
+			), filter, working_directory, user_names ? fromJust(user_names) : fromJust(doc_passes))
 		);
 	}
 };

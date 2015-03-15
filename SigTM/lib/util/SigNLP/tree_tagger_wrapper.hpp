@@ -54,7 +54,9 @@ inline auto TreeTaggerWrapper::parseImpl(std::string const& src, FilepassString 
 	{
 		std::lock_guard<decltype(mtx_)> lock(mtx_);
 		//if (id_ == std::numeric_limits<uint>::max()) id_ = 0;
+		
 		++id_;
+		while (sig::file_exists(src_file_pass_base + sig::to_fpstring(id_)) || sig::file_exists(out_file_pass_base + sig::to_fpstring(id_))) ++id_;		
 	}
 	auto src_file_pass = src_file_pass_base + sig::to_fpstring(id_);
 	auto out_file_pass = out_file_pass_base + sig::to_fpstring(id_);
@@ -67,14 +69,17 @@ inline auto TreeTaggerWrapper::parseImpl(std::string const& src, FilepassString 
 
 	FilepassString command = exe_pass_ + param_pass_ + src_file_pass + SIG_TO_FPSTR(" ") + out_file_pass + option;
 	uint ct = 0;
-	while (true) {
+	while (ct < 10) {
 		call(command);
 		auto result = sig::load_line(out_file_pass);
 
-		if (result || ct > 10) {
-			while(DeleteFile(src_file_pass.c_str())) ;
-			while(DeleteFile(out_file_pass.c_str())) ;
-
+		if (result) {
+			while (sig::file_exists(src_file_pass)) {
+				DeleteFile(src_file_pass.c_str());
+			}
+			while (sig::file_exists(out_file_pass)) {
+				DeleteFile(out_file_pass.c_str());
+			}
 			return result ? *result : std::vector<std::string>();
 		}
 		++ct;
@@ -85,7 +90,10 @@ inline auto TreeTaggerWrapper::parseImpl(std::string const& src, FilepassString 
 inline auto TreeTaggerWrapper::parseGenkei(std::string const& sentence, bool skip) const->std::vector<std::string>
 {
 	std::vector<std::string> result;
-	if (enable_warning && sentence.empty()) { std::cout << "sentense is empty" << std::endl; return result; }
+	if (sentence.empty()) {
+		if(enable_warning) std::cout << "sentense is empty" << std::endl;
+		return result;
+	}
 
 	auto parse = parseImpl(sentence, SIG_TO_FPSTR(" -token -lemma -quiet"));
 

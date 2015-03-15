@@ -4,7 +4,7 @@
 
 #if SIG_MSVC_ENV
 
-void example_lda_mapreduce(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
+void example_lda_mapreduce(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint num_topics, sig::uint num_iteration, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -34,11 +34,11 @@ void example_lda_mapreduce(InputTextType tt, FilepassString src_folder, Filepass
 		tw.restart();
 	};
 
-	auto mrlda = sigtm::MrLDA::makeInstance(resume, topic_num, inputdata);
+	auto mrlda = sigtm::MrLDA::makeInstance(num_topics, inputdata, resume);
 
 	// 学習開始
 	cout << "model training" << endl;
-	mrlda->train(iteration_num, savePerplexity);
+	mrlda->train(num_iteration, savePerplexity);
 }
 
 #endif

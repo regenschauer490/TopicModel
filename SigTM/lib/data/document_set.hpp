@@ -48,7 +48,6 @@ protected:
 
 	DocumentLoaderSetInfo info_;
 	
-	DocumentSet() = default;
 public:
 	DocumentSet(DocumentSet const& src) = delete;
 	DocumentSet(FilepassString folder_pass){

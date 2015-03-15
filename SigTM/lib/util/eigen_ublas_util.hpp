@@ -1,40 +1,33 @@
 /*
-Copyright(c) 2014 Akihiro Nishimura
+Copyright(c) 2015 Akihiro Nishimura
 
 This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
-#ifndef SIGTM_EIGEN_UTIL_HPP
-#define SIGTM_EIGEN_UTIL_HPP
+#ifndef SIGTM_EIGEN_UBLAS_UTIL_HPP
+#define SIGTM_EIGEN_UBLAS_UTIL_HPP
 
 #include "../sigtm.hpp"
 
 #if SIG_USE_EIGEN
 #include "SigUtil/lib/helper/container_traits.hpp"
-#include "Eigen/Core"
 
-using EigenVector = Eigen::VectorXd;
-using EigenMatrix = Eigen::MatrixXd;
-
-namespace sig
+namespace sigtm
 {
-	namespace impl{
-		struct eigen_container_traits
-		{
-			static const bool exist = true;
+namespace impl{
+struct eigen_container_traits
+{
+	static const bool exist = true;
+	using value_type = double;
+};
 
-			using value_type = double;
-		};
+template<>
+struct container_traits<EigenVector> : public eigen_container_traits
+{};
 
-		template<>
-		struct container_traits<EigenVector> : public eigen_container_traits
-		{};
-	}
-}
-
-#else
-#include "SigUtil/lib/calculation/ublas.hpp"
+}	// impl
+}	// sig
 #endif
 
 

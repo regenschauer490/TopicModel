@@ -18,11 +18,11 @@ void LDA_Gibbs::init(bool resume)
 {
 	std::unordered_map<TokenId, TopicId> id_z_map;
 	if (resume){
-		auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
-	
-		auto load_info = sig::load_line(base_pass + resume_info_fname);
-		if (sig::isJust(load_info)){
-			auto info = sig::fromJust(load_info);
+		auto const base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);	
+		const auto load_info = sig::load_line(base_pass + resume_info_fname);
+
+		if (isJust(load_info)){
+			auto const& info = fromJust(load_info);
 			total_iter_ct_ = std::stoul(info[0]);
 		}
 
@@ -30,8 +30,8 @@ void LDA_Gibbs::init(bool resume)
 		auto load_alpha = sig::load_num<double, VectorK<double>>(base_pass + resume_alpha_fname);
 		auto tmp_alpha = std::move(alpha_);
 	
-		if (sig::isJust(load_alpha)){
-			alpha_ = std::move(sig::fromJust(load_alpha));
+		if (isJust(load_alpha)){
+			alpha_ = fromJust(std::move(load_alpha));
 			std::cout << "resume alpha" << std::endl;
 		}
 		else{
@@ -40,12 +40,12 @@ void LDA_Gibbs::init(bool resume)
 		}
 	
 		// resume z
-		auto load_token_z = sig::load_line(base_pass + resume_token_z_fname);
+		const auto load_token_z = sig::load_line(base_pass + resume_token_z_fname);
 	
-		if (sig::isJust(load_token_z)){
-			auto zs = sig::fromJust(load_token_z);
+		if (isJust(load_token_z)){
+			auto const& zs = fromJust(load_token_z);
 			for(auto const& z : zs){
-				auto id_z = sig::split(z, " ");
+				const auto id_z = sig::split(z, " ");
 				id_z_map.emplace(std::stoul(id_z[0]), std::stoul(id_z[1]));			
 			}
 			if (id_z_map.size() != tokens_.size()){ std::cout << "resume error: unmatch input data and reesume data." << std::endl; getchar(); abort(); }
@@ -61,7 +61,7 @@ void LDA_Gibbs::init(bool resume)
 
 	int i = -1;	
 	for(auto const& t : tokens_){
-		int z = id_z_map.empty() ? rand_ui_() : id_z_map[t.self_id];
+		const uint z = id_z_map.empty() ? rand_ui_() : id_z_map[t.self_id];
 		++word_ct_[t.word_id][z];
 		++doc_ct_[t.doc_id][z];
 		++topic_ct_[z];
@@ -73,11 +73,11 @@ void LDA_Gibbs::saveResumeData() const
 {
 	std::cout << "save resume data... ";
 
-	auto base_pass = input_data_->getWorkingDirectory();
+	const auto base_pass = input_data_->getWorkingDirectory();
 
 	sig::save_num(alpha_, base_pass + resume_alpha_fname, "\n");
 
-	auto zs = sig::map([&](Token const& t){ return std::to_string(t.self_id) + " " + std::to_string(z_[t.self_id]); }, tokens_);
+	const auto zs = sig::map([&](Token const& t){ return std::to_string(t.self_id) + " " + std::to_string(z_[t.self_id]); }, tokens_);
 	sig::save_line(zs, base_pass + resume_token_z_fname);
 
 	sig::clear_file(base_pass + resume_info_fname);
@@ -88,7 +88,7 @@ void LDA_Gibbs::saveResumeData() const
 
 void LDA_Gibbs::update(Token const& t)
 {
-	auto sampleTopic = [&](const DocumentId d, const WordId v)->TopicId
+	const auto sampleTopic = [&](const DocumentId d, const WordId v)->TopicId
 	{
 		for (TopicId k = 0; k < K_; ++k){
 			tmp_p_[k] = sampling_(this, d, v, k);
@@ -120,7 +120,7 @@ void LDA_Gibbs::update(Token const& t)
 }
 
 
-void LDA_Gibbs::train(uint iteration_num, std::function<void(LDA const*)> callback)
+void LDA_Gibbs::train(uint num_iteration, std::function<void(LDA const*)> callback)
 {
 /*	auto chandle = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_CURSOR_INFO info1;
@@ -133,9 +133,9 @@ void LDA_Gibbs::train(uint iteration_num, std::function<void(LDA const*)> callba
 	const COORD disp_pos{ 1, info2.dwCursorPosition.Y };
 */
 	const auto iteration_impl = [&]{
-		for (uint i = 0; i < iteration_num; ++i, ++total_iter_ct_){
+		for (uint i = 0; i < num_iteration; ++i, ++total_iter_ct_){
 			//SetConsoleCursorPosition(chandle, disp_pos);
-			std::string numstr = "iteration: " + std::to_string(total_iter_ct_ + 1);
+			const std::string numstr = "iteration: " + std::to_string(total_iter_ct_ + 1);
 			std::cout << numstr << std::endl;
 			std::for_each(std::begin(tokens_), std::end(tokens_), std::bind(&LDA_Gibbs::update, this, std::placeholders::_1));
 			callback(this);
@@ -150,19 +150,34 @@ void LDA_Gibbs::train(uint iteration_num, std::function<void(LDA const*)> callba
 	//if (chandle != INVALID_HANDLE_VALUE) CloseHandle(chandle);
 }
 
-void LDA_Gibbs::save(Distribution target, FilepassString save_folder, bool detail) const
+void LDA_Gibbs::save(Distribution target, FilepassString save_dir, bool detail) const
 {
-	save_folder = sig::modify_dirpass_tail(save_folder, true);
+	save_dir = sig::modify_dirpass_tail(save_dir, true);
 
 	switch(target){
 	case Distribution::DOCUMENT :
-		printTopic(getTheta(), input_data_->getInputFileNames(), save_folder + SIG_TO_FPSTR("document_gibbs"));
+		printTopic(
+			getTheta(),
+			input_data_->getInputFileNames(),
+			Just(save_dir + SIG_TO_FPSTR("document_gibbs"))
+		);
 		break;
 	case Distribution::TOPIC :
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_gibbs"));
+		printWord(
+			getPhi(),
+			std::vector<FilepassString>(),
+			input_data_->words_, detail ? Nothing<uint>() : Just<uint>(20),
+			Just(save_dir + SIG_TO_FPSTR("topic_gibbs"))
+		);
 		break;
 	case Distribution::TERM_SCORE :
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_gibbs"));
+		printWord(
+			getTermScore(),
+			std::vector<FilepassString>(),
+			input_data_->words_,
+			detail ? Nothing<uint>() : Just<uint>(20),
+			Just(save_dir + SIG_TO_FPSTR("term-score_gibbs"))
+		);
 		break;
 	default :
 		std::cout << "LDA_Gibbs::save error" << std::endl;
@@ -194,28 +209,44 @@ auto LDA_Gibbs::getPhi(TopicId k_id) const->VectorV<double>
 	return std::move(phi);
 }
 
-auto LDA_Gibbs::getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> >
+auto LDA_Gibbs::getWordOfTopic(Distribution target, uint num_get_words, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;
 
-	std::vector<double> df;
-	if (target == Distribution::TOPIC) df = getPhi(k_id);
-	else if (target == Distribution::TERM_SCORE) df = getTermScore(k_id);
-	else{
-		std::cout << "LDA_Gibbs::getWordOfTopic : Distributionが無効" << std::endl;
-		return result;
-	}
+	const std::vector<double> df =
+		target == Distribution::TOPIC
+		? getPhi(k_id)
+		: target == Distribution::TERM_SCORE
+			? getTermScore(k_id)
+			: [](){
+				std::cout << "LDA_Gibbs::getWordOfTopic : 不適切な'Distribution'が指定されています" << std::endl;
+				std::cout << "LDA_Gibbs::getWordOfTopic : argument 'Distribution' is invalid" << std::endl;
+				return std::vector<double>{};
+	}();
 
-	return getTopWords(df, return_word_num, input_data_->words_);
+	return calcTopWords(df, num_get_words, input_data_->words_);
 }
 
-auto LDA_Gibbs::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> >
+auto LDA_Gibbs::getWordOfDocument(Distribution target, uint num_get_words, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;
-	auto top_wscore = getTermScoreOfDocument(getTheta(d_id), getTermScore());
 
-	for(uint i=0; i<return_word_num; ++i) result.push_back( std::make_tuple( *input_data_->words_.getWord(std::get<0>(top_wscore[i])), std::get<1>(top_wscore[i]) ) );
+	const auto wscore_rank = target == Distribution::TOPIC
+		? calcWordScoreOfDocument(getTheta(d_id), getPhi())
+		: target == Distribution::TERM_SCORE
+			? calcWordScoreOfDocument(getTheta(d_id), getTermScore())
+			: [](){
+				std::cout << "LDA_Gibbs::getWordOfDocument : 不適切な'Distribution'が指定されています" << std::endl;
+				std::cout << "LDA_Gibbs:getWordOfDocument : argument 'Distribution' is invalid" << std::endl;
+				return std::vector< std::tuple<WordId, double>>{};
+	}();
 
+	for (uint i = 0; i < num_get_words; ++i){
+		result.push_back(std::make_tuple(
+			*input_data_->words_.getWord(std::get<0>(wscore_rank[i])),
+			std::get<1>(wscore_rank[i])
+		));
+	}
 	return std::move(result);
 }
 

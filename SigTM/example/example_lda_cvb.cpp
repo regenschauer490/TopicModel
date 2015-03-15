@@ -1,19 +1,21 @@
 ﻿#include "example.h"
 #include "../lib/model/lda_cvb.h"
 
-/*
-[ Latent Dirichlet Allocation (estimate by Zero-Order Collapsed Variational Bayesian inference) ]
+/**
+\brief
+	[ Latent Dirichlet Allocation (estimate by Zero-Order Collapsed Variational Bayesian inference) ]
 
-・標準的なCVB0によるLDA
-・指定するパラメータ
-	・K : トピック数
-	・iteration：反復回数
-	・alpha：トピック分布thetaの平滑化度合．デフォルトは全ての値が 50 / K
-	・beta：単語分布phiの平滑化度合．デフォルトは全ての値が 0.01
-・最終的な反復回数はperplexityを参考に模索して決める
+\detail
+- 標準的なCVB0によるLDA
+- 指定するパラメータ
+	- K : トピック数
+	- iteration：反復回数
+	- alpha：トピック分布thetaの平滑化度合．デフォルトは全ての値が 50 / K
+	- beta：単語分布phiの平滑化度合．デフォルトは全ての値が 0.01
+- 最終的な反復回数はg_perplexityを参考に模索して決める
 */
 
-void example_lda_cvb(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
+void example_lda_cvb(InputTextType tt, FilepassString src_folder, FilepassString out_folder, sig::uint num_topics, sig::uint num_iteration, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -31,12 +33,12 @@ void example_lda_cvb(InputTextType tt, FilepassString src_folder, FilepassString
 		sig::save_line(sig::cat(split, ""), perp_pass, sig::WriteMode::append);
 	};
 
-	auto lda = sigtm::LDA_CVB0::makeInstance(resume, topic_num, inputdata);
+	auto lda = sigtm::LDA_CVB0::makeInstance(num_topics, inputdata, resume);
 	auto doc_num = lda->getDocumentNum();
 	
 	// 学習開始
 	cout << "model training" << endl;
-	lda->train(iteration_num, savePerplexity);
+	lda->train(num_iteration, savePerplexity);
 
 	lda->save(sigtm::LDA::Distribution::DOCUMENT, out_folder);
 	lda->save(sigtm::LDA::Distribution::TOPIC, out_folder);

@@ -21,31 +21,56 @@ http://opensource.org/licenses/mit-license.php
 
 namespace sigtm
 {
+#if SIG_USE_SIGNLP
 using signlp::WordClass;
+#endif
 
-
-/* 英語の生テキストから入力データを作成 */
+/**
+\brief
+	モデルへの入力データを作成（英語で書かれたファイルから読み込み）\n
+\detail
+	英語で書かれた生のテキストファイルから入力データを作成する場合に利用．\n
+	通常，1ファイルが1文書に対応している．
+	他の文書形式（例：tweet）の場合，適切なファクトリ関数を選択する必要があることに注意．
+	
+	\sa DocumentLoader
+	\sa DocumentLoaderFromJapanese
+*/
 class DocumentLoaderFromEnglish : public DocumentLoader
 {
 public:
-	/* 入力データへのフィルタ処理の設定を行う */
+	/**
+	\brief
+		入力データへのフィルタ処理の設定を行う
+	\detail
+		形態素解析の前後の処理，および形態素解析に関する設定を行う．	\n
+		SigNLPを使う（sigtm.hpp の SIG_USE_SIGNLP を1に設定する）場合には，形態素解析器 TreeTagger を利用可能（TreeTaggerは別途インストールする必要あり）．
+		SigNLPを使わない場合，形態素解析は行わず，単語の分離操作を関数として設定する（defaultは半角スペース区切りで分離）．
+
+		設定項目一覧（※はSigNLPが必要）
+		- 単語を「基本形」か「原形」のどちらで扱うか ※
+		- 指定回数以下の出現数の単語を除外する
+		- 
+	*/
 	class FilterSetting
 	{
 	public:
 		using Filter = std::function< void(Text&) >;
+		using Parser = std::function<std::vector<Text>(Text const&)>;
 
 	private:
 		const bool base_form_;
 		uint remove_word_count_;
 		const FilepassString exe_pass_;
 		const FilepassString param_pass_;
+		Maybe<Parser> parser_;
 		Filter common_pri_filter_;
 		Filter common_post_filter_;
 		std::unordered_map< uint, Filter> individual_pri_filter_;
 		std::unordered_map< uint, Filter> individual_post_filter_;
 	
 	public:
-		FilterSetting() : base_form_(false), common_pri_filter_(nullptr), common_post_filter_(nullptr){};
+		FilterSetting(Maybe<Parser> parser = Nothing<Parser>()) : base_form_(false), parser_(parser), common_pri_filter_(nullptr), common_post_filter_(nullptr){};
 #if SIG_USE_SIGNLP
 		FilterSetting(FilepassString exe_pass, FilepassString param_pass, bool use_base_form)
 			: base_form_(use_base_form), exe_pass_(exe_pass), param_pass_(param_pass), common_pri_filter_(nullptr), common_post_filter_(nullptr) {};
@@ -56,6 +81,8 @@ public:
 
 		FilepassString getTreeTaggerPass() const { return exe_pass_; }
 		FilepassString getTreeTaggerParamPass() const { return param_pass_; }
+
+		Maybe<Parser> getParser() const{ return parser_; }
 
 		// 出現数が指定数以下の単語を除外
 		void setRemoveWordCount(uint threshold_num) { remove_word_count_ = threshold_num; }
@@ -84,8 +111,8 @@ private:
 private:
 	DocumentLoaderFromEnglish() = delete;
 	DocumentLoaderFromEnglish(DocumentLoaderFromEnglish const& src) = delete;
-	DocumentLoaderFromEnglish(DocumentType type, Documents const& raw_texts, FilterSetting filter, FilepassString save_folder_pass, std::vector<FilepassString> const& doc_names)
-		: DocumentLoader(type, raw_texts.size(), save_folder_pass), filter_(filter)
+	DocumentLoaderFromEnglish(DocumentType type, Documents const& raw_texts, FilterSetting filter, FilepassString working_directory, std::vector<FilepassString> const& doc_names)
+		: DocumentLoader(type, raw_texts.size(), working_directory), filter_(filter)
 	{
 		if (doc_names.empty()) for (uint i = 0; i<raw_texts.size(); ++i) info_.doc_names_.push_back(sig::to_fpstring(i));
 		else{
@@ -106,21 +133,21 @@ public:
 	static DocumentSetPtr makeInstance(
 		Documents const& raw_texts,				// 生のテキストデータ
 		FilterSetting filter,					// テキストへのフィルタ処理
-		FilepassString save_folder_pass,		// 作成した入力データの保存先
+		FilepassString working_directory,		// 出力データの保存先
 		std::vector<FilepassString> doc_names	// 各documentの識別名
 	){
-		return DocumentSetPtr(new DocumentLoaderFromEnglish(DocumentType::Defaut, raw_texts, filter, save_folder_pass, doc_names));
+		return DocumentSetPtr(new DocumentLoaderFromEnglish(DocumentType::Defaut, raw_texts, filter, working_directory, doc_names));
 	}
 
 	// テキストファイルに保存された一般的なdocument集合から生成 (各.txtファイルがdocumentに相当)
 	static DocumentSetPtr makeInstance(
 		FilepassString src_folder_pass,			// 生のテキストデータが保存されているフォルダ
 		FilterSetting filter,					// テキストへのフィルタ処理
-		FilepassString save_folder_pass,		// 作成した入力データの保存先
+		FilepassString working_directory,		// 出力データの保存先
 		Maybe<std::vector<FilepassString>> doc_names = nothing	// 各documentの識別名(デフォルトはファイル名)
 	){
 		auto doc_passes = sig::get_file_names(src_folder_pass, false);
-		if (!sig::isJust(doc_passes)){
+		if (!isJust(doc_passes)){
 			sig::FileOpenErrorPrint(src_folder_pass);
 			assert(false);
 		}
@@ -128,9 +155,9 @@ public:
 		return DocumentSetPtr(new DocumentLoaderFromEnglish(
 			DocumentType::Defaut,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
-				}, sig::fromJust(doc_passes)
-			), filter, save_folder_pass, doc_names ? sig::fromJust(doc_names) : sig::fromJust(doc_passes))
+				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
+				}, fromJust(doc_passes)
+			), filter, working_directory, doc_names ? fromJust(doc_names) : fromJust(doc_passes))
 		);
 	}
 
@@ -138,21 +165,21 @@ public:
 	static DocumentSetPtr makeInstanceFromTweet(
 		Documents const& raw_tweets,			// 生のテキストデータ
 		FilterSetting filter,					// テキストへのフィルタ処理
-		FilepassString save_folder_pass,		// 作成した入力データの保存先
+		FilepassString working_directory,		// 出力データの保存先
 		std::vector<FilepassString> user_names	// 各userの識別名
 	){
-		return DocumentSetPtr(new DocumentLoaderFromEnglish(DocumentType::Tweet, raw_tweets, filter, save_folder_pass, user_names));
+		return DocumentSetPtr(new DocumentLoaderFromEnglish(DocumentType::Tweet, raw_tweets, filter, working_directory, user_names));
 	}
 
 	// テキストファイルに保存されたtweet集合から生成 (各.txtファイルがユーザのtweet集合、各行がtweetに相当)
 	static DocumentSetPtr makeInstanceFromTweet(
 		FilepassString src_folder_pass,			// 生のテキストデータが保存されているフォルダ
 		FilterSetting filter,					// テキストへのフィルタ処理
-		FilepassString save_folder_pass,		// 作成した入力データの保存先
+		FilepassString working_directory,		// 出力データの保存先
 		Maybe<std::vector<FilepassString>> user_names = nothing	// 各ユーザの識別名(デフォルトはファイル名)
 	){
 		auto doc_passes = sig::get_file_names(src_folder_pass, false);
-		if (!sig::isJust(doc_passes)){
+		if (!isJust(doc_passes)){
 			sig::FileOpenErrorPrint(src_folder_pass);
 			assert(false);
 		}
@@ -160,9 +187,9 @@ public:
 		return DocumentSetPtr(new DocumentLoaderFromEnglish(
 			DocumentType::Tweet,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(sig::fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
-			}, sig::fromJust(doc_passes)
-			), filter, save_folder_pass, user_names ? sig::fromJust(user_names) : sig::fromJust(doc_passes))
+				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
+			}, fromJust(doc_passes)
+			), filter, working_directory, user_names ? fromJust(user_names) : fromJust(doc_passes))
 		);
 	}
 };
@@ -176,9 +203,10 @@ inline void DocumentLoaderFromEnglish::makeData(DocumentType type, Documents con
 
 #if SIG_USE_SIGNLP
 		auto& tagger = signlp::TreeTaggerWrapper::getInstance(filter.getTreeTaggerPass(), filter.getTreeTaggerParamPass());
-		auto parser =  [&](Text const& text) { return filter.isBaseForm() ? tagger.parseGenkei(text) : sig::split(text, L" "); };
+		const auto parser =  [&](Text const& text) { return filter.isBaseForm() ? tagger.parseGenkei(text) : sig::split(text, L" "); };
 #else
-		auto parser = [](Text const& text) { return sig::split(text, L" "); };
+		const auto tp = filter.getParser();
+		const auto parser = tp ? *tp : [](Text const& text) { return sig::split(text, L" "); };
 #endif
 		for (auto& sentence : document){
 			if(auto f = filter.getCommonPriorFilter()) f(sentence);
@@ -204,7 +232,7 @@ inline void DocumentLoaderFromEnglish::makeData(DocumentType type, Documents con
 
 	std::vector<std::vector<std::vector<std::wstring>>> doc_line_words;
 
-	const uint block = 100;
+	const uint block = 200;
 	for (uint d = 0, ds = 1 + raw_texts.size() / block; d < ds; ++d) {
 		std::vector< std::future< std::vector<std::vector<std::wstring>> > > results;
 

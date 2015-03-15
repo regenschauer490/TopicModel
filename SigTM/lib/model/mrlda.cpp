@@ -5,12 +5,14 @@ This software is released under the MIT License.
 http://opensource.org/licenses/mit-license.php
 */
 
+#include "../sigtm.hpp"
+
 #if SIG_MSVC_ENV
 
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "mrlda.h"
-#include "../helper/mapreduce_module.h"
+#include "../util/mapreduce_module.h"
 #include "SigUtil/lib/calculation/ublas.hpp"
 #include "SigUtil/lib/calculation/for_each.hpp"
 #include "SigUtil/lib/calculation/assign_operation.hpp"
@@ -33,8 +35,8 @@ const auto resume_phi_fname = SIG_TO_FPSTR("mrlda_phi");
 
 void MrLDA::MapTask::process(value_type const& value, VectorK<double>& gamma, MatrixVK<double>& omega) const
 {
-	uint const vnum = value.vnum_;
-	uint const knum = value.knum_;
+	const uint vnum = value.vnum_;
+	const uint knum = value.knum_;
 	VectorK<double> const& alpha = *value.alpha_;
 	MatrixKV<double> const& phi = *value.phi_;
 	VectorV<uint> const& word_ct = *value.word_ct_;
@@ -72,16 +74,16 @@ void MrLDA::init(bool resume)
 	auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
 
 	if (resume){
-		auto load_info = sig::load_line(base_pass + resume_info_fname);
-		if (sig::isJust(load_info)){
-			auto info = sig::fromJust(load_info);
+		const auto load_info = sig::load_line(base_pass + resume_info_fname);
+		if (isJust(load_info)){
+			auto const& info = fromJust(load_info);
 			total_iter_ct_ = std::stoul(info[0]);
 		}
 
 		auto tmp_alpha = std::move(alpha_);
 		auto load_alpha = sig::load_num<double, VectorK<double>>(base_pass + resume_alpha_fname, " ");
-		if (sig::isJust(load_alpha)){
-			alpha_ = std::move(sig::fromJust(load_alpha));
+		if (isJust(load_alpha)){
+			alpha_ = fromJust(std::move(load_alpha));
 			std::cout << "resume alpha" << std::endl;
 		}
 		else{
@@ -90,9 +92,9 @@ void MrLDA::init(bool resume)
 		}
 	}
 
-	auto load_gamma = resume ? sig::load_num2d<double, MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : nothing;
-	if (sig::isJust(load_gamma)){
-		gamma_ = std::move(sig::fromJust(load_gamma));
+	const auto load_gamma = resume ? sig::load_num2d<double, MatrixDK<double>>(base_pass + resume_gamma_fname, " ") : Nothing<MatrixDK<double>>();
+	if (isJust(load_gamma)){
+		gamma_ = fromJust(std::move(load_gamma));
 		std::cout << "resume gamma" << std::endl;
 	}
 	else{
@@ -106,9 +108,9 @@ void MrLDA::init(bool resume)
 		if (resume) std::cout << "resume gamma error : gamma is set by random" << std::endl;
 	}
 
-	auto load_beta = resume ? sig::load_num2d<double, MatrixKV<double>>(base_pass + resume_phi_fname, " ") : nothing;
-	if (sig::isJust(load_beta)){
-		phi_ = std::move(sig::fromJust(load_beta));
+	const auto load_beta = resume ? sig::load_num2d<double, MatrixKV<double>>(base_pass + resume_phi_fname, " ") : Nothing<MatrixKV<double>>();
+	if (isJust(load_beta)){
+		phi_ = std::move(fromJust(load_beta));
 		std::cout << "resume phi" << std::endl;
 	}
 	else{
@@ -164,7 +166,7 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 	{
 		while (true){
 			bool f = true;
-			auto corr_delta = sig::mult(std::pow(0.8, decay), delta);
+			const auto corr_delta = sig::mult(std::pow(0.8, decay), delta);
 
 			std::cout << "delta:";
 			for (uint i=0; i<K; ++i){
@@ -190,8 +192,8 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 		
 		sig::vector_u<double> gradient(K);
 		sig::matrix_u<double> hessian(K, K);
-		auto alpha_sum_digamma = digamma(alpha_sum);
-		auto alpha_sum_trigamma = trigamma(alpha_sum);
+		const auto alpha_sum_digamma = digamma(alpha_sum);
+		const auto alpha_sum_trigamma = trigamma(alpha_sum);
 
 		for (uint i = 0; i < K; ++i){
 			gradient(i) = calc_gradient(alpha[i], sufficient_statistics[i], alpha_sum_digamma);
@@ -200,8 +202,8 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 			}
 		}
 
-		auto delta = sig::from_vector_ublas(boost::numeric::ublas::prod(sig::fromJust(sig::invert_matrix(hessian)), gradient));
-		auto corr_delta = regulate(delta, decay);
+		const auto delta = sig::from_vector_ublas(boost::numeric::ublas::prod(fromJust(sig::invert_matrix(hessian)), gradient));
+		const auto corr_delta = regulate(delta, decay);
 
 		sig::compound_assignment(
 			[](double& a, double d){ a -= d; },
@@ -279,7 +281,7 @@ void updateAlpha(VectorK<double>& alpha, VectorK<double> const& sufficient_stati
 
 double MrLDA::iteration()
 {
-	auto updatePhi = [&](TopicId k, WordId v, double delta){
+	const auto updatePhi = [&](TopicId k, WordId v, double delta){
 		phi_[k][v] = eta_[k][v] + delta;
 	};
 	
@@ -308,7 +310,7 @@ double MrLDA::iteration()
 	return 0;//calcLiklihood(term2, sig::sum(lambda_, [&](VectorV<double> const& row){ return calcModule0(row); }));
 }
 
-void MrLDA::train(uint iteration_num, std::function<void(LDA const*)> callback)
+void MrLDA::train(uint num_iteration, std::function<void(LDA const*)> callback)
 {
 	sig::ManageConvergenceSimple convergence(global_convergence_threshold);
 
@@ -316,7 +318,7 @@ void MrLDA::train(uint iteration_num, std::function<void(LDA const*)> callback)
 		std::cout << convergence.get_value() << std::endl;
 	}*/
 
-	for (uint i = 0; i < iteration_num; ++i, ++total_iter_ct_){
+	for (uint i = 0; i < num_iteration; ++i, ++total_iter_ct_){
 		iteration();
 		calcTermScore(getPhi(), term_score_);
 		save(Distribution::TOPIC, L"./test data");
@@ -328,19 +330,35 @@ void MrLDA::train(uint iteration_num, std::function<void(LDA const*)> callback)
 }
 
 
-void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) const
+void MrLDA::save(Distribution target, FilepassString save_dir, bool detail) const
 {
-	save_folder = sig::modify_dirpass_tail(save_folder, true);
+	save_dir = sig::modify_dirpass_tail(save_dir, true);
 
 	switch (target){
 	case Distribution::DOCUMENT:
-		printTopic(getTheta(), input_data_->getInputFileNames(), save_folder + SIG_TO_FPSTR("document_mrlda"));
+		printTopic(
+			getTheta(),
+			input_data_->getInputFileNames(),
+			Just(save_dir + SIG_TO_FPSTR("document_mrlda"))
+		);
 		break;
 	case Distribution::TOPIC:
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_mrlda"));
+		printWord(
+			getPhi(),
+			std::vector<FilepassString>(),
+			input_data_->words_,
+			detail ? Nothing<uint>() : Just<uint>(20),
+			Just(save_dir + SIG_TO_FPSTR("topic_mrlda"))
+		);
 		break;
 	case Distribution::TERM_SCORE:
-		printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_mrlda"));
+		printWord(
+			getTermScore(),
+			std::vector<FilepassString>(),
+			input_data_->words_,
+			detail ? Nothing<uint>() : Just<uint>(20),
+			Just(save_dir + SIG_TO_FPSTR("term-score_mrlda"))
+		);
 		break;
 	default:
 		std::cout << "MrLDA::save error" << std::endl;
@@ -348,32 +366,14 @@ void MrLDA::save(Distribution target, FilepassString save_folder, bool detail) c
 	}
 }
 
-auto MrLDA::getTheta() const->MatrixDK<double>
-{
-	MatrixDK<double> theta;
-
-	for (DocumentId d = 0; d < D_; ++d){
-		theta.push_back(getTheta(d));
-	}
-	return theta;
-}
 
 auto MrLDA::getTheta(DocumentId d_id) const->VectorK<double>
 {
-	double sum = sig::sum(gamma_[d_id]);
+	const double sum = sig::sum(gamma_[d_id]);
 	// computed from the variational distribution
 	return sig::map([sum](double g){ return g / sum; }, gamma_[d_id]);
 }
 
-auto MrLDA::getPhi() const->MatrixKV<double>
-{
-	MatrixKV<double> phi;
-
-	for (TopicId k = 0; k < K_; ++k){
-		phi.push_back(getPhi(k));
-	}
-	return phi;
-}
 
 auto MrLDA::getPhi(TopicId k_id) const->VectorV<double>
 {
@@ -383,47 +383,42 @@ auto MrLDA::getPhi(TopicId k_id) const->VectorV<double>
 	return phi_[k_id];
 }
 
-auto MrLDA::getWordOfTopic(Distribution target, uint return_word_num) const->VectorK< std::vector< std::tuple<std::wstring, double> > >
-{
-	VectorK< std::vector< std::tuple<std::wstring, double> > > result;
-
-	for (TopicId k = 0; k < K_; ++k){
-		result.push_back(getWordOfTopic(target, return_word_num, k));
-	}
-	return result;
-}
-
-auto MrLDA::getWordOfTopic(Distribution target, uint return_word_num, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> >
+auto MrLDA::getWordOfTopic(Distribution target, uint num_get_words, TopicId k_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;
-	std::vector<double> df;
 
-	if (target == Distribution::TOPIC) df = getPhi(k_id);
-	else if (target == Distribution::TERM_SCORE) df = getTermScore(k_id);
-	else{
-		std::cout << "MrLDA::getWordOfTopic : Distributionが無効" << std::endl;
-		return result;
-	}
-	return getTopWords(df, return_word_num, input_data_->words_);
+	const auto df = target == Distribution::TOPIC
+		?  getPhi(k_id)
+		: target == Distribution::TERM_SCORE
+			? getTermScore(k_id)
+			: [](){
+				std::cout << "MrLDA::getWordOfTopic : 不適切な'Distribution'が指定されています" << std::endl;
+				std::cout << "MrLDA::getWordOfTopic : argument 'Distribution' is invalid" << std::endl;
+				return std::vector<double>{};
+	}();
+
+	return calcTopWords(df, num_get_words, input_data_->words_);
 }
 
-auto MrLDA::getWordOfDocument(uint return_word_num) const->VectorD< std::vector< std::tuple<std::wstring, double> > >
-{
-	VectorD< std::vector< std::tuple<std::wstring, double> > > result;
-
-	for (DocumentId d = 0; d<D_; ++d){
-		result.push_back(getWordOfDocument(return_word_num, d));
-	}
-	return result;
-}
-
-auto MrLDA::getWordOfDocument(uint return_word_num, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> >
+auto MrLDA::getWordOfDocument(Distribution target, uint num_get_words, DocumentId d_id) const->std::vector< std::tuple<std::wstring, double> >
 {
 	std::vector< std::tuple<std::wstring, double> > result;
-	auto top_wscore = getTermScoreOfDocument(getTheta(d_id), getTermScore());
 
-	for (uint i = 0; i<return_word_num; ++i){
-		result.push_back(std::make_tuple(*input_data_->words_.getWord(std::get<0>(top_wscore[i])), std::get<1>(top_wscore[i])));
+	const auto top_wscore = target == Distribution::TOPIC
+		? calcWordScoreOfDocument(getTheta(d_id), getPhi())
+		: target == Distribution::TERM_SCORE
+			? calcWordScoreOfDocument(getTheta(d_id), getTermScore())
+			: [](){
+				std::cout << "MrLDA::getWordOfDocument : 不適切な'Distribution'が指定されています" << std::endl;
+				std::cout << "MrLDA::getWordOfDocument : argument 'Distribution' is invalid" << std::endl;
+				return std::vector< std::tuple<WordId, double>>{};
+	}();
+
+	for (uint i = 0; i<num_get_words; ++i){
+		result.push_back(std::make_tuple(
+			*input_data_->words_.getWord(std::get<0>(top_wscore[i])),
+			std::get<1>(top_wscore[i])
+		));
 	}
 	return std::move(result);
 }

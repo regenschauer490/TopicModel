@@ -9,8 +9,9 @@ http://opensource.org/licenses/mit-license.php
 #define SIGTM_HPP
 
 #include "SigUtil/lib/sigutil.hpp"
-#include "helper/SigNLP/signlp.hpp"
-#include "SigUtil/lib/helper/container_traits.hpp"
+#include "util/SigNLP/signlp.hpp"
+#include "SigUtil/lib/helper/maybe.hpp"
+
 
 namespace sigtm
 {
@@ -33,8 +34,6 @@ using sig::StrPtr;
 using sig::C_StrPtr;
 using sig::WStrPtr;
 using sig::C_WStrPtr;
-using sig::Maybe;
-auto const nothing = boost::none; 
 using sig::FilepassString;
 
 using Text = std::wstring;
@@ -54,8 +53,15 @@ template<class T> using VectorK = std::vector<T>;	// topic
 template<class T> using VectorV = std::vector<T>;	// word
 template<class T> using VectorU = std::vector<T>;	// user
 
+using sig::Maybe;
+using sig::Just;
+using sig::Nothing;
+using sig::isJust;
+using sig::fromJust;
+
 const uint zero = 0;
 const double log_lower_limit = -100000;
+
 
 namespace impl
 {

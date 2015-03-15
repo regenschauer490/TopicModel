@@ -35,8 +35,8 @@ void TwitterLDA::init(bool resume)
 	uint umax = 0, dmax = 0;
 
 	for (auto const& token : tokens_){
-		UserId uid = token.user_id;
-		DocumentId did = token.doc_id;
+		const UserId uid = token.user_id;
+		const DocumentId did = token.doc_id;
 
 		if (check.count(uid)){
 			if (check[uid].count(did)){
@@ -161,20 +161,20 @@ void TwitterLDA::init(bool resume)
 	std::unordered_map<TokenId, bool> id_y_map;
 	std::unordered_map<std::tuple<UserId, DocumentId>, TopicId> id_z_map;
 	if (resume){
-		auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
+		const auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
 	
-		auto load_info = sig::load_line(base_pass + resume_info_fname);
-		if (sig::isJust(load_info)){
-			auto info = sig::fromJust(load_info);
+		const auto load_info = sig::load_line(base_pass + resume_info_fname);
+		if (isJust(load_info)){
+			auto const& info = fromJust(load_info);
 			total_iter_ct_ = std::stoul(info[0]);
 		}
 
 		// resume alpha
-		auto load_alpha = sig::load_num<double, VectorK<double>>(base_pass + resume_alpha_fname);
+		const auto load_alpha = sig::load_num<double, VectorK<double>>(base_pass + resume_alpha_fname);
 		auto tmp_alpha = std::move(alpha_);
 	
-		if (sig::isJust(load_alpha)){
-			alpha_ = std::move(sig::fromJust(load_alpha));
+		if (isJust(load_alpha)){
+			alpha_ = fromJust(std::move(load_alpha));
 			std::cout << "resume alpha" << std::endl;
 		}
 		else{
@@ -183,12 +183,12 @@ void TwitterLDA::init(bool resume)
 		}
 	
 		// resume y
-		auto load_token_y = sig::load_line(base_pass + resume_token_y_fname);
+		const auto load_token_y = sig::load_line(base_pass + resume_token_y_fname);
 	
-		if (sig::isJust(load_token_y)){
-			auto ys = sig::fromJust(load_token_y);
+		if (isJust(load_token_y)){
+			auto const& ys = fromJust(load_token_y);
 			for(auto const& y : ys){
-				auto id_y = sig::split(y, " ");
+				const auto id_y = sig::split(y, " ");
 				id_y_map.emplace(std::stoul(id_y[0]), std::stoul(id_y[1]));			
 			}
 			if (id_y_map.size() != tokens_.size()){ std::cout << "resume error: unmatch input data and reesume data." << std::endl; getchar(); abort(); }
@@ -199,10 +199,10 @@ void TwitterLDA::init(bool resume)
 		}
 
 		// resume z
-		auto load_tweet_z = sig::load_line(base_pass + resume_tweet_z_fname);
+		const auto load_tweet_z = sig::load_line(base_pass + resume_tweet_z_fname);
 
-		if (sig::isJust(load_tweet_z)){
-			auto zs = sig::fromJust(load_tweet_z);
+		if (isJust(load_tweet_z)){
+			auto const& zs = fromJust(load_tweet_z);
 			for (auto const& z : zs){
 				const auto u_d_z = sig::split(z, " ");
 				id_z_map.emplace(std::make_tuple(std::stoul(u_d_z[0]), std::stoul(u_d_z[1])), std::stoul(u_d_z[2]));
@@ -294,7 +294,7 @@ void TwitterLDA::saveResumeData() const
 {
 	std::cout << "save resume data... ";
 
-	auto base_pass = input_data_->getWorkingDirectory();
+	const auto base_pass = input_data_->getWorkingDirectory();
 
 	sig::save_num(alpha_, base_pass + resume_alpha_fname, "\n");
 	
@@ -322,11 +322,11 @@ inline void TwitterLDA::updateY(Token const& token, const uint t_pos)
 {
 	const auto sampleY = [&](const uint z, const WordId v) ->bool
 	{
-		auto denom = y_ct_[0] + y_ct_[1] + gamma_[0] + gamma_[1];
-		auto p_y0 = ((word_ct_[v][K_] + beta_[v]) / (y_ct_[0] + beta_sum_)) * ((y_ct_[0] + gamma_[0]) / denom);
-		auto p_y1 = ((word_ct_[v][z] + beta_[v]) / (topic_ct_[z] + beta_sum_)) * ((y_ct_[1] + gamma_[1]) / denom);
+		const auto denom = y_ct_[0] + y_ct_[1] + gamma_[0] + gamma_[1];
+		const auto p_y0 = ((word_ct_[v][K_] + beta_[v]) / (y_ct_[0] + beta_sum_)) * ((y_ct_[0] + gamma_[0]) / denom);
+		const auto p_y1 = ((word_ct_[v][z] + beta_[v]) / (topic_ct_[z] + beta_sum_)) * ((y_ct_[1] + gamma_[1]) / denom);
 
-		double r = rand_d_() * (p_y0 + p_y1);
+		const double r = rand_d_() * (p_y0 + p_y1);
 
 		return r > p_y0;	// false:background, true:topic
 	};
@@ -373,7 +373,7 @@ inline void TwitterLDA::updateZ(const TokenIter begin, const TokenIter end)
 			for (auto it = begin; it != end; ++it, ++tct){
 				if (y_[u][d][tct]){
 					const auto v = it->word_id;
-					uint ct = wct.count(v) ? ++wct[v] : (wct[v] = 1);
+					const uint ct = wct.count(v) ? ++wct[v] : (wct[v] = 1);
 					p_z *= (word_ct_[v][k] + beta_[v] + ct - 1) / (topic_ct_[k] + beta_sum_ + tct);
 				}
 			}
@@ -382,7 +382,7 @@ inline void TwitterLDA::updateZ(const TokenIter begin, const TokenIter end)
 			if (k != 0) tmp_p_[k] += tmp_p_[k - 1];
 		}
 
-		double r = rand_d_() * tmp_p_[K_ - 1];
+		const double r = rand_d_() * tmp_p_[K_ - 1];
 
 		for (TopicId k = 0; k < K_; ++k){
 			if (r < tmp_p_[k]) return k;
@@ -427,9 +427,9 @@ inline void TwitterLDA::updateZ(const TokenIter begin, const TokenIter end)
 }
 
 
-void TwitterLDA::train(uint iteration_num, std::function<void(TwitterLDA const*)> callback)
+void TwitterLDA::train(uint num_iteration, std::function<void(TwitterLDA const*)> callback)
 {
-	for (uint iteration = 0; iteration < iteration_num; ++iteration){
+	for (uint iteration = 0; iteration < num_iteration; ++iteration){
 		auto token = tokens_.begin();
 
 		for (auto tweets : T_){
@@ -455,16 +455,26 @@ void TwitterLDA::save(Distribution target, FilepassString save_folder, bool deta
 
 	switch (target){
 	case Distribution::USER:
-		printTopic(getTheta(), input_data_->getInputFileNames(), save_folder + SIG_TO_FPSTR("user_twlda"));
+		printTopic(
+			getTheta(),
+			input_data_->getInputFileNames(),
+			Just(save_folder + SIG_TO_FPSTR("user_twlda"))
+		);
 		break;
 	case Distribution::TWEET:
 		//printTopic(getTopicOfTweet(), input_data_->getDocumentType(), save_folder + SIG_TO_FPSTR("tweet_twlda"));
 		break;
 	case Distribution::TOPIC:
-		printWord(getPhi(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("topic_twlda"));
+		printWord(
+			getPhi(),
+			std::vector<FilepassString>(),
+			input_data_->words_,
+			detail ? Nothing<uint>() : Just<uint>(20),
+			Just(save_folder + SIG_TO_FPSTR("topic_twlda"))
+		);
 		break;
 	case Distribution::TERM_SCORE:
-		//printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : sig::Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_twlda"));
+		//printWord(getTermScore(), std::vector<FilepassString>(), input_data_->words_, detail ? nothing : Just<uint>(20), save_folder + SIG_TO_FPSTR("term-score_twlda"));
 		break;
 	default:
 		std::cout << "TwitterLDA::save error" << std::endl;
@@ -493,42 +503,6 @@ auto TwitterLDA::getTheta(UserId u_id) const->VectorK<double>
 	sig::normalize_dist(theta);
 
 	return theta;
-}
-
-auto TwitterLDA::getTopicOfTweet(UserId u_id) const->MatrixDK<double>
-{
-	MatrixDK<double> tau;
-
-	for (DocumentId d = 0; d < D_[u_id]; ++d) tau.push_back(getTopicOfTweet(u_id, d));
-
-	return std::move(tau);
-}
-
-auto TwitterLDA::getTopicOfTweet(UserId u_id, DocumentId d_id) const->VectorK<double>
-{
-	VectorK<double> tau(K_, 0);
-	const auto token = tokens_.begin();
-	uint st = 0, ed = 0;
-
-	for (uint i = 0; i<u_id; ++i) st += sig::sum(T_[i]);
-	for (uint j = 0; j<d_id; ++j) st += T_[u_id][j];
-	ed = st + T_[u_id][d_id];
-
-	for (TopicId k = 0; k < K_; ++k){
-		auto p_z = (user_ct_[u_id][k] + alpha_[k]) / (D_[u_id] + alpha_sum_);
-
-		uint tct = 0;
-		for (auto it = token + st, end = token + ed; it != end; ++it, ++tct){
-			if (y_[u_id][d_id][tct]){
-				const auto v = it->word_id;
-				p_z *= (word_ct_[v][k] + beta_[v]) / (topic_ct_[k] + beta_sum_ + tct);
-			}
-		}
-		tau[k] = p_z;
-	}
-	sig::normalize_dist(tau);
-
-	return std::move(tau);
 }
 
 auto TwitterLDA::getPhi() const->MatrixKV<double>
@@ -568,7 +542,7 @@ auto TwitterLDA::getY() const->VectorB<double>
 {
 	VectorB<double> result(2, 0);
 
-	auto denom = y_ct_[0] + y_ct_[1] + gamma_[0] + gamma_[1];
+	const auto denom = y_ct_[0] + y_ct_[1] + gamma_[0] + gamma_[1];
 	result[0] = (y_ct_[0] + gamma_[0]) / denom;
 	result[1] = (y_ct_[1] + gamma_[1]) / denom;
 
@@ -598,17 +572,55 @@ auto TwitterLDA::getEachY(UserId u_id) const->VectorB<double>
 	return result;
 }
 
+
+auto TwitterLDA::getTopicOfTweet(UserId u_id) const->MatrixDK<double>
+{
+	MatrixDK<double> tau;
+
+	for (DocumentId d = 0; d < D_[u_id]; ++d) tau.push_back(getTopicOfTweet(u_id, d));
+
+	return std::move(tau);
+}
+
+auto TwitterLDA::getTopicOfTweet(UserId u_id, DocumentId d_id) const->VectorK<double>
+{
+	VectorK<double> tau(K_, 0);
+	const auto token = tokens_.begin();
+	uint st = 0, ed = 0;
+
+	for (uint i = 0; i<u_id; ++i) st += sig::sum(T_[i]);
+	for (uint j = 0; j<d_id; ++j) st += T_[u_id][j];
+	ed = st + T_[u_id][d_id];
+
+	for (TopicId k = 0; k < K_; ++k){
+		auto p_z = (user_ct_[u_id][k] + alpha_[k]) / (D_[u_id] + alpha_sum_);
+
+		uint tct = 0;
+		for (auto it = token + st, end = token + ed; it != end; ++it, ++tct){
+			if (y_[u_id][d_id][tct]){
+				const auto v = it->word_id;
+				p_z *= (word_ct_[v][k] + beta_[v]) / (topic_ct_[k] + beta_sum_ + tct);
+			}
+		}
+		tau[k] = p_z;
+	}
+	sig::normalize_dist(tau);
+
+	return std::move(tau);
+}
+
+
 double TwitterLDA::getLogLikelihood() const
 {
 	namespace mp = boost::multiprecision;
 	using ddouble = double;//mp::cpp_dec_float_100;
 
-	double log_likelihood = 0;
+	double g_log_likelihood = 0;
 	auto token = tokens_.begin();
-	auto theta = getTheta();
-	auto phi = getPhi();
-	auto phib = getPhiBackground();
-	auto py = getY();
+	const auto theta = getTheta();
+	const auto phi = getPhi();
+	const auto phib = getPhiBackground();
+	const auto py = getY();
 
 	for (uint u = 0; u < U_; ++u){
 		for (uint d = 0; d < D_[u]; ++d){
@@ -619,10 +631,10 @@ double TwitterLDA::getLogLikelihood() const
 				ddouble tmp = 1;
 
 				for (Id t = 0; t < T_[u][d]; ++t, ++t_token){
-					uint w = t_token->word_id;
+					const uint w = t_token->word_id;
 
-					ddouble pt = py[0] * phi[k][w];
-					ddouble pb = py[1] * phib[w];
+					const ddouble pt = py[0] * phi[k][w];
+					const ddouble pb = py[1] * phib[w];
 
 					tmp *= (pt + pb);
 				}
@@ -632,12 +644,12 @@ double TwitterLDA::getLogLikelihood() const
 			if (!sig::is_finite_number(expptw)){
 				std::cout << "u:" << u << ", d:" << d << std::endl;
 			}
-			log_likelihood += expptw;
+			g_log_likelihood += expptw;
 			token += T_[u][d];
 		}
 	}
 
-	return log_likelihood;
+	return g_log_likelihood;
 }
 
 }

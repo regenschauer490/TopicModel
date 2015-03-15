@@ -4,9 +4,9 @@
 #include "SigUtil/lib/functional/list_deal.hpp"
 
 #if SIG_USE_SIGNLP
-#include "../lib/helper/document_loader_japanese.hpp"
+#include "../lib/data/document_loader_japanese.hpp"
 #else
-#include "../lib/helper/document_loader.hpp"
+#include "../lib/data/document_loader.hpp"
 #endif
 
 using sig::FilepassString;
@@ -74,7 +74,7 @@ inline sigtm::DocumentSetPtr makeInputData(InputTextType tt, FilepassString src_
 	}
 	else {
 		// 過去に作成したデータセットを使用 or 自分で指定形式のデータセットを用意する場合
-		inputdata = sigtm::DocumentLoader::makeInstance(out_folder);
+		inputdata = sigtm::DocumentLoader::makeInstance(out_folder, out_folder);
 	}
 
 	return inputdata;

@@ -10,7 +10,6 @@ int main()
 	
 	//example_lda_gibbs(InputTextType::Tweet, input_text_pass, data_folder_pass, false, false);
 	//sample4(input_tw_pass, data_folder_pass, false, false);
-	example_ctr(data_folder_pass + SIG_TO_FPSTR("/ctr/"), data_folder_pass + SIG_TO_FPSTR("/ctr/"), 50, true, false);
 
-	return 0;
+	return 0
 }

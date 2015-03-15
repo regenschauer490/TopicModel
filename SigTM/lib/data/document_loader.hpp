@@ -15,7 +15,13 @@ http://opensource.org/licenses/mit-license.php
 namespace sigtm
 {
 
-/* 各モデルへの入力データを作成 */
+/**
+\brief
+	モデルへの入力データを作成（専用形式のファイルから読み込み）\n
+\detail
+	以前に出力されたデータを読み込む．\n
+	自然言語で書かれた生のテキストファイルから入力データを作成する場合，日本語には DocumentLoaderFromJapanese ，英語には DocumentLoaderFromEnglish を利用．
+*/
 class DocumentLoader : public DocumentSet
 {
 public:
@@ -23,16 +29,16 @@ public:
 	using PF = std::function<DocumentLoaderSetInfo(TokenList& tokens, WordSet& words)>;
 
 private:
-	DocumentLoader(FilepassString folder_pass)
-		: DocumentSet(folder_pass){ reconstruct(); }
+	DocumentLoader(FilepassString src_directory, FilepassString working_directory)
+		: DocumentSet(working_directory){ reconstruct(src_directory); }
 
-	DocumentLoader(PF const& parser){ info_ = reconstruct(parser); }
+	DocumentLoader(PF const& parser, FilepassString working_directory)
+		: DocumentSet(working_directory) { info_ = reconstruct(parser); }
 
 	bool parseLine(std::wstring const& line);
 
-	void reconstruct();
-	auto reconstruct(PF const& parser)->DocumentLoaderSetInfo
-	{ return parser(tokens_, words_); }
+	void reconstruct(FilepassString src_directory);
+	auto reconstruct(PF const& parser)->DocumentLoaderSetInfo{ return parser(tokens_, words_); }
 
 protected:
 	DocumentLoader(DocumentType type, uint doc_num, FilepassString working_directory)
@@ -42,14 +48,24 @@ protected:
 public:
 	virtual ~DocumentLoader(){}
 
-	// 専用形式の自作データ or 以前の中間出力から読み込む
-	// folder_pass: 上記形式のファイルが保存されているディレクトリ
-	static DocumentSetPtr makeInstance(FilepassString folder_pass){
-		return DocumentSetPtr(new DocumentLoader(folder_pass)); 
+	/**
+	\brief
+		以前の出力(もしくは自分で用意した) token, vocab ファイルを読み込む
+	\detail
+		\param src_directory 上記ファイルが保存されているディレクトリ
+		\param working_directory 出力データの保存先
+		\return モデルへの入力データ
+	*/
+	static DocumentSetPtr makeInstance(FilepassString src_directory, FilepassString working_directory){
+		return DocumentSetPtr(new DocumentLoader(src_directory, working_directory));
 	}
 
-	static DocumentSetPtr makeInstance(PF const& parser){
-		return DocumentSetPtr(new DocumentLoader(parser)); 
+	/**
+	\brief
+		必要な初期化(token,word,DocumentLoaderSetInfo)を手動で行う (非推奨)
+	*/
+	static DocumentSetPtr makeInstance(PF const& parser, FilepassString working_directory){
+		return DocumentSetPtr(new DocumentLoader(parser, working_directory));
 	}
 };
 
@@ -68,12 +84,12 @@ inline bool DocumentLoader::parseLine(std::wstring const& line)
 	}
 
 	if (DocumentType::Tweet == info_.doc_type_){
-		uint tsize = tokens_.size();
+		const uint tsize = tokens_.size();
 		tokens_.push_back(Token(tsize, elem1 - 1, elem2 - 1, elem3 - 1));
 	}
 	else{
 		for (int i = 0; i < elem3; ++i){
-			uint tsize = tokens_.size();
+			const uint tsize = tokens_.size();
 			tokens_.push_back(Token(tsize, elem1 - 1, elem2 - 1));
 		}
 	}
@@ -87,27 +103,27 @@ template <class R>
 auto fileopen(FilepassString pass) ->std::vector<R>
 {
 	auto m_text = sig::load_line<R>(pass);
-	if (!sig::isJust(m_text)){
+	if (!isJust(m_text)){
 		sig::FileOpenErrorPrint(pass);
 		assert(false);
 	}
-	return sig::fromJust(std::move(m_text));
+	return fromJust(std::move(m_text));
 };
 }
 
-inline void DocumentLoader::reconstruct()
+inline void DocumentLoader::reconstruct(FilepassString src_directory)
 {
-	auto base_pass = sig::modify_dirpass_tail(info_.working_directory_, true);
+	const auto base_pass = sig::modify_dirpass_tail(src_directory, true);
 
-	auto token_text = impl::fileopen<std::wstring>(base_pass + TOKEN_FILENAME);
+	const auto token_text = impl::fileopen<std::wstring>(base_pass + TOKEN_FILENAME);
 	uint line_iter = 0;
 
 	// get feature size
 	info_.doc_type_ = static_cast<DocumentType>(std::stoi(token_text[line_iter]));
 	info_.is_token_sorted_ = std::stoi(token_text[++line_iter]) > 0 ? true : false;
-	int doc_num = std::stoi(token_text[++line_iter]);
-	int wnum = std::stoi(token_text[++line_iter]);
-	int tnum = std::stoi(token_text[++line_iter]);
+	const int doc_num = std::stoi(token_text[++line_iter]);
+	const int wnum = std::stoi(token_text[++line_iter]);
+	const int tnum = std::stoi(token_text[++line_iter]);
 
 	std::cout << "document_num: " << doc_num << std::endl << "word_num:" << wnum << std::endl << "token_num:" << tnum << std::endl << std::endl;
 
@@ -132,10 +148,10 @@ inline void DocumentLoader::reconstruct()
 		getchar();	std::terminate();
 	}
 
-	auto vocab_text = impl::fileopen<std::wstring>(base_pass + VOCAB_FILENAME);
+	const auto vocab_text = impl::fileopen<std::wstring>(base_pass + VOCAB_FILENAME);
 
 	for (int i = 0; i < wnum; ++i) {
-		auto word = std::make_shared<std::wstring>(vocab_text[i]);
+		const auto word = std::make_shared<std::wstring>(vocab_text[i]);
 
 		if (words_.hasElement(word)) {
 			words_.emplace(i, word->append(L"_" + std::to_wstring(i)));
@@ -145,7 +161,7 @@ inline void DocumentLoader::reconstruct()
 		words_.emplace(i, word);		
 	}
 	
-	info_.doc_names_ = impl::fileopen<std::string>(base_pass + DOC_FILENAME);	
+	info_.doc_names_ = impl::fileopen<FilepassString>(base_pass + DOC_FILENAME);	
 
 	if (wnum != static_cast<int>(words_.size())) {
 		std::cout << "vocab file is corrupted" << std::endl;

@@ -175,9 +175,9 @@ public:
 		init();
 	}
 
-	void train(uint iteration_num, std::function<void(SpinModel const*)> callback)
+	void train(uint num_iteration, std::function<void(SpinModel const*)> callback)
 	{
-		for (uint i = 0; i < iteration_num; ++i){
+		for (uint i = 0; i < num_iteration; ++i){
 			auto nodes = boost::vertices(graph_);
 
 			std::for_each(

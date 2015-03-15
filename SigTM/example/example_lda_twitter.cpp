@@ -1,7 +1,7 @@
 ﻿#include "example.h"
 #include "../lib/model/twitter_lda.h"
 
-void example_lda_twitter(FilepassString src_folder, FilepassString out_folder, sig::uint topic_num, sig::uint iteration_num, bool resume, bool make_new)
+void example_lda_twitter(FilepassString src_folder, FilepassString out_folder, sig::uint num_topics, sig::uint num_iteration, bool resume, bool make_new)
 {
 	using namespace std;
 
@@ -20,11 +20,11 @@ void example_lda_twitter(FilepassString src_folder, FilepassString out_folder, s
 		sig::save_line(sig::cat(split, ""), perp_pass, sig::WriteMode::append);
 	};
 
-	auto lda = sigtm::TwitterLDA::makeInstance(resume, topic_num, inputdata);
+	auto lda = sigtm::TwitterLDA::makeInstance(num_topics, inputdata, resume);
 	
 	// 学習開始
 	cout << "model training" << endl;
-	lda->train(iteration_num, savePerplexity);
+	lda->train(num_iteration, savePerplexity);
 
 	lda->save(sigtm::TwitterLDA::Distribution::USER, out_folder);
 	lda->save(sigtm::TwitterLDA::Distribution::TOPIC, out_folder);

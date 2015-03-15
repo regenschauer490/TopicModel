@@ -86,12 +86,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SIG_UTIL);$(BOOST_DIR);$(EIGEN_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIGUTIL_PATH);$(BOOST_PATH);$(EIGEN_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/x86/lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_PATH)/stage/x86/lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -102,12 +102,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SIG_UTIL);$(BOOST_DIR);$(EIGEN_DIR);C:\Eigen\eigen322;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIGUTIL_PATH);$(BOOST_PATH);$(EIGEN_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/x64/lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_PATH)/stage/x64/lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -120,14 +120,14 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SIG_UTIL);$(BOOST_DIR);$(EIGEN_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIGUTIL_PATH);$(BOOST_PATH);$(EIGEN_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/x86/lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_PATH)/stage/x86/lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -140,30 +140,22 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SIG_UTIL);$(BOOST_DIR);$(EIGEN_DIR);C:\Eigen\eigen322;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SIGUTIL_PATH);$(BOOST_PATH);$(EIGEN_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)/stage/x64/lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_PATH)/stage/x64/lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\SigTM\example\example_ctr.cpp" />
     <ClCompile Include="..\..\SigTM\example\example_lda_cvb.cpp" />
     <ClCompile Include="..\..\SigTM\example\example_lda_gibbs.cpp" />
     <ClCompile Include="..\..\SigTM\example\example_lda_mapreduce.cpp" />
     <ClCompile Include="..\..\SigTM\example\example_lda_twitter.cpp" />
     <ClCompile Include="..\..\SigTM\example\make_input.hpp" />
-    <ClCompile Include="..\..\SigTM\lib\helper\mapreduce_module.cpp" />
-    <ClCompile Include="..\..\SigTM\lib\model\ctr.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\SigTM\lib\model\lda_cvb.cpp" />
     <ClCompile Include="..\..\SigTM\lib\model\lda_gibbs.cpp" />
     <ClCompile Include="..\..\SigTM\lib\model\mrlda.cpp">
@@ -177,36 +169,20 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\SigTM\lib\util\mapreduce_module.cpp" />
     <ClCompile Include="..\..\SigTM\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\SigTM\example\example.h" />
-    <ClInclude Include="..\..\SigTM\lib\helper\compare.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\compare_method.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\cross_validation.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\ctr_validation.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\data_format.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\document_loader_english.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\document_set.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\document_loader.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\document_loader_japanese.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\eigen_ublas_util.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\mapreduce_module.h" />
-    <ClInclude Include="..\..\SigTM\lib\helper\metrics.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\rating_matrix.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\mecab_wrapper.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\polar_evaluation.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\polar_spin.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\signlp.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\helper\SigNLP\tree_tagger_wrapper.hpp" />
-    <ClInclude Include="..\..\SigTM\lib\model\ctr.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="..\..\SigTM\lib\model\lda_common_module.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\data\data_format.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\data\document_loader.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\data\document_loader_english.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\data\document_loader_japanese.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\data\document_set.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\model\common\lda_module.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\model\common\lda_interface.hpp" />
     <ClInclude Include="..\..\SigTM\lib\model\lda_cvb.h" />
     <ClInclude Include="..\..\SigTM\lib\model\lda_gibbs.h" />
-    <ClInclude Include="..\..\SigTM\lib\model\lda_interface.hpp" />
     <ClInclude Include="..\..\SigTM\lib\model\mrlda.h" />
     <ClInclude Include="..\..\SigTM\lib\model\twitter_lda.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
@@ -216,6 +192,15 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\SigTM\lib\sigtm.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\compare.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\compare_method.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\eigen_ublas_util.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\mapreduce_module.h" />
+    <ClInclude Include="..\..\SigTM\lib\util\SigNLP\mecab_wrapper.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\SigNLP\polar_evaluation.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\SigNLP\polar_spin.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\SigNLP\signlp.hpp" />
+    <ClInclude Include="..\..\SigTM\lib\util\SigNLP\tree_tagger_wrapper.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

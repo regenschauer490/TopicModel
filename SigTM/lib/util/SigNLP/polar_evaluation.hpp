@@ -83,11 +83,11 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 
 	auto read1 = sig::load_line(evaluation_word_filepass);
 
-	if (!sig::isJust(read1)){
+	if (!isJust(read1)){
 		std::wcerr << L"Cannot open : " << evaluation_word_filepass << std::endl;
 	}
 	else{
-		for (auto const& line : sig::fromJust(read1)){
+		for (auto const& line : fromJust(read1)){
 			const auto linevec = sig::split(line, ",");
 
 			double score;
@@ -107,11 +107,11 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 
 	auto read2 = sig::load_line(evaluation_noun_filepass);
 
-	if (!sig::isJust(read2)){
+	if (!isJust(read2)){
 		std::wcerr << L"Cannot open : " << evaluation_noun_filepass << std::endl;
 	}
 	else{
-		for (auto const& line : sig::fromJust(read2)){
+		for (auto const& line : fromJust(read2)){
 			const auto linevec = sig::split(line, ",");
 
 			noun_ev_[linevec[0]] = std::make_tuple(PNE(linevec[1]), PNS(linevec[3]));
@@ -120,11 +120,11 @@ inline EvaluationLibrary::EvaluationLibrary() : mecab_(MecabWrapper::getInstance
 
 	auto read3 = sig::load_line(evaluation_declinable_filepass);
 
-	if (!sig::isJust(read3)){
+	if (!isJust(read3)){
 		std::wcerr << L"Cannot open : " << evaluation_declinable_filepass << std::endl;
 	}
 	else{
-		for (auto const& line : sig::fromJust(read3)){
+		for (auto const& line : fromJust(read3)){
 			const auto linevec = sig::split(line, ",");
 
 			auto wstr = sig::str_to_wstr(linevec[2]);
