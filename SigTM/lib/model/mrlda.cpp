@@ -71,7 +71,7 @@ void MrLDA::init(bool resume)
 
 	term_score_ = SIG_INIT_MATRIX(double, K, V, 0);
 
-	auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
+	auto base_pass = sig::modify_dirpath_tail(input_data_->getWorkingDirectory(), true);
 
 	if (resume){
 		const auto load_info = sig::load_line(base_pass + resume_info_fname);
@@ -332,7 +332,7 @@ void MrLDA::train(uint num_iteration, std::function<void(LDA const*)> callback)
 
 void MrLDA::save(Distribution target, FilepassString save_dir, bool detail) const
 {
-	save_dir = sig::modify_dirpass_tail(save_dir, true);
+	save_dir = sig::modify_dirpath_tail(save_dir, true);
 
 	switch (target){
 	case Distribution::DOCUMENT:

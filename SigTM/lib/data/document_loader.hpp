@@ -113,7 +113,7 @@ auto fileopen(FilepassString pass) ->std::vector<R>
 
 inline void DocumentLoader::reconstruct(FilepassString src_directory)
 {
-	const auto base_pass = sig::modify_dirpass_tail(src_directory, true);
+	const auto base_pass = sig::modify_dirpath_tail(src_directory, true);
 
 	const auto token_text = impl::fileopen<std::wstring>(base_pass + TOKEN_FILENAME);
 	uint line_iter = 0;

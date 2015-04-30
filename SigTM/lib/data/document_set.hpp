@@ -51,13 +51,13 @@ protected:
 public:
 	DocumentSet(DocumentSet const& src) = delete;
 	DocumentSet(FilepassString folder_pass){
-		info_.working_directory_ = sig::modify_dirpass_tail(folder_pass, true);
+		info_.working_directory_ = sig::modify_dirpath_tail(folder_pass, true);
 	}
 	DocumentSet(DocumentType type, uint doc_num, FilepassString working_directory){
 		info_.doc_type_ = type;
 		info_.is_token_sorted_ = false;
 		info_.doc_num_ = doc_num;
-		info_.working_directory_ = sig::modify_dirpass_tail(working_directory, true);
+		info_.working_directory_ = sig::modify_dirpath_tail(working_directory, true);
 	}
 
 	virtual ~DocumentSet(){}
@@ -124,7 +124,7 @@ result[t.doc_id].push_back();
 
 inline void DocumentSet::save() const
 {
-	auto base_pass = sig::modify_dirpass_tail(info_.working_directory_, true);
+	auto base_pass = sig::modify_dirpath_tail(info_.working_directory_, true);
 
 	auto vocab_pass = base_pass + VOCAB_FILENAME;
 	auto token_pass = base_pass + TOKEN_FILENAME;

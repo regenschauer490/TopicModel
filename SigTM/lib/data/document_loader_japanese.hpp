@@ -135,7 +135,7 @@ public:
 		return DocumentSetPtr(new DocumentLoaderFromJapanese(
 			DocumentType::Defaut,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file))); 
+				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpath_tail(src_folder_pass, true) + file))); 
 				}, fromJust(doc_passes)
 			), filter, working_directory, doc_names ? fromJust(doc_names) : fromJust(doc_passes))
 		);
@@ -167,7 +167,7 @@ public:
 		return DocumentSetPtr(new DocumentLoaderFromJapanese(
 			DocumentType::Tweet,
 			sig::map([&](FilepassString file){
-				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpass_tail(src_folder_pass, true) + file)));
+				return sig::str_to_wstr(fromJust(sig::load_line(sig::modify_dirpath_tail(src_folder_pass, true) + file)));
 			}, fromJust(doc_passes)
 			), filter, working_directory, user_names ? fromJust(user_names) : fromJust(doc_passes))
 		);

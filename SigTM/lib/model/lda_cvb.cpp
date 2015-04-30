@@ -71,7 +71,7 @@ void LDA_CVB0::train(uint num_iteration, std::function<void(LDA const*)> callbac
 
 void LDA_CVB0::save(Distribution target, FilepassString save_dir, bool detail) const
 {
-	save_dir = sig::modify_dirpass_tail(save_dir, true);
+	save_dir = sig::modify_dirpath_tail(save_dir, true);
 
 	switch (target){
 	case Distribution::DOCUMENT:

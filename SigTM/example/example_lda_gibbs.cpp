@@ -24,7 +24,7 @@ void example_lda_gibbs(InputTextType tt, FilepassString src_folder, FilepassStri
 
 	resume = resume && (!make_new);
 
-	out_folder = sig::modify_dirpass_tail(out_folder, true);
+	out_folder = sig::modify_dirpath_tail(out_folder, true);
 	const FilepassString perp_pass = out_folder + SIG_TO_FPSTR("perplexity_gibbs.txt");
 	if (!resume) sig::clear_file(perp_pass);
 

@@ -161,7 +161,7 @@ void TwitterLDA::init(bool resume)
 	std::unordered_map<TokenId, bool> id_y_map;
 	std::unordered_map<std::tuple<UserId, DocumentId>, TopicId> id_z_map;
 	if (resume){
-		const auto base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);
+		const auto base_pass = sig::modify_dirpath_tail(input_data_->getWorkingDirectory(), true);
 	
 		const auto load_info = sig::load_line(base_pass + resume_info_fname);
 		if (isJust(load_info)){
@@ -451,7 +451,7 @@ void TwitterLDA::train(uint num_iteration, std::function<void(TwitterLDA const*)
 
 void TwitterLDA::save(Distribution target, FilepassString save_folder, bool detail) const
 {
-	save_folder = sig::modify_dirpass_tail(save_folder, true);
+	save_folder = sig::modify_dirpath_tail(save_folder, true);
 
 	switch (target){
 	case Distribution::USER:

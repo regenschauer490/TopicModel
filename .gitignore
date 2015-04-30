@@ -19,8 +19,6 @@
 *.idb
 *.suo
 *.sdf
-*.filters
-*.filters
 *.dll
 *.ilk
 *.lib

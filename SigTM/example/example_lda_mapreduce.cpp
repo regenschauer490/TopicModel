@@ -12,8 +12,8 @@ void example_lda_mapreduce(InputTextType tt, FilepassString src_folder, Filepass
 
 	resume = resume && (!make_new);
 
-	const wstring perp_pass = sig::modify_dirpass_tail(out_folder, true) + L"perplexity_mrlda.txt";
-	const wstring time_pass = sig::modify_dirpass_tail(out_folder, true) + L"time_mrlda.txt";
+	const wstring perp_pass = sig::modify_dirpath_tail(out_folder, true) + L"perplexity_mrlda.txt";
+	const wstring time_pass = sig::modify_dirpath_tail(out_folder, true) + L"time_mrlda.txt";
 	if (!resume) {
 		sig::clear_file(perp_pass);
 		sig::clear_file(time_pass);

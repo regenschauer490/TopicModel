@@ -11,5 +11,5 @@ int main()
 	//example_lda_gibbs(InputTextType::Tweet, input_text_pass, data_folder_pass, false, false);
 	//sample4(input_tw_pass, data_folder_pass, false, false);
 
-	return 0
+	return 0;
 }

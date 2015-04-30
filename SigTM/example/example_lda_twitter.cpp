@@ -9,7 +9,7 @@ void example_lda_twitter(FilepassString src_folder, FilepassString out_folder, s
 
 	resume = resume && (!make_new);
 
-	out_folder = sig::modify_dirpass_tail(out_folder, true);
+	out_folder = sig::modify_dirpath_tail(out_folder, true);
 	const FilepassString perp_pass = out_folder + SIG_TO_FPSTR("perplexity_twlda.txt");
 	if (!resume) sig::clear_file(perp_pass);
 

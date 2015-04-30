@@ -18,7 +18,7 @@ void LDA_Gibbs::init(bool resume)
 {
 	std::unordered_map<TokenId, TopicId> id_z_map;
 	if (resume){
-		auto const base_pass = sig::modify_dirpass_tail(input_data_->getWorkingDirectory(), true);	
+		auto const base_pass = sig::modify_dirpath_tail(input_data_->getWorkingDirectory(), true);	
 		const auto load_info = sig::load_line(base_pass + resume_info_fname);
 
 		if (isJust(load_info)){
@@ -152,7 +152,7 @@ void LDA_Gibbs::train(uint num_iteration, std::function<void(LDA const*)> callba
 
 void LDA_Gibbs::save(Distribution target, FilepassString save_dir, bool detail) const
 {
-	save_dir = sig::modify_dirpass_tail(save_dir, true);
+	save_dir = sig::modify_dirpath_tail(save_dir, true);
 
 	switch(target){
 	case Distribution::DOCUMENT :
